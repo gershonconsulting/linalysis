@@ -36,7 +36,7 @@ def process_linkedin_data(file):
         # Fill missing values with appropriate method for each column
         # For most metrics, forward fill is appropriate
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        df[numeric_cols] = df[numeric_cols].fillna(method='ffill')
+        df[numeric_cols] = df[numeric_cols].ffill()
         
         return df
     
