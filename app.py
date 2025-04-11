@@ -1345,6 +1345,269 @@ if uploaded_file is not None:
                     else:
                         st.info("No invitations data available in the uploaded file. LinkedIn data export must include the 'Invitations' column to display this analysis.")
                 
+                elif category == "Reports":
+                    st.subheader("Linalysis Reports")
+                    
+                    st.markdown("""
+                    Generate comprehensive reports based on your LinkedIn data. These reports provide in-depth analysis
+                    and actionable insights to help you optimize your LinkedIn strategy.
+                    """)
+                    
+                    # Report type selection
+                    report_type = st.radio(
+                        "Report Type",
+                        ["Weekly Report", "Monthly Report"],
+                        horizontal=True
+                    )
+                    
+                    # Report configuration
+                    st.subheader("Report Configuration")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        include_connections = st.checkbox("Include Connections Analysis", value=True)
+                        include_views = st.checkbox("Include Profile Views Analysis", value=True)
+                        include_search = st.checkbox("Include Search Appearances Analysis", value=True)
+                    
+                    with col2:
+                        include_ssi = st.checkbox("Include SSI Score Analysis", value=True)
+                        include_invitations = st.checkbox("Include Invitations Analysis", value=True)
+                        include_recommendations = st.checkbox("Include Recommendations", value=True)
+                    
+                    # Date range for the report
+                    if report_type == "Weekly Report":
+                        st.info("Weekly report will include data from the past 7 days.")
+                        report_end_date = st.date_input("Report End Date", max_date, min_value=min_date, max_value=max_date)
+                        report_start_date = report_end_date - timedelta(days=7)
+                    else:  # Monthly Report
+                        st.info("Monthly report will include data from the past 30 days.")
+                        report_end_date = st.date_input("Report End Date", max_date, min_value=min_date, max_value=max_date)
+                        report_start_date = report_end_date - timedelta(days=30)
+                    
+                    # Email delivery options
+                    st.subheader("Delivery Options")
+                    delivery_email = st.text_input("Email Address for Report Delivery")
+                    
+                    # Generate report button
+                    if st.button("Generate Report"):
+                        if delivery_email:
+                            # Filter data for the report period
+                            report_df = df[(df['Date'].dt.date >= report_start_date) & (df['Date'].dt.date <= report_end_date)]
+                            
+                            if not report_df.empty:
+                                # Here we would generate the report and send it
+                                # For now, just show a success message
+                                st.success(f"Your {report_type.lower()} has been generated and sent to {delivery_email}!")
+                                
+                                # Show report preview
+                                st.subheader("Report Preview")
+                                
+                                # Key metrics for the report period
+                                report_stats = calculate_statistics(report_df)
+                                
+                                # Display metrics based on selected options
+                                metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+                                
+                                if include_connections:
+                                    with metrics_col1:
+                                        connections_change = report_df['Connections'].iloc[-1] - report_df['Connections'].iloc[0]
+                                        st.metric(
+                                            label="Connections Growth", 
+                                            value=connections_change,
+                                            delta=connections_change
+                                        )
+                                
+                                if include_views:
+                                    with metrics_col2:
+                                        views_change = report_df['Views'].iloc[-1] - report_df['Views'].iloc[0]
+                                        st.metric(
+                                            label="Profile Views", 
+                                            value=int(report_df['Views'].sum()),
+                                            delta=views_change
+                                        )
+                                
+                                if include_search:
+                                    with metrics_col3:
+                                        search_change = report_df['Search Appearance'].iloc[-1] - report_df['Search Appearance'].iloc[0]
+                                        st.metric(
+                                            label="Search Appearances", 
+                                            value=int(report_df['Search Appearance'].sum()),
+                                            delta=search_change
+                                        )
+                                
+                                # Sample charts that would be in the report
+                                if include_connections:
+                                    st.plotly_chart(create_connections_chart(report_df), use_container_width=True)
+                                
+                                if include_views and include_search:
+                                    st.plotly_chart(create_metrics_comparison_chart(report_df), use_container_width=True)
+                                
+                                if include_ssi:
+                                    st.plotly_chart(create_ssi_chart(report_df), use_container_width=True)
+                            else:
+                                st.error(f"No data available for the selected period ({report_start_date} to {report_end_date}).")
+                        else:
+                            st.warning("Please enter an email address for report delivery.")
+                
+                elif category == "Settings":
+                    st.subheader("Linalysis Account Settings")
+                    
+                    # Profile settings
+                    st.markdown("### Profile Settings")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.text_input("Full Name", placeholder="Enter your full name")
+                        st.text_input("Job Title", placeholder="Enter your job title")
+                        st.text_input("Company", placeholder="Enter your company name")
+                    
+                    # Account verification section
+                    st.markdown("### Account Verification")
+                    st.markdown("Verify your contact information to enable all features.")
+                    
+                    # Email verification
+                    email_col1, email_col2 = st.columns([3, 1])
+                    with email_col1:
+                        email = st.text_input("Email Address", placeholder="Enter your email address")
+                    with email_col2:
+                        verify_email = st.button("Verify Email")
+                    
+                    if verify_email and email:
+                        # Here we would actually send a verification code
+                        st.info("A 6-digit verification code has been sent to your email address.")
+                        
+                        verify_col1, verify_col2 = st.columns([3, 1])
+                        with verify_col1:
+                            verification_code = st.text_input("Email Verification Code", placeholder="Enter 6-digit code")
+                        with verify_col2:
+                            confirm_code = st.button("Confirm Code")
+                        
+                        if confirm_code and verification_code:
+                            # Here we would validate the code
+                            # For demo purposes, let's accept any 6-digit code
+                            if len(verification_code) == 6 and verification_code.isdigit():
+                                st.success("Email verified successfully!")
+                            else:
+                                st.error("Invalid verification code. Please try again.")
+                    
+                    # Phone verification
+                    st.markdown("### Mobile Phone Verification")
+                    phone_col1, phone_col2 = st.columns([3, 1])
+                    with phone_col1:
+                        phone = st.text_input("Mobile Phone Number", placeholder="Enter your mobile phone number")
+                    with phone_col2:
+                        verify_method = st.selectbox(
+                            "Verification Method",
+                            ["SMS Code", "Click Link"],
+                            index=0
+                        )
+                        verify_phone = st.button("Verify Phone")
+                    
+                    if verify_phone and phone:
+                        if verify_method == "SMS Code":
+                            # Here we would send an SMS with verification code
+                            st.info("A 6-digit verification code has been sent to your mobile phone.")
+                            
+                            sms_col1, sms_col2 = st.columns([3, 1])
+                            with sms_col1:
+                                sms_code = st.text_input("SMS Verification Code", placeholder="Enter 6-digit code")
+                            with sms_col2:
+                                confirm_sms = st.button("Confirm SMS Code")
+                            
+                            if confirm_sms and sms_code:
+                                # Here we would validate the SMS code
+                                # For demo purposes, let's accept any 6-digit code
+                                if len(sms_code) == 6 and sms_code.isdigit():
+                                    st.success("Phone number verified successfully!")
+                                else:
+                                    st.error("Invalid verification code. Please try again.")
+                        else:  # Click Link
+                            st.info("A verification link has been sent to your mobile phone. Please click the link to verify your number.")
+                            st.success("Once you click the link, your phone will be verified automatically.")
+                    
+                    # Notification settings
+                    st.markdown("### Notification Settings")
+                    
+                    st.checkbox("Email notifications for weekly reports", value=True)
+                    st.checkbox("Email notifications for monthly reports", value=True)
+                    st.checkbox("SMS notifications for significant profile view increases", value=False)
+                    st.checkbox("Email alerts for unusual account activity", value=True)
+                    
+                    # Save settings button
+                    if st.button("Save Settings"):
+                        st.success("Settings saved successfully!")
+
+                elif category == "Billing":
+                    st.subheader("Linalysis Subscription")
+                    
+                    # Display subscription plans
+                    st.markdown("### Choose Your Plan")
+                    
+                    # Plan comparison in columns
+                    plan1, plan2, plan3 = st.columns(3)
+                    
+                    with plan1:
+                        st.markdown("#### Basic Plan")
+                        st.markdown("**$9.99 / month**")
+                        st.markdown("- Basic LinkedIn analytics")
+                        st.markdown("- Weekly growth reports")
+                        st.markdown("- Email support")
+                        st.markdown("- 1 LinkedIn account")
+                        select_basic = st.button("Select Basic Plan")
+                    
+                    with plan2:
+                        st.markdown("#### Pro Plan")
+                        st.markdown("**$19.99 / month**")
+                        st.markdown("- All Basic features")
+                        st.markdown("- Advanced analytics")
+                        st.markdown("- Daily data updates")
+                        st.markdown("- Priority email support")
+                        st.markdown("- 2 LinkedIn accounts")
+                        select_pro = st.button("Select Pro Plan")
+                    
+                    with plan3:
+                        st.markdown("#### Enterprise Plan")
+                        st.markdown("**$49.99 / month**")
+                        st.markdown("- All Pro features")
+                        st.markdown("- Custom reporting")
+                        st.markdown("- API access")
+                        st.markdown("- Dedicated support")
+                        st.markdown("- Unlimited LinkedIn accounts")
+                        select_enterprise = st.button("Select Enterprise Plan")
+                    
+                    # Placeholder for Stripe integration
+                    if select_basic or select_pro or select_enterprise:
+                        selected_plan = "Basic" if select_basic else "Pro" if select_pro else "Enterprise"
+                        st.info(f"You've selected the {selected_plan} Plan. Stripe payment integration will be available soon.")
+                        
+                        # Display placeholder payment form
+                        st.markdown("### Payment Information")
+                        st.markdown("Stripe integration will be completed soon. For now, you can enter payment details below.")
+                        
+                        st.text_input("Cardholder Name", placeholder="Enter cardholder name")
+                        st.text_input("Card Number", placeholder="Enter card number")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.text_input("Expiration Date", placeholder="MM/YY")
+                        with col2:
+                            st.text_input("CVC", placeholder="CVC", type="password")
+                        
+                        st.text_input("Billing Address", placeholder="Enter billing address")
+                        
+                        pay_button = st.button("Complete Payment")
+                        if pay_button:
+                            st.success("Thank you for your subscription! You will receive a confirmation email shortly.")
+                    
+                    # Current subscription info (display if user already has a subscription)
+                    st.markdown("### Current Subscription")
+                    st.info("You don't have an active subscription. Select a plan above to subscribe.")
+                    
+                    # Display payment history placeholder
+                    st.markdown("### Payment History")
+                    st.info("No payment history available.")
+                
                 # Remove old tab code - we don't need this anymore with the new Dashboard layout
                 
                 # Download the filtered data
