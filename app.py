@@ -50,7 +50,7 @@ if uploaded_file is not None:
             # Category-based navigation
             category = st.sidebar.radio(
                 "View by Category",
-                ["Dashboard", "Invitations"]
+                ["Dashboard", "Connections", "Profile Views", "Search Appearances", "SSI Score", "Invitations"]
             )
             
             # Date filter
@@ -200,6 +200,741 @@ if uploaded_file is not None:
                             - **View to Connection Ratio:** {stats['view_connection_ratio']:.2f} views per new connection
                             - **Average SSI Score:** {stats['avg_ssi']:.1f}/100
                             """)
+                
+                elif category == "Connections":
+                    # Connections specific metrics
+                    st.subheader("LinkedIn Connections Analysis")
+                    
+                    # Top metrics row
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric(
+                            label="Total Connections", 
+                            value=stats['latest_connections'],
+                            delta=connections_change
+                        )
+                    
+                    with col2:
+                        st.metric(
+                            label="Min Connections", 
+                            value=int(filtered_df['Connections'].min())
+                        )
+                    
+                    with col3:
+                        st.metric(
+                            label="Max Connections", 
+                            value=int(filtered_df['Connections'].max())
+                        )
+                    
+                    with col4:
+                        st.metric(
+                            label="Average Connections", 
+                            value=f"{filtered_df['Connections'].mean():.1f}"
+                        )
+                    
+                    # Main connections chart
+                    st.subheader("Network Growth Over Time")
+                    st.plotly_chart(create_connections_chart(filtered_df), use_container_width=True)
+                    
+                    # Weekly and monthly views in two columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Create weekly growth summary
+                        st.subheader("Weekly Connections Growth")
+                        
+                        # Resample by week and calculate the difference
+                        weekly_data = filtered_df.set_index('Date')[['Connections']].resample('W').last()
+                        weekly_data['Weekly_Growth'] = weekly_data['Connections'].diff()
+                        
+                        # Replace NaN values in first row
+                        weekly_data['Weekly_Growth'] = weekly_data['Weekly_Growth'].fillna(0)
+                        
+                        # Create weekly growth bar chart
+                        fig = px.bar(
+                            weekly_data.reset_index(), 
+                            x="Date", 
+                            y="Weekly_Growth",
+                            labels={"Weekly_Growth": "New Connections", "Date": "Week"},
+                            title="Weekly Connections Growth",
+                            color_discrete_sequence=["rgba(10, 102, 194, 0.8)"]
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(showgrid=False),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Weekly growth statistics
+                        weekly_growth = weekly_data['Weekly_Growth']
+                        st.markdown(f"""
+                        ### Weekly Growth Statistics
+                        - **Average weekly growth:** {weekly_growth.mean():.2f} connections/week
+                        - **Max weekly growth:** {weekly_growth.max():.0f} connections
+                        - **Min weekly growth:** {weekly_growth.min():.0f} connections
+                        - **Median weekly growth:** {weekly_growth.median():.1f} connections
+                        """)
+                    
+                    with col2:
+                        # Create monthly growth summary
+                        st.subheader("Monthly Connections Growth")
+                        
+                        # Resample by month and calculate the difference
+                        monthly_data = filtered_df.set_index('Date')[['Connections']].resample('M').last()
+                        monthly_data['Monthly_Growth'] = monthly_data['Connections'].diff()
+                        
+                        # Replace NaN values in first row
+                        monthly_data['Monthly_Growth'] = monthly_data['Monthly_Growth'].fillna(0)
+                        
+                        # Create monthly growth bar chart
+                        fig = px.bar(
+                            monthly_data.reset_index(), 
+                            x="Date", 
+                            y="Monthly_Growth",
+                            labels={"Monthly_Growth": "New Connections", "Date": "Month"},
+                            title="Monthly Connections Growth",
+                            color_discrete_sequence=["rgba(44, 160, 44, 0.8)"]
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(
+                                showgrid=False,
+                                tickformat="%b %Y"  # Format as "Jan 2025" etc.
+                            ),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Monthly growth statistics
+                        monthly_growth = monthly_data['Monthly_Growth']
+                        st.markdown(f"""
+                        ### Monthly Growth Statistics
+                        - **Average monthly growth:** {monthly_growth.mean():.2f} connections/month
+                        - **Max monthly growth:** {monthly_growth.max():.0f} connections
+                        - **Min monthly growth:** {monthly_growth.min():.0f} connections
+                        - **Median monthly growth:** {monthly_growth.median():.1f} connections
+                        """)
+                    
+                    # Network growth metrics
+                    st.subheader("Network Growth Projections")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"""
+                        ### Growth Metrics
+                        - **Average daily growth:** {stats['avg_connections_growth']:.2f} connections/day
+                        - **Total connections gained:** {stats['connections_change']} connections
+                        - **Growth period:** {(end_date - start_date).days} days
+                        - **Connections on {start_date}:** {filtered_df['Connections'].iloc[0]}
+                        - **Connections on {end_date}:** {filtered_df['Connections'].iloc[-1]}
+                        """)
+                    
+                    with col2:
+                        st.markdown(f"""
+                        ### Growth Projections
+                        - **Projected weekly growth:** {stats['avg_connections_growth'] * 7:.1f} connections/week
+                        - **Projected monthly growth:** {stats['projected_monthly_growth']:.0f} connections/month
+                        - **Projected annual growth:** {stats['projected_annual_growth']:.0f} connections/year
+                        - **Days to reach next 100:** {100 / stats['avg_connections_growth']:.0f} days
+                        - **Days to reach next 500:** {500 / stats['avg_connections_growth']:.0f} days
+                        """)
+                
+                elif category == "Profile Views":
+                    # Profile views specific metrics
+                    st.subheader("LinkedIn Profile Views Analysis")
+                    
+                    # Top metrics row
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric(
+                            label="Current Views", 
+                            value=stats['latest_views'],
+                            delta=views_change
+                        )
+                    
+                    with col2:
+                        st.metric(
+                            label="Min Views", 
+                            value=int(filtered_df['Views'].min())
+                        )
+                    
+                    with col3:
+                        st.metric(
+                            label="Max Views", 
+                            value=int(filtered_df['Views'].max())
+                        )
+                    
+                    with col4:
+                        st.metric(
+                            label="Average Views", 
+                            value=f"{filtered_df['Views'].mean():.1f}"
+                        )
+                    
+                    # Main profile views chart
+                    st.subheader("Profile Views Over Time")
+                    st.plotly_chart(create_views_chart(filtered_df), use_container_width=True)
+                    
+                    # Weekly and monthly views in two columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Create weekly views summary
+                        st.subheader("Weekly Profile Views")
+                        
+                        # Resample by week
+                        weekly_data = filtered_df.set_index('Date')[['Views']].resample('W').sum()
+                        
+                        # Create weekly views bar chart
+                        fig = px.bar(
+                            weekly_data.reset_index(), 
+                            x="Date", 
+                            y="Views",
+                            labels={"Views": "Profile Views", "Date": "Week"},
+                            title="Weekly Profile Views",
+                            color_discrete_sequence=["rgba(214, 39, 40, 0.8)"]
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(showgrid=False),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Weekly views statistics
+                        weekly_views = weekly_data['Views']
+                        st.markdown(f"""
+                        ### Weekly Views Statistics
+                        - **Average weekly views:** {weekly_views.mean():.2f} views/week
+                        - **Max weekly views:** {weekly_views.max():.0f} views
+                        - **Min weekly views:** {weekly_views.min():.0f} views
+                        - **Median weekly views:** {weekly_views.median():.1f} views
+                        """)
+                    
+                    with col2:
+                        # Create monthly views summary
+                        st.subheader("Monthly Profile Views")
+                        
+                        # Resample by month
+                        monthly_data = filtered_df.set_index('Date')[['Views']].resample('M').sum()
+                        
+                        # Create monthly views bar chart
+                        fig = px.bar(
+                            monthly_data.reset_index(), 
+                            x="Date", 
+                            y="Views",
+                            labels={"Views": "Profile Views", "Date": "Month"},
+                            title="Monthly Profile Views",
+                            color_discrete_sequence=["rgba(148, 103, 189, 0.8)"]
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(
+                                showgrid=False,
+                                tickformat="%b %Y"  # Format as "Jan 2025" etc.
+                            ),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Monthly views statistics
+                        monthly_views = monthly_data['Views']
+                        st.markdown(f"""
+                        ### Monthly Views Statistics
+                        - **Average monthly views:** {monthly_views.mean():.2f} views/month
+                        - **Max monthly views:** {monthly_views.max():.0f} views
+                        - **Min monthly views:** {monthly_views.min():.0f} views
+                        - **Median monthly views:** {monthly_views.median():.1f} views
+                        """)
+                    
+                    # Correlation with other metrics
+                    st.subheader("Relationship with Other Metrics")
+                    
+                    # Correlation heatmap
+                    st.plotly_chart(create_heatmap(filtered_df), use_container_width=True)
+                    
+                    # Additional insights
+                    st.subheader("Profile Views Insights")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"""
+                        ### Views Efficiency Metrics
+                        - **Views per connection:** {stats['view_connection_ratio']:.2f} views per new connection
+                        - **Daily average views:** {stats['avg_views']:.1f} views/day
+                        - **Total views in period:** {filtered_df['Views'].sum()} views
+                        - **Days with zero views:** {(filtered_df['Views'] == 0).sum()} days
+                        - **Max views in a day:** {filtered_df['Views'].max()} views
+                        """)
+                    
+                    with col2:
+                        # Create day of week analysis
+                        if len(filtered_df) >= 7:  # Only if we have enough data
+                            # Add day of week column
+                            day_data = filtered_df.copy()
+                            day_data['Day_of_Week'] = day_data['Date'].dt.day_name()
+                            
+                            # Get average views by day of week
+                            day_avg = day_data.groupby('Day_of_Week')['Views'].mean().reindex([
+                                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+                            ])
+                            
+                            # Create day of week bar chart
+                            fig = px.bar(
+                                x=day_avg.index, 
+                                y=day_avg.values,
+                                labels={"x": "Day of Week", "y": "Average Views"},
+                                title="Average Views by Day of Week",
+                                color_discrete_sequence=["rgba(214, 39, 40, 0.8)"]
+                            )
+                            
+                            # Improve the layout
+                            fig.update_layout(
+                                xaxis=dict(showgrid=False),
+                                yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                                plot_bgcolor="white"
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("Need at least 7 days of data to show day-of-week analysis.")
+                
+                elif category == "Search Appearances":
+                    # Search appearances specific metrics
+                    st.subheader("LinkedIn Search Appearances Analysis")
+                    
+                    # Top metrics row
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric(
+                            label="Current Appearances", 
+                            value=stats['latest_search'],
+                            delta=search_change
+                        )
+                    
+                    with col2:
+                        st.metric(
+                            label="Min Appearances", 
+                            value=int(filtered_df['Search Appearance'].min())
+                        )
+                    
+                    with col3:
+                        st.metric(
+                            label="Max Appearances", 
+                            value=int(filtered_df['Search Appearance'].max())
+                        )
+                    
+                    with col4:
+                        st.metric(
+                            label="Average Appearances", 
+                            value=f"{filtered_df['Search Appearance'].mean():.1f}"
+                        )
+                    
+                    # Main search appearances chart
+                    st.subheader("Search Appearances Over Time")
+                    st.plotly_chart(create_search_appearances_chart(filtered_df), use_container_width=True)
+                    
+                    # Weekly and monthly appearances in two columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Create weekly appearances summary
+                        st.subheader("Weekly Search Appearances")
+                        
+                        # Resample by week
+                        weekly_data = filtered_df.set_index('Date')[['Search Appearance']].resample('W').sum()
+                        
+                        # Create weekly appearances bar chart
+                        fig = px.bar(
+                            weekly_data.reset_index(), 
+                            x="Date", 
+                            y="Search Appearance",
+                            labels={"Search Appearance": "Appearances", "Date": "Week"},
+                            title="Weekly Search Appearances",
+                            color_discrete_sequence=["rgba(44, 160, 44, 0.8)"]
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(showgrid=False),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Weekly appearances statistics
+                        weekly_search = weekly_data['Search Appearance']
+                        st.markdown(f"""
+                        ### Weekly Search Statistics
+                        - **Average weekly appearances:** {weekly_search.mean():.2f} appearances/week
+                        - **Max weekly appearances:** {weekly_search.max():.0f} appearances
+                        - **Min weekly appearances:** {weekly_search.min():.0f} appearances
+                        - **Median weekly appearances:** {weekly_search.median():.1f} appearances
+                        """)
+                    
+                    with col2:
+                        # Create monthly appearances summary
+                        st.subheader("Monthly Search Appearances")
+                        
+                        # Resample by month
+                        monthly_data = filtered_df.set_index('Date')[['Search Appearance']].resample('M').sum()
+                        
+                        # Create monthly appearances bar chart
+                        fig = px.bar(
+                            monthly_data.reset_index(), 
+                            x="Date", 
+                            y="Search Appearance",
+                            labels={"Search Appearance": "Appearances", "Date": "Month"},
+                            title="Monthly Search Appearances",
+                            color_discrete_sequence=["rgba(140, 86, 75, 0.8)"]
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(
+                                showgrid=False,
+                                tickformat="%b %Y"  # Format as "Jan 2025" etc.
+                            ),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Monthly appearances statistics
+                        monthly_search = monthly_data['Search Appearance']
+                        st.markdown(f"""
+                        ### Monthly Search Statistics
+                        - **Average monthly appearances:** {monthly_search.mean():.2f} appearances/month
+                        - **Max monthly appearances:** {monthly_search.max():.0f} appearances
+                        - **Min monthly appearances:** {monthly_search.min():.0f} appearances
+                        - **Median monthly appearances:** {monthly_search.median():.1f} appearances
+                        """)
+                    
+                    # Comparison with profile views
+                    st.subheader("Search Appearances vs. Profile Views")
+                    
+                    # Compare search appearances and profile views
+                    fig = px.line(
+                        filtered_df, 
+                        x="Date", 
+                        y=["Search Appearance", "Views"],
+                        title="Search Appearances vs. Profile Views Over Time",
+                        labels={"value": "Count", "Date": "", "variable": "Metric"},
+                        color_discrete_map={
+                            "Search Appearance": "rgba(44, 160, 44, 0.8)", 
+                            "Views": "rgba(214, 39, 40, 0.8)"
+                        }
+                    )
+                    
+                    # Improve the layout
+                    fig.update_layout(
+                        hovermode="x unified",
+                        xaxis=dict(showgrid=False),
+                        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                        plot_bgcolor="white",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Search effectiveness metrics
+                    st.subheader("Search Effectiveness Metrics")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Create search to view ratio chart
+                        search_view_ratio = filtered_df['Search Appearance'] / filtered_df['Views'].clip(lower=1)
+                        ratio_df = pd.DataFrame({
+                            'Date': filtered_df['Date'],
+                            'Search to View Ratio': search_view_ratio
+                        })
+                        
+                        fig = px.line(
+                            ratio_df, 
+                            x="Date", 
+                            y="Search to View Ratio",
+                            title="Search to View Ratio Over Time",
+                            labels={"Search to View Ratio": "Ratio", "Date": ""},
+                            color_discrete_sequence=["rgba(227, 119, 194, 0.8)"]
+                        )
+                        
+                        # Add trendline
+                        fig.add_trace(
+                            go.Scatter(
+                                x=ratio_df["Date"],
+                                y=ratio_df["Search to View Ratio"].rolling(window=7, min_periods=1).mean(),
+                                mode="lines",
+                                name="7-Day Moving Average",
+                                line=dict(color="rgba(148, 103, 189, 0.8)", width=2, dash="dash")
+                            )
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            hovermode="x unified",
+                            xaxis=dict(showgrid=False),
+                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                            plot_bgcolor="white",
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    with col2:
+                        st.markdown(f"""
+                        ### Search and View Metrics
+                        - **Average daily search appearances:** {stats['avg_search']:.1f} appearances/day
+                        - **Search to view conversion rate:** {(filtered_df['Views'].sum() / filtered_df['Search Appearance'].sum() * 100):.1f}%
+                        - **Average search to view ratio:** {search_view_ratio.mean():.2f}
+                        - **Total search appearances:** {filtered_df['Search Appearance'].sum()}
+                        - **Days with high search appearance (>10):** {(filtered_df['Search Appearance'] > 10).sum()} days
+                        - **Days with zero search appearance:** {(filtered_df['Search Appearance'] == 0).sum()} days
+                        """)
+                        
+                        # Add comparison with industry averages (fictional data, could be replaced with real data)
+                        st.markdown("""
+                        ### Search Appearances Tips
+                        - **Optimize your profile headline** with relevant keywords
+                        - **Use industry-specific keywords** in your profile
+                        - **Update your profile regularly** to boost LinkedIn algorithm visibility
+                        - **Engage with content** in your industry to increase visibility
+                        - **Publish relevant content** to establish expertise
+                        """)
+                
+                elif category == "SSI Score":
+                    # SSI specific metrics
+                    st.subheader("LinkedIn Social Selling Index (SSI) Analysis")
+                    
+                    # Check if all SSI columns exist
+                    has_ssi_components = all(col in filtered_df.columns for col in ['SSI', 'SSI Industry', 'SSI Network'])
+                    
+                    # Top metrics row
+                    if has_ssi_components:
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric(
+                                label="Current SSI Score", 
+                                value=f"{stats['latest_ssi']}/100",
+                                delta=ssi_change
+                            )
+                        
+                        with col2:
+                            st.metric(
+                                label="Industry Ranking", 
+                                value=f"{filtered_df['SSI Industry'].iloc[-1]}"
+                            )
+                        
+                        with col3:
+                            st.metric(
+                                label="Network Ranking", 
+                                value=f"{filtered_df['SSI Network'].iloc[-1]}"
+                            )
+                        
+                        with col4:
+                            # Calculate percentile based on industry ranking
+                            industry_rank = filtered_df['SSI Industry'].iloc[-1]
+                            try:
+                                # Try to convert to float if it's a percentage string
+                                industry_percentile = float(industry_rank.strip('%'))
+                            except (ValueError, AttributeError):
+                                # If it fails, use a default value
+                                industry_percentile = 50
+                                
+                            st.metric(
+                                label="Industry Percentile", 
+                                value=f"{industry_percentile}%"
+                            )
+                    else:
+                        # Simplified metrics if components aren't available
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.metric(
+                                label="Current SSI Score", 
+                                value=f"{stats['latest_ssi']}/100",
+                                delta=ssi_change
+                            )
+                        
+                        with col2:
+                            st.metric(
+                                label="Average SSI Score", 
+                                value=f"{stats['avg_ssi']:.1f}/100"
+                            )
+                    
+                    # Main SSI chart
+                    st.subheader("SSI Score Evolution")
+                    st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
+                    
+                    # Weekly and monthly SSI in two columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Create weekly SSI summary
+                        st.subheader("Weekly SSI Average")
+                        
+                        # Resample by week
+                        weekly_data = filtered_df.set_index('Date')[['SSI']].resample('W').mean()
+                        
+                        # Create weekly SSI line chart
+                        fig = px.line(
+                            weekly_data.reset_index(), 
+                            x="Date", 
+                            y="SSI",
+                            labels={"SSI": "Average SSI Score", "Date": "Week"},
+                            title="Weekly Average SSI Score",
+                            color_discrete_sequence=["rgba(31, 119, 180, 0.8)"],
+                            markers=True
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(showgrid=False),
+                            yaxis=dict(
+                                showgrid=True, 
+                                gridcolor="rgba(0,0,0,0.1)",
+                                range=[0, 100]  # Fix y-axis range for SSI
+                            ),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Weekly SSI statistics
+                        weekly_ssi = weekly_data['SSI']
+                        st.markdown(f"""
+                        ### Weekly SSI Statistics
+                        - **Average weekly SSI:** {weekly_ssi.mean():.2f}/100
+                        - **Max weekly SSI:** {weekly_ssi.max():.1f}/100
+                        - **Min weekly SSI:** {weekly_ssi.min():.1f}/100
+                        - **Median weekly SSI:** {weekly_ssi.median():.1f}/100
+                        """)
+                    
+                    with col2:
+                        # Create monthly SSI summary
+                        st.subheader("Monthly SSI Average")
+                        
+                        # Resample by month
+                        monthly_data = filtered_df.set_index('Date')[['SSI']].resample('M').mean()
+                        
+                        # Create monthly SSI line chart
+                        fig = px.line(
+                            monthly_data.reset_index(), 
+                            x="Date", 
+                            y="SSI",
+                            labels={"SSI": "Average SSI Score", "Date": "Month"},
+                            title="Monthly Average SSI Score",
+                            color_discrete_sequence=["rgba(255, 127, 14, 0.8)"],
+                            markers=True
+                        )
+                        
+                        # Improve the layout
+                        fig.update_layout(
+                            xaxis=dict(
+                                showgrid=False,
+                                tickformat="%b %Y"  # Format as "Jan 2025" etc.
+                            ),
+                            yaxis=dict(
+                                showgrid=True, 
+                                gridcolor="rgba(0,0,0,0.1)",
+                                range=[0, 100]  # Fix y-axis range for SSI
+                            ),
+                            plot_bgcolor="white"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Monthly SSI statistics
+                        monthly_ssi = monthly_data['SSI']
+                        st.markdown(f"""
+                        ### Monthly SSI Statistics
+                        - **Average monthly SSI:** {monthly_ssi.mean():.2f}/100
+                        - **Max monthly SSI:** {monthly_ssi.max():.1f}/100
+                        - **Min monthly SSI:** {monthly_ssi.min():.1f}/100
+                        - **Median monthly SSI:** {monthly_ssi.median():.1f}/100
+                        """)
+                    
+                    # SSI Components and Explanation
+                    st.subheader("Understanding Your SSI Score")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"""
+                        ### Your SSI Performance
+                        - **Current SSI Score:** {stats['latest_ssi']}/100
+                        - **Min SSI:** {filtered_df['SSI'].min():.1f}/100
+                        - **Max SSI:** {stats['max_ssi']}/100
+                        - **Average SSI:** {stats['avg_ssi']:.1f}/100
+                        
+                        ### SSI Industry Rankings
+                        - **Your Industry Ranking:** {filtered_df['SSI Industry'].iloc[-1] if 'SSI Industry' in filtered_df.columns else 'N/A'}
+                        - **Your Network Ranking:** {filtered_df['SSI Network'].iloc[-1] if 'SSI Network' in filtered_df.columns else 'N/A'}
+                        """)
+                    
+                    with col2:
+                        st.markdown("""
+                        ### What is SSI?
+                        The **Social Selling Index (SSI)** measures how effective you are at establishing your professional brand, finding the right people, engaging with insights, and building relationships on LinkedIn.
+                        
+                        ### The Four Pillars of SSI:
+                        1. **Establish your professional brand** - Complete your profile with the customer in mind
+                        2. **Find the right people** - Identify better prospects in less time using efficient search and research tools
+                        3. **Engage with insights** - Discover and share conversation-worthy content
+                        4. **Build relationships** - Strengthen your network by connecting and establishing trust with decision makers
+                        """)
+                    
+                    # SSI Improvement Tips
+                    st.subheader("SSI Improvement Tips")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.markdown("""
+                        ### Professional Brand
+                        - Complete all sections of your profile
+                        - Add a professional photo and cover image
+                        - Request recommendations from colleagues
+                        - Share relevant work samples and projects
+                        - Update your headline with keywords
+                        """)
+                    
+                    with col2:
+                        st.markdown("""
+                        ### Finding & Engaging
+                        - Use advanced search to find prospects
+                        - Follow relevant industry leaders
+                        - Comment on and share relevant posts
+                        - Publish articles on industry topics
+                        - Join and participate in relevant groups
+                        """)
+                    
+                    with col3:
+                        st.markdown("""
+                        ### Relationship Building
+                        - Personalize connection requests
+                        - Follow up with new connections
+                        - Share valuable content regularly
+                        - Engage with your network's updates
+                        - Introduce connections to each other
+                        """)
                 
                 elif category == "Invitations":
                     # Invitations specific metrics
