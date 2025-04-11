@@ -1093,6 +1093,59 @@ if uploaded_file is not None:
                         - Engage with your network's updates
                         - Introduce connections to each other
                         """)
+                        
+                    # Add period comparisons, conclusions and recommendations
+                    st.subheader("SSI Score Insights & Recommendations")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Calculate changes for different periods
+                        week_change_pct = stats.get('ssi_week_pct_change', 0)
+                        month_change_pct = stats.get('ssi_month_pct_change', 0)
+                        week_change = stats.get('ssi_week_change', 0)
+                        month_change = stats.get('ssi_month_change', 0)
+                        
+                        # Colors for trends
+                        week_color = "green" if week_change > 0 else "red" if week_change < 0 else "gray"
+                        month_color = "green" if month_change > 0 else "red" if month_change < 0 else "gray"
+                        
+                        st.markdown(f"""
+                        ### SSI Performance Analysis
+                        
+                        #### Weekly Comparison
+                        <span style="color:{week_color}">**{week_change:+.1f} points**</span> in the last week 
+                        ({week_change_pct:.1f}% change)
+                        
+                        #### Monthly Comparison
+                        <span style="color:{month_color}">**{month_change:+.1f} points**</span> in the last month 
+                        ({month_change_pct:.1f}% change)
+                        
+                        #### Key Insights
+                        - Your current SSI score is **{stats['latest_ssi']}/100**
+                        - Your score is **{stats['latest_ssi'] - 45 if stats['latest_ssi'] > 45 else 45 - stats['latest_ssi']} points {stats['latest_ssi'] > 45 and 'above' or 'below'}** the average SSI score of 45
+                        - Your maximum SSI score reached was **{stats['max_ssi']}/100**
+                        - Your SSI trend is **{week_change_pct:.1f}% {week_change >= 0 and 'up' or 'down'}** compared to last week
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Generate recommendations based on SSI patterns
+                        ssi_level = "high" if stats['latest_ssi'] > 60 else "moderate" if stats['latest_ssi'] > 40 else "low"
+                        ssi_trend = "improving" if week_change > 0 else "declining" if week_change < 0 else "stable"
+                        
+                        st.markdown(f"""
+                        ### Recommendations
+                        
+                        #### SSI Improvement Strategy
+                        - **Professional Brand**: {'Continue maintaining your strong brand' if ssi_level == 'high' else 'Enhance your profile completeness'}
+                        - **Finding Right People**: {'Maintain your network growth' if ssi_level != 'low' else 'Expand your network with targeted connections'}
+                        - **Engagement Strategy**: {'Continue your content engagement' if ssi_trend == 'improving' else 'Increase your content interactions'}
+                        
+                        #### Action Items
+                        1. {'Share thought leadership content weekly' if ssi_level == 'high' else 'Complete all sections of your profile'}
+                        2. {'Maintain your engagement consistency' if ssi_trend != 'declining' else 'Comment on industry posts daily'}
+                        3. {'Focus on strategic connections' if ssi_level == 'high' else 'Connect with industry leaders in your field'}
+                        4. {'Continue relationship building with current connections' if ssi_level != 'low' else 'Request recommendations from colleagues'}
+                        """)
                 
                 elif category == "Invitations":
                     # Invitations specific metrics
@@ -1145,7 +1198,8 @@ if uploaded_file is not None:
                                 y="Invitations",
                                 title="Linalysis Pending Invitations Over Time",
                                 labels={"Invitations": "Pending Invitations", "Date": ""},
-                                markers=True
+                                markers=True,
+                                color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
                             )
                             
                             # Add trendline
@@ -1155,7 +1209,7 @@ if uploaded_file is not None:
                                     y=filtered_df["Invitations"].rolling(window=7, min_periods=1).mean(),
                                     mode="lines",
                                     name="7-Day Moving Average",
-                                    line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+                                    line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
                                 )
                             )
                             
@@ -1198,7 +1252,7 @@ if uploaded_file is not None:
                                 y=inv_norm,
                                 mode="lines+markers",
                                 name="Pending Invitations",
-                                line=dict(color="rgba(255, 127, 14, 0.8)", width=2)
+                                line=dict(color="rgba(255, 128, 0, 0.9)", width=2)  # Orange main color
                             )
                         )
                         
@@ -1209,7 +1263,7 @@ if uploaded_file is not None:
                                 y=conn_norm,
                                 mode="lines+markers",
                                 name="Connections",
-                                line=dict(color="rgba(31, 119, 180, 0.8)", width=2)
+                                line=dict(color="rgba(255, 84, 0, 0.6)", width=2)  # Darker orange
                             )
                         )
                         
@@ -1234,6 +1288,58 @@ if uploaded_file is not None:
                         st.info("""
                         **About the Normalized Comparison Chart**: This chart shows both invitations and connections on the same scale (as a percentage of their maximum value) to help visualize the relationship between pending invitations and your total connections over time.
                         """)
+                        
+                        # Add period comparisons, conclusions and recommendations
+                        st.subheader("Invitations Insights & Recommendations")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Calculate changes for different periods
+                            week_change_pct = stats.get('invitations_week_pct_change', 0)
+                            month_change_pct = stats.get('invitations_month_pct_change', 0)
+                            week_change = stats.get('invitations_week_change', 0)
+                            month_change = stats.get('invitations_month_change', 0)
+                            
+                            # Colors for trends
+                            week_color = "green" if week_change > 0 else "red" if week_change < 0 else "gray"
+                            month_color = "green" if month_change > 0 else "red" if month_change < 0 else "gray"
+                            
+                            st.markdown(f"""
+                            ### Invitation Analysis
+                            
+                            #### Weekly Comparison
+                            <span style="color:{week_color}">**{week_change:+.0f} invitations**</span> in the last week 
+                            ({week_change_pct:.1f}% change)
+                            
+                            #### Monthly Comparison
+                            <span style="color:{month_color}">**{month_change:+.0f} invitations**</span> in the last month 
+                            ({month_change_pct:.1f}% change)
+                            
+                            #### Key Insights
+                            - You currently have **{invitations_value} pending invitations**
+                            - Your invitation count is **{week_change_pct:.1f}% {week_change >= 0 and 'up' or 'down'}** compared to last week
+                            - Invitation to connection ratio: **{invitation_connection_ratio:.2f}** ({invitation_connection_ratio > 2 and 'high' or 'balanced'})
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            # Generate recommendations based on invitation patterns
+                            invitation_level = "high" if invitations_value > 15 else "moderate" if invitations_value > 5 else "low"
+                            invitation_trend = "increasing" if week_change > 0 else "decreasing" if week_change < 0 else "stable"
+                            
+                            st.markdown(f"""
+                            ### Recommendations
+                            
+                            #### Invitation Management
+                            - **Acceptance Strategy**: {'Prioritize reviewing pending invitations' if invitation_level == 'high' else 'Maintain your current acceptance pace'}
+                            - **Network Quality**: {'Focus on quality over quantity' if invitation_level == 'high' else 'Continue building your network'}
+                            - **Connection Balance**: {'Review older invitations first' if invitation_trend == 'increasing' else 'Maintain your current invitation management'}
+                            
+                            #### Action Items
+                            1. {'Schedule time to review pending invitations' if invitation_level == 'high' else 'Continue your regular invitation reviews'}
+                            2. {'Prioritize invitations from your industry' if invitation_level != 'low' else 'Consider connecting with more professionals'}
+                            3. {'Check for personalized invitation messages' if invitation_level == 'high' else 'Send personalized invitations to grow your network'}
+                            4. {'Be more selective with accepting invitations' if invitation_trend == 'increasing' else 'Balance your network growth by accepting relevant invitations'}
+                            """)
                         
                     else:
                         st.info("No invitations data available in the uploaded file. LinkedIn data export must include the 'Invitations' column to display this analysis.")
