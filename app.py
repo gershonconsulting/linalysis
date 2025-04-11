@@ -50,7 +50,7 @@ if uploaded_file is not None:
             # Category-based navigation
             category = st.sidebar.radio(
                 "View by Category",
-                ["Overview", "Connections", "Profile Views", "SSI Score", "Invitations"]
+                ["Dashboard", "Invitations"]
             )
             
             # Date filter
@@ -87,8 +87,8 @@ if uploaded_file is not None:
                 invitations_change_formatted = format_metric_change(invitations_change, "absolute")
                 
                 # Display content based on selected category
-                if category == "Overview":
-                    # Key metrics for overview
+                if category == "Dashboard":
+                    # Key metrics for dashboard
                     col1, col2, col3, col4 = st.columns(4)
                     
                     with col1:
@@ -119,147 +119,99 @@ if uploaded_file is not None:
                             delta=ssi_change
                         )
                     
-                    # Tabs for different visualization sections in overview
-                    tab1, tab2, tab3, tab4 = st.tabs(["Network Growth", "Profile Visibility", "SSI Analysis", "Company Metrics"])
-                
-                elif category == "Connections":
-                    # Connections specific metrics
-                    col1, col2 = st.columns(2)
+                    # Dashboard with 6 graphs
+                    st.subheader("LinkedIn Performance Dashboard")
                     
-                    with col1:
-                        st.metric(
-                            label="Total Connections", 
-                            value=stats['latest_connections'],
-                            delta=connections_change
-                        )
+                    # Grid layout for 6 graphs - 3 rows x 2 columns
+                    row1_col1, row1_col2 = st.columns(2)
+                    row2_col1, row2_col2 = st.columns(2)
+                    row3_col1, row3_col2 = st.columns(2)
                     
-                    with col2:
-                        st.metric(
-                            label="Pending Invitations", 
-                            value=invitations_value,
-                            delta=invitations_change_formatted
-                        )
-                    
-                    # Connections chart
-                    st.subheader("Network Growth Analysis")
-                    st.plotly_chart(create_connections_chart(filtered_df), use_container_width=True)
-                    
-                    # Network growth metrics
-                    left_col, right_col = st.columns(2)
-                    with left_col:
-                        st.markdown(f"**Average daily connection growth:** {stats['avg_connections_growth']:.2f} connections/day")
-                        st.markdown(f"**Total growth period:** {(end_date - start_date).days} days")
-                    
-                    with right_col:
-                        st.markdown(f"**Projected monthly growth:** {stats['projected_monthly_growth']:.0f} connections/month")
-                        st.markdown(f"**Projected annual growth:** {stats['projected_annual_growth']:.0f} connections/year")
-                
-                elif category == "Profile Views":
-                    # Profile views specific metrics
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.metric(
-                            label="Profile Views", 
-                            value=stats['latest_views'],
-                            delta=views_change
-                        )
-                    
-                    with col2:
-                        st.metric(
-                            label="Search Appearances", 
-                            value=stats['latest_search'],
-                            delta=search_change
-                        )
-                    
-                    # Profile views charts
-                    st.subheader("Profile Visibility Analysis")
-                    
-                    views_tab1, views_tab2, views_tab3 = st.tabs(["Both Metrics", "Profile Views", "Search Appearances"])
-                    
-                    with views_tab1:
+                    with row1_col1:
+                        st.markdown("### Network Growth")
+                        st.plotly_chart(create_connections_chart(filtered_df), use_container_width=True)
+                        
+                    with row1_col2:
+                        st.markdown("### Profile Views & Search Appearances")
                         st.plotly_chart(create_metrics_comparison_chart(filtered_df), use_container_width=True)
                     
-                    with views_tab2:
-                        st.plotly_chart(create_views_chart(filtered_df), use_container_width=True)
-                    
-                    with views_tab3:
-                        st.plotly_chart(create_search_appearances_chart(filtered_df), use_container_width=True)
-                    
-                    # Correlation analysis
-                    st.subheader("Correlation Between Metrics")
-                    left_col, right_col = st.columns([1, 1])
-                    
-                    with left_col:
+                    with row2_col1:
+                        st.markdown("### SSI Score Evolution")
+                        st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
+                        
+                    with row2_col2:
+                        st.markdown("### Metrics Correlation")
                         st.plotly_chart(create_heatmap(filtered_df), use_container_width=True)
                     
-                    with right_col:
-                        st.markdown("### Visibility Insights")
-                        st.markdown(f"""
-                        - **Average Profile Views:** {stats['avg_views']:.1f} views/day
-                        - **Average Search Appearances:** {stats['avg_search']:.1f} appearances/day
-                        - **View to Connection Ratio:** {stats['view_connection_ratio']:.2f} (views per new connection)
-                        """)
-                
-                elif category == "SSI Score":
-                    # SSI specific metrics
-                    col1, col2, col3 = st.columns(3)
+                    with row3_col1:
+                        # Pending Invitations chart if exists
+                        if 'Invitations' in filtered_df.columns:
+                            st.markdown("### Pending Invitations")
+                            fig = px.line(
+                                filtered_df, 
+                                x="Date", 
+                                y="Invitations",
+                                title="Pending Invitations Over Time",
+                                labels={"Invitations": "Pending Invitations", "Date": ""},
+                                markers=True
+                            )
+                            
+                            # Add trendline
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=filtered_df["Date"],
+                                    y=filtered_df["Invitations"].rolling(window=7, min_periods=1).mean(),
+                                    mode="lines",
+                                    name="7-Day Average",
+                                    line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+                                )
+                            )
+                            
+                            # Style improvements
+                            fig.update_layout(
+                                hovermode="x unified",
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                xaxis=dict(showgrid=False),
+                                yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                                plot_bgcolor="white",
+                                height=300
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("No invitations data available.")
                     
-                    with col1:
-                        st.metric(
-                            label="Current SSI Score", 
-                            value=f"{stats['latest_ssi']}/100",
-                            delta=ssi_change
-                        )
-                    
-                    with col2:
-                        st.metric(
-                            label="Industry Ranking", 
-                            value=f"{filtered_df['SSI Industry'].iloc[-1]}" if 'SSI Industry' in filtered_df.columns else "N/A"
-                        )
-                    
-                    with col3:
-                        st.metric(
-                            label="Network Ranking", 
-                            value=f"{filtered_df['SSI Network'].iloc[-1]}" if 'SSI Network' in filtered_df.columns else "N/A"
-                        )
-                    
-                    # SSI chart
-                    st.subheader("Social Selling Index (SSI) Analysis")
-                    st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
-                    
-                    # SSI components
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown("### SSI Components Analysis")
-                        st.markdown(f"""
-                        - **Industry Ranking:** {stats['avg_ssi_industry']:.1f}
-                        - **Network Ranking:** {stats['avg_ssi_network']:.1f}
-                        """)
-                    
-                    with col2:
-                        st.markdown("### SSI Insights")
-                        st.markdown(f"""
-                        - **Average SSI Score:** {stats['avg_ssi']:.1f}/100
-                        - **Max SSI Score:** {stats['max_ssi']}/100
-                        """)
-                    
-                    st.markdown("""
-                    ### What is SSI?
-                    The Social Selling Index (SSI) measures how effective you are at establishing your professional brand, 
-                    finding the right people, engaging with insights, and building relationships. It is updated daily and 
-                    ranges from 1 to 100.
-                    """)
+                    with row3_col2:
+                        # Company data if exists
+                        if 'Company Followers' in filtered_df.columns and filtered_df['Company Followers'].notna().any():
+                            st.markdown("### Company Growth")
+                            st.plotly_chart(
+                                create_company_metrics_chart(filtered_df, "Company Followers"), 
+                                use_container_width=True
+                            )
+                        else:
+                            st.markdown("### Key Performance Metrics")
+                            # Show a summary of key metrics instead
+                            st.markdown(f"""
+                            - **Average daily connection growth:** {stats['avg_connections_growth']:.2f} connections/day
+                            - **Projected monthly growth:** {stats['projected_monthly_growth']:.0f} connections/month
+                            - **Average Profile Views:** {stats['avg_views']:.1f} views/day
+                            - **Average Search Appearances:** {stats['avg_search']:.1f} appearances/day
+                            - **View to Connection Ratio:** {stats['view_connection_ratio']:.2f} views per new connection
+                            - **Average SSI Score:** {stats['avg_ssi']:.1f}/100
+                            """)
                 
                 elif category == "Invitations":
                     # Invitations specific metrics
                     if 'Invitations' in filtered_df.columns:
-                        col1, col2 = st.columns(2)
+                        st.subheader("LinkedIn Invitations Analysis")
+                        
+                        # Top metrics
+                        col1, col2, col3 = st.columns(3)
                         
                         with col1:
                             st.metric(
-                                label="Pending Invitations", 
+                                label="Current Pending Invitations", 
                                 value=invitations_value,
                                 delta=invitations_change_formatted
                             )
@@ -271,147 +223,129 @@ if uploaded_file is not None:
                                 delta=connections_change
                             )
                         
+                        with col3:
+                            # Calculate connection requests ratio (if connections are growing)
+                            if stats['connections_change'] > 0:
+                                invitation_connection_ratio = invitations_value / stats['connections_change']
+                                st.metric(
+                                    label="Invitation/Connection Ratio", 
+                                    value=f"{invitation_connection_ratio:.2f}",
+                                    help="Number of pending invitations per new connection"
+                                )
+                            else:
+                                st.metric(
+                                    label="Invitation/Connection Ratio", 
+                                    value="N/A",
+                                    help="Requires connection growth to calculate"
+                                )
+                        
                         # Create invitations chart
-                        st.subheader("Invitations Over Time")
+                        st.subheader("Invitations Trend Analysis")
                         
-                        fig = px.line(
-                            filtered_df, 
-                            x="Date", 
-                            y="Invitations",
-                            title="LinkedIn Pending Invitations Over Time",
-                            labels={"Invitations": "Pending Invitations", "Date": ""},
-                            markers=True
-                        )
+                        col1, col2 = st.columns([2, 1])
                         
-                        # Add trendline
+                        with col1:
+                            # Main invitations chart 
+                            fig = px.line(
+                                filtered_df, 
+                                x="Date", 
+                                y="Invitations",
+                                title="LinkedIn Pending Invitations Over Time",
+                                labels={"Invitations": "Pending Invitations", "Date": ""},
+                                markers=True
+                            )
+                            
+                            # Add trendline
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=filtered_df["Date"],
+                                    y=filtered_df["Invitations"].rolling(window=7, min_periods=1).mean(),
+                                    mode="lines",
+                                    name="7-Day Moving Average",
+                                    line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+                                )
+                            )
+                            
+                            # Style improvements
+                            fig.update_layout(
+                                hovermode="x unified",
+                                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                                xaxis=dict(showgrid=False),
+                                yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
+                                plot_bgcolor="white"
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                        
+                        with col2:
+                            # Insights about invitations
+                            st.markdown("### Invitation Insights")
+                            st.markdown(f"""
+                            - **Current Pending Invitations:** {invitations_value}
+                            - **Change in Period:** {invitations_change}
+                            - **Average Pending Invitations:** {filtered_df['Invitations'].mean():.1f}
+                            - **Maximum Pending:** {filtered_df['Invitations'].max():.0f}
+                            - **Minimum Pending:** {filtered_df['Invitations'].min():.0f}
+                            """)
+                        
+                        # Invitations vs Connections
+                        st.subheader("Invitations vs Connections")
+                        
+                        # Create a figure for comparing invitations and connections
+                        fig = go.Figure()
+                        
+                        # Normalize the values for better comparison (percent of max value for each)
+                        inv_norm = filtered_df['Invitations'] / filtered_df['Invitations'].max() * 100
+                        conn_norm = filtered_df['Connections'] / filtered_df['Connections'].max() * 100
+                        
+                        # Add Invitations
                         fig.add_trace(
                             go.Scatter(
                                 x=filtered_df["Date"],
-                                y=filtered_df["Invitations"].rolling(window=7, min_periods=1).mean(),
-                                mode="lines",
-                                name="7-Day Moving Average",
-                                line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+                                y=inv_norm,
+                                mode="lines+markers",
+                                name="Pending Invitations",
+                                line=dict(color="rgba(255, 127, 14, 0.8)", width=2)
                             )
                         )
                         
-                        # Style improvements
+                        # Add Connections
+                        fig.add_trace(
+                            go.Scatter(
+                                x=filtered_df["Date"],
+                                y=conn_norm,
+                                mode="lines+markers",
+                                name="Connections",
+                                line=dict(color="rgba(31, 119, 180, 0.8)", width=2)
+                            )
+                        )
+                        
+                        # Style the figure
                         fig.update_layout(
+                            title="Normalized Comparison: Invitations vs Connections Growth",
                             hovermode="x unified",
-                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                            xaxis=dict(showgrid=False),
-                            yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
-                            plot_bgcolor="white"
+                            xaxis=dict(title="Date", showgrid=False),
+                            yaxis=dict(
+                                title="Percentage of Maximum Value", 
+                                showgrid=True, 
+                                gridcolor="rgba(0,0,0,0.1)",
+                                ticksuffix="%"
+                            ),
+                            plot_bgcolor="white",
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
                         
-                        # Insights about invitations
-                        st.markdown("### Invitation Insights")
-                        st.markdown(f"""
-                        - **Current Pending Invitations:** {invitations_value}
-                        - **Change in Pending Invitations:** {invitations_change}
-                        - **Average Pending Invitations:** {filtered_df['Invitations'].mean():.1f}
+                        # Add explanation of normalized visualization
+                        st.info("""
+                        **About the Normalized Comparison Chart**: This chart shows both invitations and connections on the same scale (as a percentage of their maximum value) to help visualize the relationship between pending invitations and your total connections over time.
                         """)
+                        
                     else:
-                        st.info("No invitations data available in the uploaded file.")
+                        st.info("No invitations data available in the uploaded file. LinkedIn data export must include the 'Invitations' column to display this analysis.")
                 
-                # Only show tabs for Overview category
-                if category == "Overview":
-                    # Tabs for different visualization sections
-                    with tab1:
-                        st.subheader("Network Growth Analysis")
-                        
-                        # Connections over time
-                        st.plotly_chart(create_connections_chart(filtered_df), use_container_width=True)
-                        
-                        # Network growth metrics
-                        left_col, right_col = st.columns(2)
-                        with left_col:
-                            st.markdown(f"**Average daily connection growth:** {stats['avg_connections_growth']:.2f} connections/day")
-                            st.markdown(f"**Total growth period:** {(end_date - start_date).days} days")
-                        
-                        with right_col:
-                            st.markdown(f"**Projected monthly growth:** {stats['projected_monthly_growth']:.0f} connections/month")
-                            st.markdown(f"**Projected annual growth:** {stats['projected_annual_growth']:.0f} connections/year")
-                    
-                    with tab2:
-                        st.subheader("Profile Visibility Metrics")
-                        visibility_metric = st.selectbox(
-                            "Select Visibility Metric", 
-                            ["Both Metrics", "Profile Views", "Search Appearances"]
-                        )
-                        
-                        if visibility_metric == "Both Metrics":
-                            st.plotly_chart(create_metrics_comparison_chart(filtered_df), use_container_width=True)
-                        elif visibility_metric == "Profile Views":
-                            st.plotly_chart(create_views_chart(filtered_df), use_container_width=True)
-                        else:
-                            st.plotly_chart(create_search_appearances_chart(filtered_df), use_container_width=True)
-                        
-                        # Correlation heatmap
-                        st.subheader("Correlation Between Metrics")
-                        st.plotly_chart(create_heatmap(filtered_df), use_container_width=True)
-                        
-                        # Insights about visibility
-                        st.markdown("### Visibility Insights")
-                        st.markdown(f"""
-                        - **Average Profile Views:** {stats['avg_views']:.1f} views/day
-                        - **Average Search Appearances:** {stats['avg_search']:.1f} appearances/day
-                        - **View to Connection Ratio:** {stats['view_connection_ratio']:.2f} (views per new connection)
-                        """)
-                    
-                    with tab3:
-                        st.subheader("Social Selling Index (SSI) Analysis")
-                        
-                        # SSI chart
-                        st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
-                        
-                        # SSI components
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.markdown("### SSI Components Analysis")
-                            st.markdown(f"""
-                            - **Industry Ranking:** {stats['avg_ssi_industry']:.1f}
-                            - **Network Ranking:** {stats['avg_ssi_network']:.1f}
-                            """)
-                        
-                        with col2:
-                            st.markdown("### SSI Insights")
-                            st.markdown(f"""
-                            - **Average SSI Score:** {stats['avg_ssi']:.1f}/100
-                            - **Max SSI Score:** {stats['max_ssi']}/100
-                            """)
-                    
-                    with tab4:
-                        # Check if company data exists
-                        if 'Company Followers' in filtered_df.columns and filtered_df['Company Followers'].notna().any():
-                            st.subheader("Company Metrics Analysis")
-                            company_metric = st.selectbox(
-                                "Select Company Metric",
-                                ["Company Followers", "Company Search Appearances", "Company Unique Visitors", 
-                                 "Company New Followers", "Company Post Impressions"]
-                            )
-                            
-                            st.plotly_chart(create_company_metrics_chart(filtered_df, company_metric), use_container_width=True)
-                            
-                            # Company insights
-                            st.markdown("### Company Growth Insights")
-                            
-                            # Calculate some basic company metrics if data is available
-                            if "Company New Followers" in filtered_df.columns and filtered_df["Company New Followers"].notna().any():
-                                avg_new_followers = filtered_df["Company New Followers"].mean()
-                                st.markdown(f"- **Average New Followers Per Day:** {avg_new_followers:.1f}")
-                            
-                            if "Company Post Impressions" in filtered_df.columns and filtered_df["Company Post Impressions"].notna().any():
-                                avg_impressions = filtered_df["Company Post Impressions"].mean()
-                                st.markdown(f"- **Average Post Impressions Per Day:** {avg_impressions:.1f}")
-                            
-                            if "Company Unique Visitors" in filtered_df.columns and filtered_df["Company Unique Visitors"].notna().any():
-                                avg_visitors = filtered_df["Company Unique Visitors"].mean()
-                                st.markdown(f"- **Average Unique Visitors Per Day:** {avg_visitors:.1f}")
-                        else:
-                            st.info("No company metrics data available in the uploaded file.")
+                # Remove old tab code - we don't need this anymore with the new Dashboard layout
                 
                 # Download the filtered data
                 st.sidebar.header("Export Data")
