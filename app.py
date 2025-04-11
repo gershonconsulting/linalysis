@@ -20,14 +20,14 @@ from utils import display_error_message, format_metric_change
 
 # Page configuration
 st.set_page_config(
-    page_title="LinkedIn Analytics Dashboard",
+    page_title="Linalysis Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # App title and description
-st.title("LinkedIn Analytics Dashboard")
+st.title("Linalysis Dashboard")
 st.markdown("""
 This application helps you analyze your LinkedIn profile metrics over time.
 Upload your LinkedIn data export CSV to get started.
@@ -75,7 +75,7 @@ if uploaded_file is not None:
                 stats = calculate_statistics(filtered_df)
                 
                 # Main dashboard content
-                st.header(f"LinkedIn Analytics: {category}")
+                st.header(f"Linalysis: {category}")
                 
                 # Format metric changes
                 connections_change = format_metric_change(stats['connections_change'], "absolute")
@@ -120,7 +120,7 @@ if uploaded_file is not None:
                         )
                     
                     # Dashboard with 6 graphs
-                    st.subheader("LinkedIn Performance Dashboard")
+                    st.subheader("Linalysis Performance Dashboard")
                     
                     # Grid layout for 6 graphs - 3 rows x 2 columns
                     row1_col1, row1_col2 = st.columns(2)
@@ -203,7 +203,7 @@ if uploaded_file is not None:
                 
                 elif category == "Connections":
                     # Connections specific metrics
-                    st.subheader("LinkedIn Connections Analysis")
+                    st.subheader("Linalysis Connections Analysis")
                     
                     # Top metrics row
                     col1, col2, col3, col4 = st.columns(4)
@@ -349,7 +349,7 @@ if uploaded_file is not None:
                 
                 elif category == "Profile Views":
                     # Profile views specific metrics
-                    st.subheader("LinkedIn Profile Views Analysis")
+                    st.subheader("Linalysis Profile Views Analysis")
                     
                     # Top metrics row
                     col1, col2, col3, col4 = st.columns(4)
@@ -515,7 +515,7 @@ if uploaded_file is not None:
                 
                 elif category == "Search Appearances":
                     # Search appearances specific metrics
-                    st.subheader("LinkedIn Search Appearances Analysis")
+                    st.subheader("Linalysis Search Appearances Analysis")
                     
                     # Top metrics row
                     col1, col2, col3, col4 = st.columns(4)
