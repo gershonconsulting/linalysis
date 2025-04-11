@@ -346,6 +346,58 @@ if uploaded_file is not None:
                         - **Days to reach next 100:** {100 / stats['avg_connections_growth']:.0f} days
                         - **Days to reach next 500:** {500 / stats['avg_connections_growth']:.0f} days
                         """)
+                        
+                    # Add period comparisons, conclusions and recommendations
+                    st.subheader("Insights & Recommendations")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Calculate growth rates for different periods
+                        week_change_pct = stats.get('connections_week_pct_change', 0)
+                        month_change_pct = stats.get('connections_month_pct_change', 0)
+                        week_change = stats.get('connections_week_change', 0)
+                        month_change = stats.get('connections_month_change', 0)
+                        
+                        # Colors for trends
+                        week_color = "green" if week_change > 0 else "red" if week_change < 0 else "gray"
+                        month_color = "green" if month_change > 0 else "red" if month_change < 0 else "gray"
+                        
+                        st.markdown(f"""
+                        ### Network Growth Analysis
+                        
+                        #### Weekly Comparison
+                        <span style="color:{week_color}">**{week_change:+.0f} connections**</span> in the last week 
+                        ({week_change_pct:.1f}% change)
+                        
+                        #### Monthly Comparison
+                        <span style="color:{month_color}">**{month_change:+.0f} connections**</span> in the last month 
+                        ({month_change_pct:.1f}% change)
+                        
+                        #### Key Insights
+                        - Your network is growing at **{stats['avg_connections_growth']:.1f} connections per day**
+                        - At this rate, you'll reach **{filtered_df['Connections'].iloc[-1] + stats['projected_monthly_growth']:.0f} connections** in 30 days
+                        - Your growth is **{week_change_pct:.1f}% {week_change >= 0 and 'up' or 'down'}** compared to last week
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Generate recommendations based on growth patterns
+                        growth_level = "strong" if stats['avg_connections_growth'] > 5 else "moderate" if stats['avg_connections_growth'] > 1 else "slow"
+                        growth_trend = "accelerating" if week_change > month_change/4 else "steady" if week_change > 0 else "slowing"
+                        
+                        st.markdown(f"""
+                        ### Recommendations
+                        
+                        #### Network Building Strategy
+                        - **Connection Quality**: {'Focus on quality over quantity' if growth_level == 'strong' else 'Increase your connection outreach'}
+                        - **Engagement Level**: {'Engage more with your existing network' if growth_level == 'strong' else 'Engage with new connections to strengthen relationships'}
+                        - **Posting Frequency**: {'Share insights to attract more connections' if growth_level == 'slow' else 'Continue your content strategy'}
+                        
+                        #### Action Items
+                        1. {'Follow up with recent connections' if week_change > 0 else 'Reach out to former colleagues'}
+                        2. {'Join industry groups to expand your reach' if growth_trend == 'slowing' else 'Comment on posts from your network'}
+                        3. {'Share content that showcases your expertise' if growth_level != 'strong' else 'Consider connecting with 2nd-degree connections'}
+                        4. {'Update your profile headline to attract more connections' if growth_level == 'slow' else 'Focus on meaningful conversations with your network'}
+                        """)
                 
                 elif category == "Profile Views":
                     # Profile views specific metrics
@@ -512,6 +564,60 @@ if uploaded_file is not None:
                             st.plotly_chart(fig, use_container_width=True)
                         else:
                             st.info("Need at least 7 days of data to show day-of-week analysis.")
+                            
+                    # Add period comparisons, conclusions and recommendations
+                    st.subheader("Profile Views Insights & Recommendations")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Calculate changes for different periods
+                        week_change_pct = stats.get('views_week_pct_change', 0)
+                        month_change_pct = stats.get('views_month_pct_change', 0)
+                        week_change = stats.get('views_week_change', 0)
+                        month_change = stats.get('views_month_change', 0)
+                        
+                        # Colors for trends
+                        week_color = "green" if week_change > 0 else "red" if week_change < 0 else "gray"
+                        month_color = "green" if month_change > 0 else "red" if month_change < 0 else "gray"
+                        
+                        st.markdown(f"""
+                        ### Profile Visibility Analysis
+                        
+                        #### Weekly Comparison
+                        <span style="color:{week_color}">**{week_change:+.0f} views**</span> in the last week 
+                        ({week_change_pct:.1f}% change)
+                        
+                        #### Monthly Comparison
+                        <span style="color:{month_color}">**{month_change:+.0f} views**</span> in the last month 
+                        ({month_change_pct:.1f}% change)
+                        
+                        #### Key Insights
+                        - Your profile is getting **{stats['avg_views']:.1f} views per day** on average
+                        - You get about **{stats['view_connection_ratio']:.1f} views** for each new connection
+                        - Peak viewing occurs on **{day_avg.idxmax() if len(filtered_df) >= 7 else 'weekdays'}**
+                        - Your profile visits are **{week_change_pct:.1f}% {week_change >= 0 and 'up' or 'down'}** compared to last week
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Generate recommendations based on view patterns
+                        view_level = "high" if stats['avg_views'] > 10 else "moderate" if stats['avg_views'] > 3 else "low"
+                        view_trend = "improving" if week_change > 0 else "declining" if week_change < 0 else "stable"
+                        best_day = day_avg.idxmax() if len(filtered_df) >= 7 else "weekdays"
+                        
+                        st.markdown(f"""
+                        ### Recommendations
+                        
+                        #### Profile Optimization
+                        - **Profile Completeness**: {'Maintain your complete profile' if view_level != 'low' else 'Add more detail to your experience section'}
+                        - **Headline Impact**: {'Your headline is working well' if view_level == 'high' else 'Optimize your headline with relevant keywords'}
+                        - **Profile Photo**: {'Your photo is attracting views' if view_level != 'low' else 'Consider updating your profile photo'}
+                        
+                        #### Action Items
+                        1. {'Post content on ' + best_day + ' for maximum visibility' if len(filtered_df) >= 7 else 'Post content regularly to increase visibility'}
+                        2. {'Engage with others content to maintain visibility' if view_trend != 'declining' else 'Comment on popular posts in your industry'}
+                        3. {'Add media to your featured section' if view_level == 'low' else 'Update your featured content to keep profile fresh'}
+                        4. {'Request recommendations to strengthen your profile' if view_level != 'high' else 'Consider publishing articles on LinkedIn'}
+                        """)
                 
                 elif category == "Search Appearances":
                     # Search appearances specific metrics
@@ -717,10 +823,62 @@ if uploaded_file is not None:
                         - **Engage with content** in your industry to increase visibility
                         - **Publish relevant content** to establish expertise
                         """)
+                        
+                    # Add period comparisons, conclusions and recommendations
+                    st.subheader("Search Appearances Insights & Recommendations")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # Calculate changes for different periods
+                        week_change_pct = stats.get('search appearance_week_pct_change', 0)
+                        month_change_pct = stats.get('search appearance_month_pct_change', 0)
+                        week_change = stats.get('search appearance_week_change', 0)
+                        month_change = stats.get('search appearance_month_change', 0)
+                        
+                        # Colors for trends
+                        week_color = "green" if week_change > 0 else "red" if week_change < 0 else "gray"
+                        month_color = "green" if month_change > 0 else "red" if month_change < 0 else "gray"
+                        
+                        st.markdown(f"""
+                        ### Search Visibility Analysis
+                        
+                        #### Weekly Comparison
+                        <span style="color:{week_color}">**{week_change:+.0f} search appearances**</span> in the last week 
+                        ({week_change_pct:.1f}% change)
+                        
+                        #### Monthly Comparison
+                        <span style="color:{month_color}">**{month_change:+.0f} search appearances**</span> in the last month 
+                        ({month_change_pct:.1f}% change)
+                        
+                        #### Key Insights
+                        - Your profile appears in **{stats['avg_search']:.1f} searches per day** on average
+                        - Your search-to-view conversion rate is **{(filtered_df['Views'].sum() / filtered_df['Search Appearance'].sum() * 100):.1f}%**
+                        - Your search appearances are **{week_change_pct:.1f}% {week_change >= 0 and 'up' or 'down'}** compared to last week
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Generate recommendations based on search patterns
+                        search_level = "high" if stats['avg_search'] > 15 else "moderate" if stats['avg_search'] > 5 else "low"
+                        search_trend = "improving" if week_change > 0 else "declining" if week_change < 0 else "stable"
+                        
+                        st.markdown(f"""
+                        ### Recommendations
+                        
+                        #### Searchability Optimization
+                        - **Keyword Strategy**: {'Maintain your current keywords' if search_level == 'high' else 'Add more industry-specific keywords to your profile'}
+                        - **Content Visibility**: {'Your content strategy is working well' if search_level != 'low' else 'Create more searchable content'}
+                        - **Skills Section**: {'Keep your skills section updated' if search_level != 'low' else 'Add more relevant skills to your profile'}
+                        
+                        #### Action Items
+                        1. {'Analyze which keywords are driving search appearances' if search_level == 'high' else 'Research industry keywords to add to your profile'}
+                        2. {'Maintain content posting schedule' if search_trend == 'improving' else 'Increase content posting frequency'}
+                        3. {'Focus on engagement to boost algorithmic visibility' if search_trend != 'improving' else 'Continue your current engagement strategy'}
+                        4. {'Optimize your job title and headline' if search_level == 'low' else 'Add more detail to your experience descriptions'}
+                        """)
                 
                 elif category == "SSI Score":
                     # SSI specific metrics
-                    st.subheader("LinkedIn Social Selling Index (SSI) Analysis")
+                    st.subheader("Linalysis Social Selling Index (SSI) Analysis")
                     
                     # Check if all SSI columns exist
                     has_ssi_components = all(col in filtered_df.columns for col in ['SSI', 'SSI Industry', 'SSI Network'])
@@ -939,7 +1097,7 @@ if uploaded_file is not None:
                 elif category == "Invitations":
                     # Invitations specific metrics
                     if 'Invitations' in filtered_df.columns:
-                        st.subheader("LinkedIn Invitations Analysis")
+                        st.subheader("Linalysis Invitations Analysis")
                         
                         # Top metrics
                         col1, col2, col3 = st.columns(3)
@@ -985,7 +1143,7 @@ if uploaded_file is not None:
                                 filtered_df, 
                                 x="Date", 
                                 y="Invitations",
-                                title="LinkedIn Pending Invitations Over Time",
+                                title="Linalysis Pending Invitations Over Time",
                                 labels={"Invitations": "Pending Invitations", "Date": ""},
                                 markers=True
                             )

@@ -17,9 +17,10 @@ def create_connections_chart(df):
         df, 
         x="Date", 
         y="Connections",
-        title="LinkedIn Connections Growth Over Time",
+        title="Linalysis Connections Growth Over Time",
         labels={"Connections": "Total Connections", "Date": ""},
-        markers=True
+        markers=True,
+        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
     )
     
     # Add trendline
@@ -29,7 +30,7 @@ def create_connections_chart(df):
             y=df["Connections"].rolling(window=7, min_periods=1).mean(),
             mode="lines",
             name="7-Day Moving Average",
-            line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+            line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
         )
     )
     
@@ -61,9 +62,10 @@ def create_views_chart(df):
         df, 
         x="Date", 
         y="Views",
-        title="LinkedIn Profile Views Over Time",
+        title="Linalysis Profile Views Over Time",
         labels={"Views": "Profile Views", "Date": ""},
-        markers=True
+        markers=True,
+        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
     )
     
     # Add trendline
@@ -73,7 +75,7 @@ def create_views_chart(df):
             y=df["Views"].rolling(window=7, min_periods=1).mean(),
             mode="lines",
             name="7-Day Moving Average",
-            line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+            line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
         )
     )
     
@@ -107,9 +109,10 @@ def create_search_appearances_chart(df):
         df, 
         x="Date", 
         y=search_col,
-        title="LinkedIn Search Appearances Over Time",
+        title="Linalysis Search Appearances Over Time",
         labels={search_col: "Search Appearances", "Date": ""},
-        markers=True
+        markers=True,
+        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
     )
     
     # Add trendline
@@ -119,7 +122,7 @@ def create_search_appearances_chart(df):
             y=df[search_col].rolling(window=7, min_periods=1).mean(),
             mode="lines",
             name="7-Day Moving Average",
-            line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+            line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
         )
     )
     
@@ -156,7 +159,7 @@ def create_ssi_chart(df):
             y=df["SSI"],
             mode="lines+markers",
             name="SSI Score",
-            line=dict(color="#0A66C2", width=3)
+            line=dict(color="rgba(255, 128, 0, 0.9)", width=3)  # Orange main color
         )
     )
     
@@ -168,7 +171,7 @@ def create_ssi_chart(df):
                 y=df["SSI Industry"],
                 mode="lines",
                 name="Industry Ranking",
-                line=dict(color="#057642", width=2, dash="dot")
+                line=dict(color="rgba(255, 84, 0, 0.6)", width=2, dash="dot")  # Darker orange
             )
         )
     
@@ -180,13 +183,13 @@ def create_ssi_chart(df):
                 y=df["SSI Network"],
                 mode="lines",
                 name="Network Ranking",
-                line=dict(color="#B24020", width=2, dash="dot")
+                line=dict(color="rgba(255, 157, 66, 0.7)", width=2, dash="dot")  # Lighter orange
             )
         )
     
     # Style the chart
     fig.update_layout(
-        title="Social Selling Index (SSI) Over Time",
+        title="Linalysis Social Selling Index (SSI) Over Time",
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         xaxis=dict(showgrid=False, title=""),
@@ -225,7 +228,7 @@ def create_metrics_comparison_chart(df):
             y=df["Views"],
             mode="lines+markers",
             name="Profile Views",
-            line=dict(color="#0A66C2", width=2)
+            line=dict(color="rgba(255, 128, 0, 0.9)", width=2)  # Orange main color
         )
     )
     
@@ -236,13 +239,13 @@ def create_metrics_comparison_chart(df):
             y=df[search_col],
             mode="lines+markers",
             name="Search Appearances",
-            line=dict(color="#057642", width=2)
+            line=dict(color="rgba(255, 84, 0, 0.6)", width=2)  # Darker orange
         )
     )
     
     # Style the chart
     fig.update_layout(
-        title="Profile Views vs Search Appearances",
+        title="Linalysis Profile Views vs Search Appearances",
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         xaxis=dict(showgrid=False, title=""),
@@ -285,10 +288,10 @@ def create_heatmap(df):
     fig = px.imshow(
         corr_matrix,
         text_auto=True,
-        color_continuous_scale='RdBu_r',
+        color_continuous_scale=['rgba(0, 0, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', 'rgba(255, 128, 0, 0.8)'],  # Blue to white to orange
         zmin=-1, 
         zmax=1,
-        title="Correlation Between LinkedIn Metrics"
+        title="Correlation Between Linalysis Metrics"
     )
     
     # Improve layout
@@ -321,9 +324,10 @@ def create_company_metrics_chart(df, metric):
         chart_df, 
         x="Date", 
         y=metric,
-        title=f"{metric} Over Time",
+        title=f"Linalysis {metric} Over Time",
         labels={metric: metric, "Date": ""},
-        markers=True
+        markers=True,
+        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
     )
     
     # Add trendline if enough data points
@@ -334,7 +338,7 @@ def create_company_metrics_chart(df, metric):
                 y=chart_df[metric].rolling(window=min(7, len(chart_df)), min_periods=1).mean(),
                 mode="lines",
                 name="Moving Average",
-                line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
+                line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
             )
         )
     

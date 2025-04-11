@@ -44,6 +44,43 @@ def process_linkedin_data(file):
         print(f"Error processing LinkedIn data: {str(e)}")
         return None
 
+def calculate_period_comparison(df, metric, days=7):
+    """
+    Calculate period-over-period comparison for a given metric
+    
+    Args:
+        df: DataFrame containing processed LinkedIn data
+        metric: Column name of the metric to compare
+        days: Number of days to look back for comparison (default: 7 for weekly)
+        
+    Returns:
+        tuple: (current_value, previous_value, change, percent_change)
+    """
+    if metric not in df.columns or len(df) < days + 1:
+        return 0, 0, 0, 0
+    
+    try:
+        # Get current value (latest data point)
+        current_value = df[metric].iloc[-1]
+        
+        # Find the value from X days ago or the closest available
+        last_date = df['Date'].iloc[-1]
+        target_date = last_date - timedelta(days=days)
+        
+        # Find the closest date before the target date
+        previous_idx = df[df['Date'] <= target_date]['Date'].idxmax() if not df[df['Date'] <= target_date].empty else 0
+        previous_value = df[metric].iloc[previous_idx]
+        
+        # Calculate changes
+        change = current_value - previous_value
+        percent_change = (change / previous_value * 100) if previous_value != 0 else 0
+        
+        return current_value, previous_value, change, percent_change
+    
+    except Exception as e:
+        print(f"Error calculating period comparison for {metric}: {str(e)}")
+        return 0, 0, 0, 0
+
 def calculate_statistics(df):
     """
     Calculate statistics from the LinkedIn data
@@ -98,5 +135,23 @@ def calculate_statistics(df):
         stats['view_connection_ratio'] = df['Views'].sum() / stats['connections_change']
     else:
         stats['view_connection_ratio'] = 0
+    
+    # Add weekly comparisons (7 days)
+    for metric in ['Connections', 'Views', 'Search Appearance', 'SSI', 'Invitations']:
+        if metric in df.columns:
+            current, previous, change, pct_change = calculate_period_comparison(df, metric, days=7)
+            stats[f'{metric.lower()}_week_current'] = current
+            stats[f'{metric.lower()}_week_previous'] = previous
+            stats[f'{metric.lower()}_week_change'] = change
+            stats[f'{metric.lower()}_week_pct_change'] = pct_change
+    
+    # Add monthly comparisons (30 days)
+    for metric in ['Connections', 'Views', 'Search Appearance', 'SSI', 'Invitations']:
+        if metric in df.columns:
+            current, previous, change, pct_change = calculate_period_comparison(df, metric, days=30)
+            stats[f'{metric.lower()}_month_current'] = current
+            stats[f'{metric.lower()}_month_previous'] = previous
+            stats[f'{metric.lower()}_month_change'] = change
+            stats[f'{metric.lower()}_month_pct_change'] = pct_change
     
     return stats
