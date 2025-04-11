@@ -50,7 +50,8 @@ if uploaded_file is not None:
             # Category-based navigation
             category = st.sidebar.radio(
                 "View by Category",
-                ["Dashboard", "Connections", "Profile Views", "Search Appearances", "SSI Score", "Invitations"]
+                ["Dashboard", "Connections", "Profile Views", "Search Appearances", "SSI Score", "Invitations", 
+                 "Reports", "Settings", "Billing"]
             )
             
             # Date filter
