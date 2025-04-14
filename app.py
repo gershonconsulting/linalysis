@@ -469,7 +469,7 @@ if uploaded_file is not None:
                                 This heatmap shows the relationship between your LinkedIn metrics. Stronger correlations (closer to +1 or -1) indicate metrics that move together. Use these insights to understand which activities have the most impact on your LinkedIn presence.
                             </div>
                         </div>
-                        """)
+                        """, unsafe_allow_html=True)
                     
                     with row3_col1:
                         # Pending Invitations chart if exists
