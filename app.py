@@ -1913,25 +1913,87 @@ if uploaded_file is not None:
                     # Custom styled header
                     st.markdown('<div class="section-header">Linalysis Account Settings</div>', unsafe_allow_html=True)
                     
+                    # LinkedIn Connect Section
+                    st.markdown("""
+                    <div style="background-color: rgba(10, 102, 194, 0.1); 
+                              padding: 1.5rem; 
+                              border-radius: 0.5rem; 
+                              border-left: 4px solid #0A66C2;
+                              margin-bottom: 2rem;">
+                        <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="30" style="margin-right: 1rem;"/>
+                            <h3 style="margin: 0; color: #0A66C2;">LinkedIn Connect</h3>
+                        </div>
+                        <p>Your account is connected to LinkedIn. Profile information is automatically imported.</p>
+                        <button style="
+                            background-color: #0A66C2;
+                            color: white;
+                            border: none;
+                            padding: 0.5rem 1rem;
+                            border-radius: 0.25rem;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            font-weight: bold;
+                        ">
+                            <span style="margin-right: 0.5rem;">Connected</span>
+                            <span style="
+                                display: inline-block;
+                                width: 0.75rem;
+                                height: 0.75rem;
+                                background-color: #5cbc63;
+                                border-radius: 50%;
+                            "></span>
+                        </button>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     # Profile settings
-                    st.markdown('<div class="subsection-header">Profile Settings</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="subsection-header">Profile Information</div>', unsafe_allow_html=True)
                     
                     # Wrap in a card
                     st.markdown('<div class="card">', unsafe_allow_html=True)
+                    
+                    # LinkedIn imported information
+                    st.markdown("""
+                    <div style="margin-bottom: 1.5rem;">
+                        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">The following information is imported from your LinkedIn profile:</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.text_input("Full Name", placeholder="Enter your full name")
-                        st.text_input("Job Title", placeholder="Enter your job title")
-                        st.text_input("Company", placeholder="Enter your company name")
+                        st.text_input("Full Name", value="John Smith", disabled=True, 
+                                      help="Automatically imported from LinkedIn")
+                        st.text_input("Job Title", value="Marketing Director", disabled=True,
+                                      help="Automatically imported from LinkedIn")
+                        st.text_input("Company", value="Acme Corporation", disabled=True,
+                                      help="Automatically imported from LinkedIn")
                     
-                    # Account verification section
-                    st.markdown("### Account Verification")
-                    st.markdown("Verify your contact information to enable all features.")
+                    with col2:
+                        st.text_input("LinkedIn Profile URL", value="linkedin.com/in/johnsmith", disabled=True,
+                                     help="Automatically imported from LinkedIn")
+                        st.text_input("Location", value="New York, NY", disabled=True,
+                                     help="Automatically imported from LinkedIn")
+                        st.text_input("Industry", value="Marketing and Advertising", disabled=True,
+                                     help="Automatically imported from LinkedIn")
+                    
+                    # Additional settings
+                    st.markdown("""
+                    <div style="margin-top: 1.5rem;">
+                        <p style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">Additional contact information for Linalysis notifications:</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Contact information section
+                    st.markdown("### Contact Information")
+                    st.markdown("Add or verify your contact information to enable all features.")
                     
                     # Email verification
                     email_col1, email_col2 = st.columns([3, 1])
                     with email_col1:
-                        email = st.text_input("Email Address", placeholder="Enter your email address")
+                        email = st.text_input("Email Address", value="john.smith@acme.com", 
+                                             help="We'll send reports and notifications to this address")
                     with email_col2:
                         verify_email = st.button("Verify Email")
                     
@@ -2193,39 +2255,124 @@ if uploaded_file is not None:
         display_error_message(f"An error occurred while processing the file: {str(e)}")
 
 else:
-    # Sample data visualization to guide users
-    st.info("👆 Upload your LinkedIn data export to get started with the analysis")
+    # Welcome section with two options
+    st.markdown('<div class="main-header">Welcome to Linalysis</div>', unsafe_allow_html=True)
     
-    # Instructions for obtaining LinkedIn data
-    st.header("How to obtain your LinkedIn data")
+    # Short introduction
     st.markdown("""
-    1. Sign in to your LinkedIn account
-    2. Click on your profile picture in the top right corner
-    3. Select **Settings & Privacy**
-    4. Go to the **Data Privacy** section
-    5. Click on **Get a copy of your data**
-    6. Select **The works** or custom download with at least profile metrics
-    7. Request archive and download when ready
-    8. Upload the CSV file containing your profile metrics to this app
-    """)
+    <div style="text-align: center; max-width: 800px; margin: 0 auto 2rem auto; color: #555;">
+        Linalysis helps you understand and optimize your LinkedIn presence with advanced analytics and insights.
+        Take control of your professional networking with data-driven decisions.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Options in columns
+    left_col, right_col = st.columns(2)
+    
+    with left_col:
+        st.markdown("""
+        <div style="
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 1.5rem;
+            height: 100%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #0A66C2; margin-bottom: 1rem;">Connect with LinkedIn</h2>
+            <p style="margin-bottom: 2rem;">The fastest way to get started. Connect your LinkedIn account to automatically analyze your professional profile.</p>
+            <div style="text-align: center; margin-top: 2rem;">
+                <button style="
+                    background-color: #0A66C2;
+                    color: white;
+                    border: none;
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    display: inline-flex;
+                    align-items: center;
+                    cursor: pointer;">
+                    <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="20" height="20" style="margin-right: 10px; filter: brightness(0) invert(1);">
+                    Sign in with LinkedIn
+                </button>
+            </div>
+            <p style="font-size: 0.8rem; text-align: center; margin-top: 1rem; color: #777;">
+                We'll never post anything without your permission
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with right_col:
+        st.markdown("""
+        <div style="
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 1.5rem;
+            height: 100%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #FE1B04; margin-bottom: 1rem;">Upload LinkedIn Data</h2>
+            <p style="margin-bottom: 1rem;">Already have your LinkedIn data export? Upload it directly to analyze your profile metrics.</p>
+            """, unsafe_allow_html=True)
+            
+        # File uploader stays as a Streamlit component
+        st.file_uploader("Upload your LinkedIn data CSV", type=["csv"], key="file_uploader_home")
+        
+        st.markdown("""
+            <p style="font-size: 0.9rem; margin-top: 1rem; color: #555;">
+                Don't have your LinkedIn data export? <a href="#" style="color: #FE1B04;">See instructions below</a>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Information on how to get LinkedIn data
+    st.markdown("""
+    <div style="margin-top: 3rem;">
+        <h2>How to obtain your LinkedIn data</h2>
+        <div style="
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;">
+            <ol style="margin-left: 1.5rem; padding-left: 0;">
+                <li style="margin-bottom: 0.5rem">Sign in to your LinkedIn account</li>
+                <li style="margin-bottom: 0.5rem">Click on your profile picture in the top right corner</li>
+                <li style="margin-bottom: 0.5rem">Select <strong>Settings & Privacy</strong></li>
+                <li style="margin-bottom: 0.5rem">Go to the <strong>Data Privacy</strong> section</li>
+                <li style="margin-bottom: 0.5rem">Click on <strong>Get a copy of your data</strong></li>
+                <li style="margin-bottom: 0.5rem">Select <strong>The works</strong> or custom download with at least profile metrics</li>
+                <li style="margin-bottom: 0.5rem">Request archive and download when ready</li>
+                <li>Upload the CSV file containing your profile metrics to Linalysis</li>
+            </ol>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Expected format information
-    st.header("Expected CSV Format")
     st.markdown("""
-    The uploaded CSV should contain LinkedIn profile metrics with columns similar to:
-    - Date
-    - Connections
-    - Search Appearance
-    - Views
-    - Invitations
-    - SSI Industry
-    - SSI Network
-    - SSI
-    
-    Additional company metrics columns may include:
-    - Company Followers
-    - Company Search Appearances
-    - Company Unique Visitors
-    - Company New Followers
-    - Company Post Impressions
-    """)
+    <div style="margin-top: 2rem;">
+        <h2>Expected CSV Format</h2>
+        <div style="
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;">
+            <p>The uploaded CSV should contain LinkedIn profile metrics with columns similar to:</p>
+            <ul style="margin-left: 1.5rem; padding-left: 0;">
+                <li>Date</li>
+                <li>Connections</li>
+                <li>Search Appearance</li>
+                <li>Views</li>
+                <li>Invitations</li>
+                <li>SSI Industry</li>
+                <li>SSI Network</li>
+                <li>SSI</li>
+            </ul>
+            <p style="margin-top: 1rem;">Additional company metrics columns may include:</p>
+            <ul style="margin-left: 1.5rem; padding-left: 0;">
+                <li>Company Followers</li>
+                <li>Company Search Appearances</li>
+                <li>Company Unique Visitors</li>
+                <li>Company New Followers</li>
+                <li>Company Post Impressions</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
