@@ -1,7 +1,79 @@
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
+
+# Define a consistent color palette with orange as primary color
+COLOR_PRIMARY = "#FE1B04"  # Orange - primary brand color
+COLOR_SECONDARY = "#0A66C2"  # LinkedIn blue
+COLOR_TERTIARY = "#2CA02C"  # Green
+COLOR_ACCENT = "#9467BD"  # Purple
+COLOR_NEUTRAL = "#7F7F7F"  # Gray
+
+# Create a consistent color palette
+COLOR_PALETTE = [COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TERTIARY, COLOR_ACCENT, "#D62728", "#8C564B", "#E377C2"]
+
+# Create template for consistent chart styling
+def apply_chart_template(fig):
+    """Apply consistent styling to all charts"""
+    fig.update_layout(
+        font_family="Arial, sans-serif",
+        title_font_size=20,
+        title_font_color="#333333",
+        legend_title_font_color="#333333",
+        legend_title_font_size=14,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        hovermode="x unified",
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=14,
+            font_family="Arial, sans-serif"
+        ),
+        xaxis=dict(
+            showgrid=False,
+            showline=True,
+            linecolor="lightgray",
+            title_font=dict(size=14, color="#333333"),
+            tickfont=dict(size=12, color="#666666"),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(0,0,0,0.05)",
+            showline=True,
+            linecolor="lightgray",
+            title_font=dict(size=14, color="#333333"),
+            tickfont=dict(size=12, color="#666666"),
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(size=12, color="#666666")
+        ),
+        margin=dict(l=10, r=10, t=30, b=10),
+    )
+    
+    # Add subtle border around the plot
+    fig.update_layout(
+        shapes=[
+            dict(
+                type="rect",
+                xref="paper",
+                yref="paper",
+                x0=0,
+                y0=0,
+                x1=1,
+                y1=1,
+                line=dict(color="rgba(0,0,0,0.05)", width=1),
+            )
+        ]
+    )
+    
+    return fig
 
 def create_connections_chart(df):
     """
@@ -20,7 +92,7 @@ def create_connections_chart(df):
         title="Linalysis Connections Growth Over Time",
         labels={"Connections": "Total Connections", "Date": ""},
         markers=True,
-        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
+        color_discrete_sequence=[COLOR_PRIMARY]
     )
     
     # Add trendline
@@ -30,18 +102,29 @@ def create_connections_chart(df):
             y=df["Connections"].rolling(window=7, min_periods=1).mean(),
             mode="lines",
             name="7-Day Moving Average",
-            line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
+            line=dict(color=COLOR_SECONDARY, width=2, dash="dash")
         )
     )
     
-    # Style improvements
-    fig.update_layout(
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
-        plot_bgcolor="white"
+    # Add range selector for date filtering
+    fig.update_xaxes(
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(step="all")
+            ]),
+            font=dict(color="#666666"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1
+        )
     )
+    
+    # Apply consistent template
+    fig = apply_chart_template(fig)
     
     return fig
 
@@ -65,7 +148,7 @@ def create_views_chart(df):
         title="Linalysis Profile Views Over Time",
         labels={"Views": "Profile Views", "Date": ""},
         markers=True,
-        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
+        color_discrete_sequence=[COLOR_PRIMARY]
     )
     
     # Add trendline
@@ -75,18 +158,29 @@ def create_views_chart(df):
             y=df["Views"].rolling(window=7, min_periods=1).mean(),
             mode="lines",
             name="7-Day Moving Average",
-            line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
+            line=dict(color=COLOR_SECONDARY, width=2, dash="dash")
         )
     )
     
-    # Style improvements
-    fig.update_layout(
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
-        plot_bgcolor="white"
+    # Add range selector for date filtering
+    fig.update_xaxes(
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(step="all")
+            ]),
+            font=dict(color="#666666"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1
+        )
     )
+    
+    # Apply consistent template
+    fig = apply_chart_template(fig)
     
     return fig
 
@@ -112,7 +206,7 @@ def create_search_appearances_chart(df):
         title="Linalysis Search Appearances Over Time",
         labels={search_col: "Search Appearances", "Date": ""},
         markers=True,
-        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
+        color_discrete_sequence=[COLOR_PRIMARY]
     )
     
     # Add trendline
@@ -122,18 +216,29 @@ def create_search_appearances_chart(df):
             y=df[search_col].rolling(window=7, min_periods=1).mean(),
             mode="lines",
             name="7-Day Moving Average",
-            line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
+            line=dict(color=COLOR_SECONDARY, width=2, dash="dash")
         )
     )
     
-    # Style improvements
-    fig.update_layout(
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
-        plot_bgcolor="white"
+    # Add range selector for date filtering
+    fig.update_xaxes(
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(step="all")
+            ]),
+            font=dict(color="#666666"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1
+        )
     )
+    
+    # Apply consistent template
+    fig = apply_chart_template(fig)
     
     return fig
 
@@ -159,7 +264,7 @@ def create_ssi_chart(df):
             y=df["SSI"],
             mode="lines+markers",
             name="SSI Score",
-            line=dict(color="rgba(255, 128, 0, 0.9)", width=3)  # Orange main color
+            line=dict(color=COLOR_PRIMARY, width=3)
         )
     )
     
@@ -171,7 +276,7 @@ def create_ssi_chart(df):
                 y=df["SSI Industry"],
                 mode="lines",
                 name="Industry Ranking",
-                line=dict(color="rgba(255, 84, 0, 0.6)", width=2, dash="dot")  # Darker orange
+                line=dict(color=COLOR_SECONDARY, width=2, dash="dot")
             )
         )
     
@@ -183,24 +288,38 @@ def create_ssi_chart(df):
                 y=df["SSI Network"],
                 mode="lines",
                 name="Network Ranking",
-                line=dict(color="rgba(255, 157, 66, 0.7)", width=2, dash="dot")  # Lighter orange
+                line=dict(color=COLOR_TERTIARY, width=2, dash="dot")
             )
         )
     
-    # Style the chart
+    # Add range selector for date filtering
+    fig.update_xaxes(
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(step="all")
+            ]),
+            font=dict(color="#666666"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1
+        )
+    )
+    
+    # Special layout for SSI chart
     fig.update_layout(
         title="Linalysis Social Selling Index (SSI) Over Time",
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=False, title=""),
         yaxis=dict(
-            showgrid=True, 
-            gridcolor="rgba(0,0,0,0.1)",
             title="Score",
             range=[0, 100]
-        ),
-        plot_bgcolor="white"
+        )
     )
+    
+    # Apply consistent template
+    fig = apply_chart_template(fig)
     
     return fig
 
@@ -228,7 +347,7 @@ def create_metrics_comparison_chart(df):
             y=df["Views"],
             mode="lines+markers",
             name="Profile Views",
-            line=dict(color="rgba(255, 128, 0, 0.9)", width=2)  # Orange main color
+            line=dict(color=COLOR_PRIMARY, width=2)
         )
     )
     
@@ -239,19 +358,35 @@ def create_metrics_comparison_chart(df):
             y=df[search_col],
             mode="lines+markers",
             name="Search Appearances",
-            line=dict(color="rgba(255, 84, 0, 0.6)", width=2)  # Darker orange
+            line=dict(color=COLOR_SECONDARY, width=2)
         )
     )
     
-    # Style the chart
+    # Add range selector for date filtering
+    fig.update_xaxes(
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(step="all")
+            ]),
+            font=dict(color="#666666"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1
+        )
+    )
+    
+    # Special layout for comparison chart
     fig.update_layout(
         title="Linalysis Profile Views vs Search Appearances",
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=False, title=""),
-        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)", title="Count"),
-        plot_bgcolor="white"
+        yaxis=dict(title="Count")
     )
+    
+    # Apply consistent template
+    fig = apply_chart_template(fig)
     
     return fig
 
@@ -284,11 +419,11 @@ def create_heatmap(df):
     # Calculate correlation matrix
     corr_matrix = df[numeric_cols].corr().round(2)
     
-    # Create heatmap
+    # Create heatmap with orange-based color scheme
     fig = px.imshow(
         corr_matrix,
         text_auto=True,
-        color_continuous_scale=['rgba(0, 0, 255, 0.8)', 'rgba(255, 255, 255, 0.8)', 'rgba(255, 128, 0, 0.8)'],  # Blue to white to orange
+        color_continuous_scale=[COLOR_SECONDARY, 'white', COLOR_PRIMARY],
         zmin=-1, 
         zmax=1,
         title="Correlation Between Linalysis Metrics"
@@ -296,9 +431,24 @@ def create_heatmap(df):
     
     # Improve layout
     fig.update_layout(
+        title_font_size=18,
+        font_family="Arial, sans-serif",
+        font_color="#333333",
         width=500,
         height=500,
-        plot_bgcolor="white"
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=10, r=10, t=30, b=10),
+    )
+    
+    # Add custom annotation explaining correlation
+    fig.add_annotation(
+        text="Stronger red indicates positive correlation<br>Stronger blue indicates negative correlation",
+        xref="paper", yref="paper",
+        x=0.5, y=-0.15,
+        showarrow=False,
+        font=dict(size=10, color="#666666"),
+        align="center"
     )
     
     return fig

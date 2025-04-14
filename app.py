@@ -32,87 +32,181 @@ st.set_page_config(
 # Custom CSS for styling
 st.markdown("""
 <style>
+    /* Main app styling */
+    .stApp {
+        background-color: #FAFAFA;
+    }
+    
+    /* Header and title styling */
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
         color: #FE1B04;
         text-align: center;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
+        margin: 1.5rem 0;
+        padding-bottom: 1.5rem;
         border-bottom: 2px solid rgba(254, 27, 4, 0.2);
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
     }
+    
     .section-header {
         font-size: 1.8rem;
         color: #FE1B04;
-        padding-top: 1rem;
-        padding-bottom: 0.5rem;
+        padding-top: 1.2rem;
+        padding-bottom: 0.8rem;
         border-bottom: 1px solid rgba(254, 27, 4, 0.2);
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
     }
+    
     .subsection-header {
         font-size: 1.5rem;
         color: #FE1B04;
-        padding-top: 0.5rem;
-        margin-bottom: 0.5rem;
+        padding-top: 0.8rem;
+        margin-bottom: 0.8rem;
+        font-weight: 500;
     }
+    
+    /* Component styling */
     .highlight-box {
         background-color: #FFF0EE;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #FE1B04;
-        margin-bottom: 1rem;
+        padding: 1.5rem;
+        border-radius: 0.8rem;
+        border-left: 5px solid #FE1B04;
+        margin: 1.2rem 0;
+        box-shadow: 0 2px 5px rgba(254, 27, 4, 0.1);
     }
+    
     .card {
         background-color: white;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-        border-top: 4px solid #FE1B04;
+        border-radius: 0.8rem;
+        padding: 1.8rem;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+        margin: 1rem 0 1.5rem 0;
+        border-top: 5px solid #FE1B04;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+    }
+    
     .metric-card {
-        background-color: #FFF0EE;
-        border-radius: 0.5rem;
-        padding: 1rem;
+        background: linear-gradient(135deg, #FFF 0%, #FFF0EE 100%);
+        border-radius: 0.8rem;
+        padding: 1.5rem;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        margin-bottom: 1rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.2rem;
+        border: 1px solid rgba(254, 27, 4, 0.1);
+        transition: transform 0.3s ease;
     }
+    
+    .metric-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    /* Plan cards */
     .plan-card {
         background-color: white;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
+        border-radius: 0.8rem;
+        padding: 2rem 1.5rem;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-        border-top: 4px solid #FE1B04;
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+        border-top: 5px solid #FE1B04;
         height: 100%;
         display: flex;
         flex-direction: column;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
+    
+    .plan-card:hover {
+        transform: translateY(-7px);
+        box-shadow: 0 12px 25px rgba(254, 27, 4, 0.2);
+    }
+    
     .plan-price {
         color: #FE1B04;
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 1.2rem 0;
+    }
+    
+    .plan-title {
         font-size: 1.5rem;
         font-weight: bold;
-        margin: 1rem 0;
+        margin-bottom: 0.8rem;
+        color: #333;
     }
-    .plan-title {
-        font-size: 1.4rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
-    }
+    
     .plan-feature {
         text-align: left;
-        padding: 0.2rem 0;
+        padding: 0.4rem 0;
+        color: #555;
     }
+    
+    /* Input field styling */
     .input-container {
-        background-color: #FFF0EE;
-        padding: 1.5rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #FFF0EE 0%, #FFF 100%);
+        padding: 1.8rem;
+        border-radius: 0.8rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 10px rgba(254, 27, 4, 0.1);
+        border: 1px solid rgba(254, 27, 4, 0.1);
     }
+    
+    /* Sidebar styling */
     .sidebar .css-1aumxhk {
         background-color: #FFF0EE;
+    }
+    
+    /* Button styling */
+    .stButton>button {
+        background-color: #FE1B04;
+        color: white;
+        border-radius: 5px;
+        border: none;
+        padding: 0.4rem 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton>button:hover {
+        background-color: #E01500;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(254, 27, 4, 0.3);
+    }
+    
+    /* Data display elements */
+    .st-emotion-cache-1wivap2 {
+        background-color: rgba(254, 27, 4, 0.1);
+        border-left: 3px solid #FE1B04;
+        color: #333;
+    }
+    
+    /* Table styling */
+    .stDataFrame td, .stDataFrame th {
+        border: 1px solid rgba(254, 27, 4, 0.1);
+    }
+    
+    .stDataFrame th {
+        background-color: rgba(254, 27, 4, 0.1);
+        color: #333;
+    }
+    
+    /* Chart container styling */
+    .js-plotly-plot, .plotly {
+        border-radius: 0.8rem;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Success and error messages */
+    .st-emotion-cache-16idsys {
+        border-left-color: #FE1B04;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -138,93 +232,59 @@ if uploaded_file is not None:
             # Sidebar navigation with custom styling
             st.sidebar.markdown('<div class="section-header" style="font-size: 1.5rem;">Navigation</div>', unsafe_allow_html=True)
             
-            # Custom CSS for sidebar links
+            # Custom CSS for radio buttons styling
             st.sidebar.markdown("""
             <style>
-                .sidebar-link {
+                /* Enhance radio button styling */
+                .stRadio > div {
+                    padding: 0.5rem 0;
+                    margin-bottom: 0.5rem;
+                }
+                .stRadio > div > label {
                     color: #333;
-                    text-decoration: none;
-                    display: block;
-                    padding: 8px 0;
-                    margin: 4px 0;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    transition: all 0.3s;
+                    font-weight: 500;
+                    padding: 0.3rem 0;
                 }
-                .sidebar-link:hover {
-                    color: #FE1B04;
-                    background-color: rgba(254, 27, 4, 0.05);
-                    padding-left: 10px;
+                .stRadio > div[data-baseweb="radio"] > div {
+                    background-color: white;
+                    border-color: #FE1B04;
                 }
-                .sidebar-link.active {
-                    color: #FE1B04;
-                    font-weight: bold;
+                .stRadio > div[data-baseweb="radio"][aria-checked="true"] > div {
+                    background-color: #FE1B04;
+                    border-color: #FE1B04;
+                }
+                
+                /* Additional styling */
+                .time-filter {
+                    background-color: #FFF0EE;
+                    padding: 0.8rem;
+                    border-radius: 0.5rem;
+                    margin-top: 0.5rem;
                     border-left: 3px solid #FE1B04;
-                    padding-left: 10px;
-                }
-                .sub-menu {
-                    margin-left: 20px;
-                }
-                .sub-menu-link {
-                    color: #666;
-                    text-decoration: none;
-                    display: block;
-                    padding: 5px 0;
-                    font-size: 0.9rem;
-                    transition: all 0.3s;
-                }
-                .sub-menu-link:hover, .sub-menu-link.active {
-                    color: #FE1B04;
                 }
             </style>
             """, unsafe_allow_html=True)
             
-            # Use query parameters to determine active page and submenu
-            query_params = st.experimental_get_query_params()
-            current_page = query_params.get("page", ["Dashboard"])[0]
-            time_period = query_params.get("period", ["All"])[0]
+            # Category-based navigation with radio buttons
+            category = st.sidebar.radio(
+                "View Category",
+                ["Dashboard", "Connections", "Profile Views", "Search Appearances", "SSI Score", 
+                 "Invitations", "Reports", "Settings", "Billing"]
+            )
             
-            # Create sidebar navigation with links
-            # For each link, set active state if it matches current_page
-            
-            def nav_link(label, page_name):
-                is_active = page_name == current_page
-                active_class = "active" if is_active else ""
-                return f'<a href="?page={page_name}" class="sidebar-link {active_class}">{label}</a>'
-            
-            def sub_nav_link(label, page_name, sub_name):
-                is_active = page_name == current_page and sub_name == time_period
-                active_class = "active" if is_active else ""
-                return f'<a href="?page={page_name}&period={sub_name}" class="sub-menu-link {active_class}">{label}</a>'
-            
-            # Dashboard link with submenu
-            st.sidebar.markdown(nav_link("Dashboard", "Dashboard"), unsafe_allow_html=True)
-            
-            # Only show submenu if Dashboard is active
-            if current_page == "Dashboard":
-                st.sidebar.markdown('<div class="sub-menu">', unsafe_allow_html=True)
-                st.sidebar.markdown(sub_nav_link("All Data", "Dashboard", "All"), unsafe_allow_html=True)
-                st.sidebar.markdown(sub_nav_link("Last Quarter", "Dashboard", "Quarter"), unsafe_allow_html=True)
-                st.sidebar.markdown(sub_nav_link("Last Month", "Dashboard", "Month"), unsafe_allow_html=True)
-                st.sidebar.markdown(sub_nav_link("Last Week", "Dashboard", "Week"), unsafe_allow_html=True)
+            # Add time period selector for Dashboard
+            if category == "Dashboard":
+                st.sidebar.markdown('<div class="time-filter">', unsafe_allow_html=True)
+                time_period = st.sidebar.radio(
+                    "Time Period",
+                    ["All Data", "Last Quarter", "Last Month", "Last Week"],
+                    key="time_period"
+                )
                 st.sidebar.markdown('</div>', unsafe_allow_html=True)
+            else:
+                time_period = "All Data"
             
-            # Other navigation links
-            st.sidebar.markdown(nav_link("Connections", "Connections"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("Profile Views", "Profile Views"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("Search Appearances", "Search Appearances"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("SSI Score", "SSI Score"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("Invitations", "Invitations"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("Reports", "Reports"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("Settings", "Settings"), unsafe_allow_html=True)
-            st.sidebar.markdown(nav_link("Billing", "Billing"), unsafe_allow_html=True)
-            
-            # Set category based on query params instead of radio button
-            category = current_page
-            
-            # Variable needed for date selection will be set in the date filter section
-            
-            # Date filter
+            # Date filter with custom styling
             st.sidebar.markdown('<div class="section-header" style="font-size: 1.2rem;">Filter Data</div>', unsafe_allow_html=True)
             
             min_date = df['Date'].min().date()
@@ -234,12 +294,12 @@ if uploaded_file is not None:
             default_start_date = min_date
             
             # Adjust date range based on selected time period in Dashboard
-            if current_page == "Dashboard" and time_period != "All":
-                if time_period == "Week":
+            if category == "Dashboard" and time_period != "All Data":
+                if time_period == "Last Week":
                     default_start_date = max(min_date, max_date - timedelta(days=7))
-                elif time_period == "Month":
+                elif time_period == "Last Month":
                     default_start_date = max(min_date, max_date - timedelta(days=30))
-                elif time_period == "Quarter":
+                elif time_period == "Last Quarter":
                     default_start_date = max(min_date, max_date - timedelta(days=90))
             
             # Create a container with custom styling for date inputs
