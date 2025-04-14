@@ -16,7 +16,7 @@ from visualization import (
     create_heatmap,
     create_company_metrics_chart
 )
-from utils import display_error_message, format_metric_change
+from utils import display_error_message, format_metric_change, generate_chart_analysis
 
 # Page configuration
 st.set_page_config(
@@ -395,21 +395,80 @@ if uploaded_file is not None:
                         </div>
                         """
                     
+                    # Function to display AI analysis card
+                    def display_ai_analysis(metric_name, current_value, change, percent_change, trend_days=7):
+                        analysis_text, color, emoji = generate_chart_analysis(
+                            metric_name, current_value, change, percent_change, trend_days
+                        )
+                        
+                        # Convert hex color to RGB for background with opacity
+                        r = int(color[1:3], 16)
+                        g = int(color[3:5], 16)
+                        b = int(color[5:7], 16)
+                        
+                        st.markdown(f"""
+                        <div style="background-color: rgba({r}, {g}, {b}, 0.1); 
+                                    border-left: 4px solid {color}; 
+                                    padding: 0.8rem; 
+                                    border-radius: 4px;
+                                    margin: 0.5rem 0 1.5rem 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                <span style="font-size: 1.5rem; margin-right: 0.5rem;">{emoji}</span>
+                                <span style="font-weight: 600; color: {color};">AI Analysis</span>
+                            </div>
+                            <div style="color: #333; font-size: 0.9rem;">
+                                {analysis_text}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
                     with row1_col1:
                         st.markdown(chart_card("Network Growth", "", "📈"), unsafe_allow_html=True)
                         st.plotly_chart(create_connections_chart(filtered_df), use_container_width=True)
                         
+                        # Add connections AI analysis
+                        connections_change = stats['connections_week_change'] if 'connections_week_change' in stats else stats['connections_change']
+                        connections_pct_change = stats['connections_week_pct_change'] if 'connections_week_pct_change' in stats else 0
+                        display_ai_analysis("Connections", stats['latest_connections'], connections_change, connections_pct_change)
+                        
                     with row1_col2:
                         st.markdown(chart_card("Profile Views & Search Appearances", "", "👁️"), unsafe_allow_html=True)
                         st.plotly_chart(create_metrics_comparison_chart(filtered_df), use_container_width=True)
+                        
+                        # Add views AI analysis
+                        views_change = stats['views_week_change'] if 'views_week_change' in stats else stats['views_change']
+                        views_pct_change = stats['views_week_pct_change'] if 'views_week_pct_change' in stats else 0
+                        display_ai_analysis("Views", stats['latest_views'], views_change, views_pct_change)
                     
                     with row2_col1:
                         st.markdown(chart_card("SSI Score Evolution", "", "📊"), unsafe_allow_html=True)
                         st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
                         
+                        # Add SSI AI analysis
+                        ssi_change = stats['ssi_week_change'] if 'ssi_week_change' in stats else stats['ssi_change']
+                        ssi_pct_change = stats['ssi_week_pct_change'] if 'ssi_week_pct_change' in stats else 0
+                        display_ai_analysis("SSI", stats['latest_ssi'], ssi_change, ssi_pct_change)
+                        
                     with row2_col2:
                         st.markdown(chart_card("Metrics Correlation", "", "📱"), unsafe_allow_html=True)
                         st.plotly_chart(create_heatmap(filtered_df), use_container_width=True)
+                        
+                        # Add metrics correlation insight
+                        st.markdown("""
+                        <div style="background-color: rgba(44, 160, 44, 0.1); 
+                                    border-left: 4px solid #2CA02C; 
+                                    padding: 0.8rem; 
+                                    border-radius: 4px;
+                                    margin: 0.5rem 0 1.5rem 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                <span style="font-size: 1.5rem; margin-right: 0.5rem;">🔍</span>
+                                <span style="font-weight: 600; color: #2CA02C;">Correlation Insight</span>
+                            </div>
+                            <div style="color: #333; font-size: 0.9rem;">
+                                This heatmap shows the relationship between your LinkedIn metrics. Stronger correlations (closer to +1 or -1) indicate metrics that move together. Use these insights to understand which activities have the most impact on your LinkedIn presence.
+                            </div>
+                        </div>
+                        """)
                     
                     with row3_col1:
                         # Pending Invitations chart if exists
