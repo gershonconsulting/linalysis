@@ -2062,13 +2062,13 @@ if uploaded_file is not None:
                             <div style="color: #666; margin-bottom: 1rem;">Advanced analytics</div>
                             <div class="plan-price">$19.99<span style="font-size: 1rem; font-weight: normal;">/month</span></div>
                             <div style="margin: 1.5rem 0;">
-                                <div class="plan-feature">✅ Advanced SSI analysis</div>
+                                <div class="plan-feature">✅ Everything in Silver plan</div>
+                                <div class="plan-feature">✅ Alerts & notifications</div>
+                                <div class="plan-feature">✅ Weekly/monthly reports</div>
                                 <div class="plan-feature">✅ 12 months of data storage</div>
-                                <div class="plan-feature">✅ Weekly email reports</div>
-                                <div class="plan-feature">✅ Growth recommendations</div>
-                                <div class="plan-feature">✅ Profile optimization</div>
-                                <div class="plan-feature">✅ Priority support</div>
-                                <div class="plan-feature">❌ Custom dashboards</div>
+                                <div class="plan-feature">✅ Advanced AI insights</div>
+                                <div class="plan-feature">✅ Email/SMS notifications</div>
+                                <div class="plan-feature">❌ White-labeled reports</div>
                             </div>
                             <div style="margin-top: auto; padding-top: 1rem;">
                                 <a href="https://buy.stripe.com/3cs7vxdJXh0C3EQeUV" target="_blank" style="
@@ -2096,13 +2096,13 @@ if uploaded_file is not None:
                             <div style="color: #666; margin-bottom: 1rem;">Premium experience</div>
                             <div class="plan-price">$29.99<span style="font-size: 1rem; font-weight: normal;">/month</span></div>
                             <div style="margin: 1.5rem 0;">
-                                <div class="plan-feature">✅ Advanced SSI analysis</div>
+                                <div class="plan-feature">✅ Everything in Gold plan</div>
+                                <div class="plan-feature">✅ Network analysis</div>
+                                <div class="plan-feature">✅ New connections extraction</div>
+                                <div class="plan-feature">✅ Connection insights & suggestions</div>
                                 <div class="plan-feature">✅ Unlimited data storage</div>
-                                <div class="plan-feature">✅ Daily email reports</div>
-                                <div class="plan-feature">✅ Growth recommendations</div>
-                                <div class="plan-feature">✅ Profile optimization</div>
+                                <div class="plan-feature">✅ White-labeled reports</div>
                                 <div class="plan-feature">✅ Priority support</div>
-                                <div class="plan-feature">✅ Custom dashboards</div>
                             </div>
                             <div style="margin-top: auto; padding-top: 1rem;">
                                 <a href="https://buy.stripe.com/fZeeXZ21fh0Ca3e144" target="_blank" style="
