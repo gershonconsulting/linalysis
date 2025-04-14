@@ -135,15 +135,102 @@ if uploaded_file is not None:
         if df is None or df.empty:
             st.error("The uploaded file doesn't contain valid LinkedIn data. Please check your file and try again.")
         else:
-            # Sidebar navigation
-            st.sidebar.header("Navigation")
+            # Sidebar navigation with custom styling
+            st.sidebar.markdown('<div class="section-header" style="font-size: 1.5rem;">Navigation</div>', unsafe_allow_html=True)
             
-            # Category-based navigation
-            category = st.sidebar.radio(
-                "View by Category",
-                ["Dashboard", "Connections", "Profile Views", "Search Appearances", "SSI Score", "Invitations", 
-                 "Reports", "Settings", "Billing"]
-            )
+            # Custom CSS for sidebar links
+            st.sidebar.markdown("""
+            <style>
+                .sidebar-link {
+                    color: #333;
+                    text-decoration: none;
+                    display: block;
+                    padding: 8px 0;
+                    margin: 4px 0;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                }
+                .sidebar-link:hover {
+                    color: #FE1B04;
+                    background-color: rgba(254, 27, 4, 0.05);
+                    padding-left: 10px;
+                }
+                .sidebar-link.active {
+                    color: #FE1B04;
+                    font-weight: bold;
+                    border-left: 3px solid #FE1B04;
+                    padding-left: 10px;
+                }
+                .sub-menu {
+                    margin-left: 20px;
+                }
+                .sub-menu-link {
+                    color: #666;
+                    text-decoration: none;
+                    display: block;
+                    padding: 5px 0;
+                    font-size: 0.9rem;
+                    transition: all 0.3s;
+                }
+                .sub-menu-link:hover, .sub-menu-link.active {
+                    color: #FE1B04;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Use query parameters to determine active page and submenu
+            query_params = st.experimental_get_query_params()
+            current_page = query_params.get("page", ["Dashboard"])[0]
+            time_period = query_params.get("period", ["All"])[0]
+            
+            # Create sidebar navigation with links
+            # For each link, set active state if it matches current_page
+            
+            def nav_link(label, page_name):
+                is_active = page_name == current_page
+                active_class = "active" if is_active else ""
+                return f'<a href="?page={page_name}" class="sidebar-link {active_class}">{label}</a>'
+            
+            def sub_nav_link(label, page_name, sub_name):
+                is_active = page_name == current_page and sub_name == time_period
+                active_class = "active" if is_active else ""
+                return f'<a href="?page={page_name}&period={sub_name}" class="sub-menu-link {active_class}">{label}</a>'
+            
+            # Dashboard link with submenu
+            st.sidebar.markdown(nav_link("Dashboard", "Dashboard"), unsafe_allow_html=True)
+            
+            # Only show submenu if Dashboard is active
+            if current_page == "Dashboard":
+                st.sidebar.markdown('<div class="sub-menu">', unsafe_allow_html=True)
+                st.sidebar.markdown(sub_nav_link("All Data", "Dashboard", "All"), unsafe_allow_html=True)
+                st.sidebar.markdown(sub_nav_link("Last Quarter", "Dashboard", "Quarter"), unsafe_allow_html=True)
+                st.sidebar.markdown(sub_nav_link("Last Month", "Dashboard", "Month"), unsafe_allow_html=True)
+                st.sidebar.markdown(sub_nav_link("Last Week", "Dashboard", "Week"), unsafe_allow_html=True)
+                st.sidebar.markdown('</div>', unsafe_allow_html=True)
+            
+            # Other navigation links
+            st.sidebar.markdown(nav_link("Connections", "Connections"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("Profile Views", "Profile Views"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("Search Appearances", "Search Appearances"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("SSI Score", "SSI Score"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("Invitations", "Invitations"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("Reports", "Reports"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("Settings", "Settings"), unsafe_allow_html=True)
+            st.sidebar.markdown(nav_link("Billing", "Billing"), unsafe_allow_html=True)
+            
+            # Set category based on query params instead of radio button
+            category = current_page
+            
+            # If Dashboard is selected with a time period, adjust the date range accordingly
+            default_start_date = max(min_date, max_date - timedelta(days=90))
+            if current_page == "Dashboard":
+                if time_period == "Week":
+                    default_start_date = max(min_date, max_date - timedelta(days=7))
+                elif time_period == "Month":
+                    default_start_date = max(min_date, max_date - timedelta(days=30))
+                elif time_period == "Quarter":
+                    default_start_date = max(min_date, max_date - timedelta(days=90))
             
             # Date filter
             st.sidebar.header("Filter Data")
@@ -1631,42 +1718,52 @@ if uploaded_file is not None:
                         st.success("Settings saved successfully!")
 
                 elif category == "Billing":
-                    st.subheader("Linalysis Subscription")
+                    # Custom styled header
+                    st.markdown('<div class="section-header">Linalysis Subscription</div>', unsafe_allow_html=True)
                     
-                    # Display subscription plans
-                    st.markdown("### Choose Your Plan")
+                    # Display subscription plans with styled subsection header
+                    st.markdown('<div class="subsection-header">Choose Your Plan</div>', unsafe_allow_html=True)
                     
                     # Plan comparison in columns
                     plan1, plan2, plan3 = st.columns(3)
                     
                     with plan1:
-                        st.markdown("#### Basic Plan")
-                        st.markdown("**$9.99 / month**")
-                        st.markdown("- Basic LinkedIn analytics")
-                        st.markdown("- Weekly growth reports")
-                        st.markdown("- Email support")
-                        st.markdown("- 1 LinkedIn account")
-                        select_basic = st.button("Select Basic Plan")
+                        # Use styled card for Basic plan
+                        st.markdown('<div class="plan-card">', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-title">Basic Plan</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-price">$9.99 / month</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Basic LinkedIn analytics</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Weekly growth reports</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Email support</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• 1 LinkedIn account</div>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        select_basic = st.button("Select Basic Plan", key="basic_plan")
                     
                     with plan2:
-                        st.markdown("#### Pro Plan")
-                        st.markdown("**$19.99 / month**")
-                        st.markdown("- All Basic features")
-                        st.markdown("- Advanced analytics")
-                        st.markdown("- Daily data updates")
-                        st.markdown("- Priority email support")
-                        st.markdown("- 2 LinkedIn accounts")
-                        select_pro = st.button("Select Pro Plan")
+                        # Use styled card for Pro plan
+                        st.markdown('<div class="plan-card">', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-title">Pro Plan</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-price">$19.99 / month</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• All Basic features</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Advanced analytics</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Daily data updates</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Priority email support</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• 2 LinkedIn accounts</div>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        select_pro = st.button("Select Pro Plan", key="pro_plan")
                     
                     with plan3:
-                        st.markdown("#### Enterprise Plan")
-                        st.markdown("**$49.99 / month**")
-                        st.markdown("- All Pro features")
-                        st.markdown("- Custom reporting")
-                        st.markdown("- API access")
-                        st.markdown("- Dedicated support")
-                        st.markdown("- Unlimited LinkedIn accounts")
-                        select_enterprise = st.button("Select Enterprise Plan")
+                        # Use styled card for Enterprise plan
+                        st.markdown('<div class="plan-card">', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-title">Enterprise Plan</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-price">$49.99 / month</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• All Pro features</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Custom reporting</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• API access</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Dedicated support</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="plan-feature">• Unlimited LinkedIn accounts</div>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        select_enterprise = st.button("Select Enterprise Plan", key="enterprise_plan")
                     
                     # Placeholder for Stripe integration
                     if select_basic or select_pro or select_enterprise:
