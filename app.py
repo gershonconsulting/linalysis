@@ -331,150 +331,202 @@ if uploaded_file is not None:
                 
                 # Display content based on selected category
                 if category == "Dashboard":
-                    # Key metrics for dashboard
-                    col1, col2, col3, col4 = st.columns(4)
+                    # Display fancy metrics header
+                    st.markdown("""
+                    <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                padding: 0.5rem 1rem; 
+                                border-radius: 8px; 
+                                margin: 1rem 0;">
+                        <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                            Key Performance Metrics
+                        </h3>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    with col1:
-                        st.metric(
-                            label="Total Connections", 
-                            value=stats['latest_connections'],
-                            delta=connections_change
-                        )
+                    # Key metrics for dashboard with enhanced styling
+                    metric_cols = st.columns(4)
                     
-                    with col2:
-                        st.metric(
-                            label="Profile Views", 
-                            value=stats['latest_views'],
-                            delta=views_change
-                        )
+                    # Custom styling for the metrics
+                    for i, (col, label, value, delta, icon) in enumerate([
+                        (metric_cols[0], "Total Connections", stats['latest_connections'], connections_change, "👥"),
+                        (metric_cols[1], "Profile Views", stats['latest_views'], views_change, "👁️"),
+                        (metric_cols[2], "Search Appearances", stats['latest_search'], search_change, "🔍"),
+                        (metric_cols[3], "SSI Score", f"{stats['latest_ssi']}/100", ssi_change, "📊")
+                    ]):
+                        with col:
+                            # Custom metric card with enhanced styling
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #FE1B04;">{icon}</div>
+                                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.2rem;">{label}</div>
+                                <div style="font-size: 1.8rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">{value}</div>
+                                <div style="font-size: 0.8rem; color: {'#2CA02C' if delta.startswith('+') else '#D62728'};">
+                                    {delta}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
-                    with col3:
-                        st.metric(
-                            label="Search Appearances", 
-                            value=stats['latest_search'],
-                            delta=search_change
-                        )
-                    
-                    with col4:
-                        st.metric(
-                            label="SSI Score", 
-                            value=f"{stats['latest_ssi']}/100",
-                            delta=ssi_change
-                        )
-                    
-                    # Dashboard with 6 graphs
-                    st.subheader("Linalysis Performance Dashboard")
+                    # Dashboard with 6 graphs in card containers
+                    st.markdown("""
+                    <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                padding: 0.5rem 1rem; 
+                                border-radius: 8px; 
+                                margin: 1rem 0;">
+                        <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                            Linalysis Performance Dashboard
+                        </h3>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     # Grid layout for 6 graphs - 3 rows x 2 columns
                     row1_col1, row1_col2 = st.columns(2)
                     row2_col1, row2_col2 = st.columns(2)
                     row3_col1, row3_col2 = st.columns(2)
                     
+                    # Helper function to create chart card container
+                    def chart_card(title, chart_content, icon="📊"):
+                        return f"""
+                        <div class="card">
+                            <div style="display: flex; align-items: center; margin-bottom: 0.8rem;">
+                                <div style="font-size: 1.5rem; margin-right: 0.5rem; color: #FE1B04;">{icon}</div>
+                                <div style="font-size: 1.2rem; font-weight: 600; color: #333;">{title}</div>
+                            </div>
+                            {chart_content}
+                        </div>
+                        """
+                    
                     with row1_col1:
-                        st.markdown("### Network Growth")
+                        st.markdown(chart_card("Network Growth", "", "📈"), unsafe_allow_html=True)
                         st.plotly_chart(create_connections_chart(filtered_df), use_container_width=True)
                         
                     with row1_col2:
-                        st.markdown("### Profile Views & Search Appearances")
+                        st.markdown(chart_card("Profile Views & Search Appearances", "", "👁️"), unsafe_allow_html=True)
                         st.plotly_chart(create_metrics_comparison_chart(filtered_df), use_container_width=True)
                     
                     with row2_col1:
-                        st.markdown("### SSI Score Evolution")
+                        st.markdown(chart_card("SSI Score Evolution", "", "📊"), unsafe_allow_html=True)
                         st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
                         
                     with row2_col2:
-                        st.markdown("### Metrics Correlation")
+                        st.markdown(chart_card("Metrics Correlation", "", "📱"), unsafe_allow_html=True)
                         st.plotly_chart(create_heatmap(filtered_df), use_container_width=True)
                     
                     with row3_col1:
                         # Pending Invitations chart if exists
                         if 'Invitations' in filtered_df.columns:
-                            st.markdown("### Pending Invitations")
-                            fig = px.line(
-                                filtered_df, 
-                                x="Date", 
-                                y="Invitations",
-                                title="Pending Invitations Over Time",
-                                labels={"Invitations": "Pending Invitations", "Date": ""},
-                                markers=True
-                            )
-                            
-                            # Add trendline
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=filtered_df["Date"],
-                                    y=filtered_df["Invitations"].rolling(window=7, min_periods=1).mean(),
-                                    mode="lines",
-                                    name="7-Day Average",
-                                    line=dict(color="rgba(10, 102, 194, 0.5)", width=2, dash="dash")
-                                )
-                            )
-                            
-                            # Style improvements
-                            fig.update_layout(
-                                hovermode="x unified",
-                                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                                xaxis=dict(showgrid=False),
-                                yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
-                                plot_bgcolor="white",
-                                height=300
-                            )
-                            
+                            st.markdown(chart_card("Pending Invitations", "", "📩"), unsafe_allow_html=True)
+                            # Use our styled chart function instead of direct plotly
+                            fig = create_company_metrics_chart(filtered_df, "Invitations")
+                            fig.update_layout(title="Pending Invitations Over Time")
                             st.plotly_chart(fig, use_container_width=True)
                         else:
-                            st.info("No invitations data available.")
+                            st.markdown(chart_card("Invitations", "<div style='padding: 1rem; color: #666;'>No invitations data available.</div>", "📩"), unsafe_allow_html=True)
                     
                     with row3_col2:
                         # Company data if exists
                         if 'Company Followers' in filtered_df.columns and filtered_df['Company Followers'].notna().any():
-                            st.markdown("### Company Growth")
+                            st.markdown(chart_card("Company Growth", "", "🏢"), unsafe_allow_html=True)
                             st.plotly_chart(
                                 create_company_metrics_chart(filtered_df, "Company Followers"), 
                                 use_container_width=True
                             )
                         else:
-                            st.markdown("### Key Performance Metrics")
-                            # Show a summary of key metrics instead
-                            st.markdown(f"""
-                            - **Average daily connection growth:** {stats['avg_connections_growth']:.2f} connections/day
-                            - **Projected monthly growth:** {stats['projected_monthly_growth']:.0f} connections/month
-                            - **Average Profile Views:** {stats['avg_views']:.1f} views/day
-                            - **Average Search Appearances:** {stats['avg_search']:.1f} appearances/day
-                            - **View to Connection Ratio:** {stats['view_connection_ratio']:.2f} views per new connection
-                            - **Average SSI Score:** {stats['avg_ssi']:.1f}/100
-                            """)
+                            st.markdown(chart_card("Key Performance Metrics", f"""
+                            <div style="padding: 0.5rem;">
+                                <div style="margin-bottom: 0.5rem;">
+                                    <span style="font-weight: bold; color: #333;">Average growth:</span>
+                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                        {stats['avg_connections_growth']:.2f}
+                                    </span>
+                                    <span style="float: right; color: #666; margin-right: 5px;">
+                                        connections/day
+                                    </span>
+                                </div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <span style="font-weight: bold; color: #333;">Monthly projection:</span>
+                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                        {stats['projected_monthly_growth']:.0f}
+                                    </span>
+                                    <span style="float: right; color: #666; margin-right: 5px;">
+                                        connections/month
+                                    </span>
+                                </div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <span style="font-weight: bold; color: #333;">Average views:</span>
+                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                        {stats['avg_views']:.1f}
+                                    </span>
+                                    <span style="float: right; color: #666; margin-right: 5px;">
+                                        views/day
+                                    </span>
+                                </div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <span style="font-weight: bold; color: #333;">Average SSI:</span>
+                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                        {stats['avg_ssi']:.1f}
+                                    </span>
+                                    <span style="float: right; color: #666; margin-right: 5px;">
+                                        / 100
+                                    </span>
+                                </div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <span style="font-weight: bold; color: #333;">View-Connection ratio:</span>
+                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                        {stats['view_connection_ratio']:.2f}
+                                    </span>
+                                    <span style="float: right; color: #666; margin-right: 5px;">
+                                        views per connection
+                                    </span>
+                                </div>
+                            </div>
+                            """, "📝"), unsafe_allow_html=True)
                 
                 elif category == "Connections":
-                    # Connections specific metrics
-                    st.subheader("Linalysis Connections Analysis")
+                    # Display connections header with gradient styling
+                    st.markdown("""
+                    <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                padding: 0.5rem 1rem; 
+                                border-radius: 8px; 
+                                margin: 1rem 0;">
+                        <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                            Linalysis Connections Analysis
+                        </h3>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Top metrics row
-                    col1, col2, col3, col4 = st.columns(4)
+                    # Top metrics row with styled cards
+                    st.markdown('<div style="margin-bottom: 1.5rem;"></div>', unsafe_allow_html=True)
+                    metric_cols = st.columns(4)
                     
-                    with col1:
-                        st.metric(
-                            label="Total Connections", 
-                            value=stats['latest_connections'],
-                            delta=connections_change
-                        )
+                    # Custom icons and labels for each metric
+                    metrics_data = [
+                        {"col": metric_cols[0], "icon": "👥", "label": "Total Connections", 
+                         "value": stats['latest_connections'], "delta": connections_change, "color": "#FE1B04"},
+                        {"col": metric_cols[1], "icon": "⬇️", "label": "Min Connections", 
+                         "value": int(filtered_df['Connections'].min()), "delta": None, "color": "#1F77B4"},
+                        {"col": metric_cols[2], "icon": "⬆️", "label": "Max Connections", 
+                         "value": int(filtered_df['Connections'].max()), "delta": None, "color": "#2CA02C"},
+                        {"col": metric_cols[3], "icon": "📊", "label": "Average Connections", 
+                         "value": f"{filtered_df['Connections'].mean():.1f}", "delta": None, "color": "#FF7F0E"}
+                    ]
                     
-                    with col2:
-                        st.metric(
-                            label="Min Connections", 
-                            value=int(filtered_df['Connections'].min())
-                        )
-                    
-                    with col3:
-                        st.metric(
-                            label="Max Connections", 
-                            value=int(filtered_df['Connections'].max())
-                        )
-                    
-                    with col4:
-                        st.metric(
-                            label="Average Connections", 
-                            value=f"{filtered_df['Connections'].mean():.1f}"
-                        )
+                    # Render each custom metric card
+                    for metric in metrics_data:
+                        with metric["col"]:
+                            delta_html = f"""
+                            <div style="font-size: 0.9rem; color: {'#2CA02C' if str(metric["delta"]).startswith('+') else '#D62728' if metric["delta"] is not None else 'transparent'};">
+                                {metric["delta"] if metric["delta"] is not None else "—"}
+                            </div>
+                            """ if metric["delta"] is not None else ""
+                            
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem; color: {metric["color"]};">{metric["icon"]}</div>
+                                <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.2rem;">{metric["label"]}</div>
+                                <div style="font-size: 1.8rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">{metric["value"]}</div>
+                                {delta_html}
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     # Main connections chart
                     st.subheader("Network Growth Over Time")

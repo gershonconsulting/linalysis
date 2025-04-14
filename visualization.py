@@ -477,7 +477,7 @@ def create_company_metrics_chart(df, metric):
         title=f"Linalysis {metric} Over Time",
         labels={metric: metric, "Date": ""},
         markers=True,
-        color_discrete_sequence=["rgba(255, 128, 0, 0.9)"]  # Orange main color
+        color_discrete_sequence=[COLOR_PRIMARY]
     )
     
     # Add trendline if enough data points
@@ -488,17 +488,28 @@ def create_company_metrics_chart(df, metric):
                 y=chart_df[metric].rolling(window=min(7, len(chart_df)), min_periods=1).mean(),
                 mode="lines",
                 name="Moving Average",
-                line=dict(color="rgba(255, 84, 0, 0.5)", width=2, dash="dash")  # Darker orange for trendline
+                line=dict(color=COLOR_SECONDARY, width=2, dash="dash")
             )
         )
     
-    # Style improvements
-    fig.update_layout(
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor="rgba(0,0,0,0.1)"),
-        plot_bgcolor="white"
+    # Add range selector for date filtering
+    fig.update_xaxes(
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(step="all")
+            ]),
+            font=dict(color="#666666"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1
+        )
     )
+    
+    # Apply consistent template
+    fig = apply_chart_template(fig)
     
     return fig
