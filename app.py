@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
 import io
+import time
 
 from linkedin_data_processor import process_linkedin_data, calculate_statistics
 from visualization import (
@@ -2255,7 +2256,11 @@ if uploaded_file is not None:
         display_error_message(f"An error occurred while processing the file: {str(e)}")
 
 else:
-    # Welcome section with two options
+    # Initialize session state for login/registration flow
+    if 'login_state' not in st.session_state:
+        st.session_state.login_state = 'welcome'  # Options: 'welcome', 'login', 'register', 'connecting'
+    
+    # Welcome section with header
     st.markdown('<div class="main-header">Welcome to Linalysis</div>', unsafe_allow_html=True)
     
     # Short introduction
@@ -2266,61 +2271,197 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    # Options in columns
-    left_col, right_col = st.columns(2)
-    
-    with left_col:
-        st.markdown("""
-        <div style="
-            border: 1px solid #eee;
-            border-radius: 10px;
-            padding: 1.5rem;
-            height: 100%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <h2 style="color: #0A66C2; margin-bottom: 1rem;">Connect with LinkedIn</h2>
-            <p style="margin-bottom: 2rem;">The fastest way to get started. Connect your LinkedIn account to automatically analyze your professional profile.</p>
-            <div style="text-align: center; margin-top: 2rem;">
-                <button style="
-                    background-color: #0A66C2;
-                    color: white;
-                    border: none;
-                    padding: 0.8rem 1.5rem;
-                    border-radius: 5px;
-                    font-weight: bold;
-                    display: inline-flex;
-                    align-items: center;
-                    cursor: pointer;">
-                    <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="20" height="20" style="margin-right: 10px; filter: brightness(0) invert(1);">
-                    Sign in with LinkedIn
-                </button>
+    # Login flow based on state
+    if st.session_state.login_state == 'welcome':
+        # Main welcome options
+        left_col, right_col = st.columns(2)
+        
+        with left_col:
+            st.markdown("""
+            <div style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 1.5rem;
+                height: 100%;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="40" height="40">
+                </div>
+                <h2 style="color: #0A66C2; margin-bottom: 1rem; text-align: center;">Connect with LinkedIn</h2>
+                <p style="margin-bottom: 1.5rem;">The fastest way to get started. Link your LinkedIn account to:</p>
+                <ul style="margin-bottom: 1.5rem; padding-left: 1.5rem; color: #444;">
+                    <li style="margin-bottom: 0.5rem;">Automatically import your profile data</li>
+                    <li style="margin-bottom: 0.5rem;">Get personalized analytics and insights</li>
+                    <li style="margin-bottom: 0.5rem;">Track your professional growth over time</li>
+                    <li>Receive tailored recommendations</li>
+                </ul>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button style="
+                        background-color: #0A66C2;
+                        color: white;
+                        border: none;
+                        padding: 0.8rem 1.5rem;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        display: inline-flex;
+                        align-items: center;
+                        cursor: pointer;">
+                        <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="20" height="20" style="margin-right: 10px; filter: brightness(0) invert(1);">
+                        Sign in with LinkedIn
+                    </button>
+                </div>
+                <p style="font-size: 0.8rem; text-align: center; margin-top: 1rem; color: #777;">
+                    We'll never post anything without your permission
+                </p>
             </div>
-            <p style="font-size: 0.8rem; text-align: center; margin-top: 1rem; color: #777;">
-                We'll never post anything without your permission
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with right_col:
-        st.markdown("""
-        <div style="
-            border: 1px solid #eee;
-            border-radius: 10px;
-            padding: 1.5rem;
-            height: 100%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-            <h2 style="color: #FE1B04; margin-bottom: 1rem;">Upload LinkedIn Data</h2>
-            <p style="margin-bottom: 1rem;">Already have your LinkedIn data export? Upload it directly to analyze your profile metrics.</p>
             """, unsafe_allow_html=True)
             
-        # File uploader stays as a Streamlit component
-        st.file_uploader("Upload your LinkedIn data CSV", type=["csv"], key="file_uploader_home")
-        
+            # LinkedIn Connect buttons
+            col1, col2, col3 = st.columns([1,2,1])
+            with col2:
+                if st.button("Sign in with LinkedIn", key="signin_btn"):
+                    st.session_state.login_state = 'connecting'
+                    st.rerun()
+                    
+                if st.button("Create Account", key="create_btn"):
+                    st.session_state.login_state = 'register'
+                    st.rerun()
+                    
+        with right_col:
+            st.markdown("""
+            <div style="
+                border: 1px solid #eee;
+                border-radius: 10px;
+                padding: 1.5rem;
+                height: 100%;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+                <h2 style="color: #FE1B04; margin-bottom: 1rem; text-align: center;">Manual Data Upload</h2>
+                <p style="margin-bottom: 1rem;">Already have your LinkedIn data export? Upload it directly to analyze your profile metrics without creating an account.</p>
+                """, unsafe_allow_html=True)
+                
+            # File uploader stays as a Streamlit component
+            uploaded_file = st.file_uploader("Upload your LinkedIn data CSV", type=["csv"], key="file_uploader_home")
+            
+            if uploaded_file:
+                st.success("File uploaded successfully! Processing your data...")
+                # We would normally process the file here, but for now, just showing a success message
+                
+            st.markdown("""
+                <p style="font-size: 0.9rem; margin-top: 1rem; color: #555; text-align: center;">
+                    Don't have your LinkedIn data export? <a href="#instructions" style="color: #FE1B04;">See instructions below</a>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    elif st.session_state.login_state == 'connecting':
+        # Show LinkedIn connection in progress
         st.markdown("""
-            <p style="font-size: 0.9rem; margin-top: 1rem; color: #555;">
-                Don't have your LinkedIn data export? <a href="#" style="color: #FE1B04;">See instructions below</a>
+        <div style="
+            max-width: 500px;
+            margin: 2rem auto;
+            text-align: center;
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div class="loader" style="
+                    border: 5px solid #f3f3f3;
+                    border-top: 5px solid #0A66C2;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    animation: spin 2s linear infinite;
+                    margin: 0 auto 1.5rem auto;"></div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            </div>
+            
+            <h2 style="color: #0A66C2; margin-bottom: 1rem;">Connecting to LinkedIn</h2>
+            <p style="margin-bottom: 1.5rem; color: #555;">
+                Please wait while we securely connect to your LinkedIn account...
+            </p>
+            <p style="color: #777; font-size: 0.9rem;">
+                You will be redirected to the dashboard once connected
             </p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Simulate connection process with a progress bar
+        progress_bar = st.progress(0)
+        for i in range(100):
+            # Update progress bar
+            progress_bar.progress(i + 1)
+            time.sleep(0.01)
+            
+        # After connection "completes"
+        # In a real app, this would happen after OAuth callback
+        st.success("Successfully connected to LinkedIn!")
+        st.session_state.login_state = 'welcome'  # Reset for demo purposes
+            
+    elif st.session_state.login_state == 'register':
+        # Registration form
+        st.markdown("""
+        <div style="
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            
+            <h2 style="color: #FE1B04; margin-bottom: 1.5rem; text-align: center;">Create Your Linalysis Account</h2>
+            <p style="text-align: center; margin-bottom: 2rem; color: #555;">
+                Connect your LinkedIn profile to get started with advanced analytics
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Form inputs
+        with st.form("registration_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.text_input("First Name", placeholder="Enter your first name")
+                st.text_input("Email Address", placeholder="Enter your email address")
+                st.text_input("Password", type="password", placeholder="Create a password")
+            
+            with col2:
+                st.text_input("Last Name", placeholder="Enter your last name")
+                st.text_input("Phone Number (optional)", placeholder="Enter your phone number")
+                st.text_input("Confirm Password", type="password", placeholder="Confirm your password")
+            
+            # Terms and conditions checkbox
+            st.checkbox("I agree to the Terms and Conditions and Privacy Policy", value=False)
+            
+            # LinkedIn connect button in the form
+            col1, col2, col3 = st.columns([1,2,1])
+            with col2:
+                st.markdown("""
+                <div style="text-align: center; margin: 1rem 0;">
+                    <p style="color: #666; margin-bottom: 0.5rem;">Faster registration with</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                linkedin_btn = st.form_submit_button("Connect with LinkedIn")
+                
+                # Regular submit button
+                submit_btn = st.form_submit_button("Create Account")
+            
+        # Handle form submission
+        if linkedin_btn or submit_btn:
+            st.session_state.login_state = 'connecting'
+            st.rerun()
+        
+        # Back button
+        if st.button("← Back to Home"):
+            st.session_state.login_state = 'welcome'
+            st.rerun()
     
     # Information on how to get LinkedIn data
     st.markdown("""
