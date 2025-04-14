@@ -2002,83 +2002,176 @@ if uploaded_file is not None:
 
                 elif category == "Billing":
                     # Custom styled header
-                    st.markdown('<div class="section-header">Linalysis Subscription</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="section-header">Linalysis Subscription Plans</div>', unsafe_allow_html=True)
                     
-                    # Display subscription plans with styled subsection header
-                    st.markdown('<div class="subsection-header">Choose Your Plan</div>', unsafe_allow_html=True)
+                    # Introductory message
+                    st.markdown("""
+                    <div style="background-color: rgba(254, 27, 4, 0.1); 
+                               padding: 1rem; 
+                               border-radius: 0.5rem; 
+                               border-left: 4px solid #FE1B04; 
+                               margin-bottom: 2rem;">
+                        <h3 style="color: #FE1B04; margin-top: 0;">Unlock Premium Analytics</h3>
+                        <p>Get deeper insights into your LinkedIn performance with our premium subscription plans. 
+                        Choose the plan that best fits your networking and career growth needs.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     # Plan comparison in columns
-                    plan1, plan2, plan3 = st.columns(3)
+                    col1, col2, col3 = st.columns(3)
                     
-                    with plan1:
-                        # Use styled card for Basic plan
-                        st.markdown('<div class="plan-card">', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-title">Basic Plan</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-price">$9.99 / month</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Basic LinkedIn analytics</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Weekly growth reports</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Email support</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• 1 LinkedIn account</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        select_basic = st.button("Select Basic Plan", key="basic_plan")
+                    with col1:
+                        st.markdown("""
+                        <div class="plan-card">
+                            <div style="font-size: 2rem; color: #C0C0C0; margin-bottom: 0.5rem;">🥈</div>
+                            <div class="plan-title">Silver Plan</div>
+                            <div style="color: #666; margin-bottom: 1rem;">Essential analytics</div>
+                            <div class="plan-price">$9.99<span style="font-size: 1rem; font-weight: normal;">/month</span></div>
+                            <div style="margin: 1.5rem 0;">
+                                <div class="plan-feature">✅ Data extraction from LinkedIn</div>
+                                <div class="plan-feature">✅ All basic visualizations & graphs</div>
+                                <div class="plan-feature">✅ 3 months of data storage</div>
+                                <div class="plan-feature">✅ Basic AI insights</div>
+                                <div class="plan-feature">❌ Alerts & notifications</div>
+                                <div class="plan-feature">❌ Scheduled reports</div>
+                                <div class="plan-feature">❌ Priority support</div>
+                            </div>
+                            <div style="margin-top: auto; padding-top: 1rem;">
+                                <a href="https://buy.stripe.com/fZeeXZ21fh0Ca3e144" target="_blank" style="
+                                    display: block;
+                                    background-color: #FE1B04;
+                                    color: white;
+                                    text-align: center;
+                                    padding: 0.8rem;
+                                    border-radius: 0.5rem;
+                                    text-decoration: none;
+                                    font-weight: bold;
+                                    transition: all 0.3s ease;">
+                                    Subscribe Now
+                                </a>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
-                    with plan2:
-                        # Use styled card for Pro plan
-                        st.markdown('<div class="plan-card">', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-title">Pro Plan</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-price">$19.99 / month</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• All Basic features</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Advanced analytics</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Daily data updates</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Priority email support</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• 2 LinkedIn accounts</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        select_pro = st.button("Select Pro Plan", key="pro_plan")
+                    with col2:
+                        st.markdown("""
+                        <div class="plan-card" style="transform: scale(1.05); border-top: 5px solid #FFD700;">
+                            <div style="position: absolute; top: -15px; right: -15px; background-color: #FE1B04; color: white; padding: 0.3rem 0.7rem; border-radius: 1rem; font-size: 0.8rem; font-weight: bold;">POPULAR</div>
+                            <div style="font-size: 2rem; color: #FFD700; margin-bottom: 0.5rem;">🥇</div>
+                            <div class="plan-title">Gold Plan</div>
+                            <div style="color: #666; margin-bottom: 1rem;">Advanced analytics</div>
+                            <div class="plan-price">$19.99<span style="font-size: 1rem; font-weight: normal;">/month</span></div>
+                            <div style="margin: 1.5rem 0;">
+                                <div class="plan-feature">✅ Advanced SSI analysis</div>
+                                <div class="plan-feature">✅ 12 months of data storage</div>
+                                <div class="plan-feature">✅ Weekly email reports</div>
+                                <div class="plan-feature">✅ Growth recommendations</div>
+                                <div class="plan-feature">✅ Profile optimization</div>
+                                <div class="plan-feature">✅ Priority support</div>
+                                <div class="plan-feature">❌ Custom dashboards</div>
+                            </div>
+                            <div style="margin-top: auto; padding-top: 1rem;">
+                                <a href="https://buy.stripe.com/3cs7vxdJXh0C3EQeUV" target="_blank" style="
+                                    display: block;
+                                    background-color: #FE1B04;
+                                    color: white;
+                                    text-align: center;
+                                    padding: 0.8rem;
+                                    border-radius: 0.5rem;
+                                    text-decoration: none;
+                                    font-weight: bold;
+                                    box-shadow: 0 4px 8px rgba(254, 27, 4, 0.3);
+                                    transition: all 0.3s ease;">
+                                    Subscribe Now
+                                </a>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
-                    with plan3:
-                        # Use styled card for Enterprise plan
-                        st.markdown('<div class="plan-card">', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-title">Enterprise Plan</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-price">$49.99 / month</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• All Pro features</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Custom reporting</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• API access</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Dedicated support</div>', unsafe_allow_html=True)
-                        st.markdown('<div class="plan-feature">• Unlimited LinkedIn accounts</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        select_enterprise = st.button("Select Enterprise Plan", key="enterprise_plan")
+                    with col3:
+                        st.markdown("""
+                        <div class="plan-card">
+                            <div style="font-size: 2rem; color: #B9F2FF; margin-bottom: 0.5rem;">💎</div>
+                            <div class="plan-title">Platinum Plan</div>
+                            <div style="color: #666; margin-bottom: 1rem;">Premium experience</div>
+                            <div class="plan-price">$29.99<span style="font-size: 1rem; font-weight: normal;">/month</span></div>
+                            <div style="margin: 1.5rem 0;">
+                                <div class="plan-feature">✅ Advanced SSI analysis</div>
+                                <div class="plan-feature">✅ Unlimited data storage</div>
+                                <div class="plan-feature">✅ Daily email reports</div>
+                                <div class="plan-feature">✅ Growth recommendations</div>
+                                <div class="plan-feature">✅ Profile optimization</div>
+                                <div class="plan-feature">✅ Priority support</div>
+                                <div class="plan-feature">✅ Custom dashboards</div>
+                            </div>
+                            <div style="margin-top: auto; padding-top: 1rem;">
+                                <a href="https://buy.stripe.com/fZeeXZ21fh0Ca3e144" target="_blank" style="
+                                    display: block;
+                                    background-color: #FE1B04;
+                                    color: white;
+                                    text-align: center;
+                                    padding: 0.8rem;
+                                    border-radius: 0.5rem;
+                                    text-decoration: none;
+                                    font-weight: bold;
+                                    transition: all 0.3s ease;">
+                                    Subscribe Now
+                                </a>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
-                    # Placeholder for Stripe integration
-                    if select_basic or select_pro or select_enterprise:
-                        selected_plan = "Basic" if select_basic else "Pro" if select_pro else "Enterprise"
-                        st.info(f"You've selected the {selected_plan} Plan. Stripe payment integration will be available soon.")
-                        
-                        # Display placeholder payment form
-                        st.markdown("### Payment Information")
-                        st.markdown("Stripe integration will be completed soon. For now, you can enter payment details below.")
-                        
-                        st.text_input("Cardholder Name", placeholder="Enter cardholder name")
-                        st.text_input("Card Number", placeholder="Enter card number")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.text_input("Expiration Date", placeholder="MM/YY")
-                        with col2:
-                            st.text_input("CVC", placeholder="CVC", type="password")
-                        
-                        st.text_input("Billing Address", placeholder="Enter billing address")
-                        
-                        pay_button = st.button("Complete Payment")
-                        if pay_button:
-                            st.success("Thank you for your subscription! You will receive a confirmation email shortly.")
+                    # FAQ Section
+                    st.markdown("<div class='section-header' style='margin-top: 3rem;'>Frequently Asked Questions</div>", unsafe_allow_html=True)
                     
-                    # Current subscription info (display if user already has a subscription)
-                    st.markdown("### Current Subscription")
-                    st.info("You don't have an active subscription. Select a plan above to subscribe.")
+                    # Create expandable FAQ items
+                    with st.expander("What's included in the free plan?"):
+                        st.markdown("""
+                        The free plan includes basic LinkedIn analytics for your personal profile:
+                        - Basic dashboard with key metrics
+                        - Limited data history (30 days)
+                        - Standard visualizations
+                        - Manual data uploads
+                        """)
                     
-                    # Display payment history placeholder
-                    st.markdown("### Payment History")
-                    st.info("No payment history available.")
+                    with st.expander("How are subscriptions billed?"):
+                        st.markdown("""
+                        All subscriptions are billed monthly. You can cancel at any time from your account settings.
+                        When you cancel, you'll still have access to premium features until the end of your current billing period.
+                        """)
+                    
+                    with st.expander("Can I upgrade or downgrade my plan?"):
+                        st.markdown("""
+                        Yes, you can change your subscription plan at any time. 
+                        When upgrading, you'll get immediate access to new features and will be charged the prorated difference.
+                        When downgrading, the change will take effect at the end of your current billing cycle.
+                        """)
+                    
+                    with st.expander("Is there a refund policy?"):
+                        st.markdown("""
+                        We offer a 7-day money-back guarantee on all new subscriptions. 
+                        If you're not satisfied with your purchase, contact our support team within 7 days of your initial purchase for a full refund.
+                        """)
+                    
+                    with st.expander("How secure is my payment information?"):
+                        st.markdown("""
+                        All payments are processed securely through Stripe. We never store your credit card information on our servers.
+                        Your transaction is protected with industry-standard encryption and security practices.
+                        """)
+                    
+                    # Current subscription info and contact support
+                    st.markdown("""
+                    <div style="background-color: rgba(240, 240, 240, 0.5); 
+                               padding: 1.5rem; 
+                               border-radius: 0.5rem;
+                               margin: 2rem 0;">
+                        <h3 style="color: #333; margin-top: 0;">Current Subscription</h3>
+                        <p style="color: #666;">You're currently using the free plan. Upgrade to a premium plan to unlock more features.</p>
+                        <p style="margin-top: 1.5rem; text-align: center; color: #666;">
+                            For any billing inquiries, please contact <a href="mailto:support@linalysis.com" style="color: #FE1B04;">support@linalysis.com</a>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 # Remove old tab code - we don't need this anymore with the new Dashboard layout
                 
