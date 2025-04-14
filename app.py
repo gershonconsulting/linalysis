@@ -27,7 +27,98 @@ st.set_page_config(
 )
 
 # App title and description
-st.title("Linalysis Dashboard")
+# st.title("Linalysis Dashboard") - replaced with custom styling below
+
+# Custom CSS for styling
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #FE1B04;
+        text-align: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(254, 27, 4, 0.2);
+    }
+    .section-header {
+        font-size: 1.8rem;
+        color: #FE1B04;
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(254, 27, 4, 0.2);
+        margin-bottom: 1rem;
+    }
+    .subsection-header {
+        font-size: 1.5rem;
+        color: #FE1B04;
+        padding-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .highlight-box {
+        background-color: #FFF0EE;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #FE1B04;
+        margin-bottom: 1rem;
+    }
+    .card {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+        border-top: 4px solid #FE1B04;
+    }
+    .metric-card {
+        background-color: #FFF0EE;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1rem;
+    }
+    .plan-card {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+        border-top: 4px solid #FE1B04;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .plan-price {
+        color: #FE1B04;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin: 1rem 0;
+    }
+    .plan-title {
+        font-size: 1.4rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .plan-feature {
+        text-align: left;
+        padding: 0.2rem 0;
+    }
+    .input-container {
+        background-color: #FFF0EE;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .sidebar .css-1aumxhk {
+        background-color: #FFF0EE;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Custom title with styling
+st.markdown('<div class="main-header">Linalysis Dashboard</div>', unsafe_allow_html=True)
 st.markdown("""
 This application helps you analyze your LinkedIn profile metrics over time.
 Upload your LinkedIn data export CSV to get started.
@@ -1346,12 +1437,10 @@ if uploaded_file is not None:
                         st.info("No invitations data available in the uploaded file. LinkedIn data export must include the 'Invitations' column to display this analysis.")
                 
                 elif category == "Reports":
-                    st.subheader("Linalysis Reports")
+                    # Custom styled header
+                    st.markdown('<div class="section-header">Linalysis Reports</div>', unsafe_allow_html=True)
                     
-                    st.markdown("""
-                    Generate comprehensive reports based on your LinkedIn data. These reports provide in-depth analysis
-                    and actionable insights to help you optimize your LinkedIn strategy.
-                    """)
+                    st.markdown('<div class="highlight-box">Generate comprehensive reports based on your LinkedIn data. These reports provide in-depth analysis and actionable insights to help you optimize your LinkedIn strategy.</div>', unsafe_allow_html=True)
                     
                     # Report type selection
                     report_type = st.radio(
@@ -1451,11 +1540,14 @@ if uploaded_file is not None:
                             st.warning("Please enter an email address for report delivery.")
                 
                 elif category == "Settings":
-                    st.subheader("Linalysis Account Settings")
+                    # Custom styled header
+                    st.markdown('<div class="section-header">Linalysis Account Settings</div>', unsafe_allow_html=True)
                     
                     # Profile settings
-                    st.markdown("### Profile Settings")
+                    st.markdown('<div class="subsection-header">Profile Settings</div>', unsafe_allow_html=True)
                     
+                    # Wrap in a card
+                    st.markdown('<div class="card">', unsafe_allow_html=True)
                     col1, col2 = st.columns(2)
                     with col1:
                         st.text_input("Full Name", placeholder="Enter your full name")

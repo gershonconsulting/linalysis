@@ -4,7 +4,8 @@ address = "0.0.0.0"
 port = 5000
 
 [theme]
-primaryColor = "#0A66C2"  # LinkedIn blue color
+primaryColor = "#FE1B04"  # Linalysis red color
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F5F5F5"
+secondaryBackgroundColor = "#FFF0EE"  # Light red background
 textColor = "#262626"
+font = "sans serif"
