@@ -2134,6 +2134,290 @@ if uploaded_file is not None:
                     else:
                         st.info("No invitations data available in the uploaded file. LinkedIn data export must include the 'Invitations' column to display this analysis.")
                 
+                elif category == "Campaigns":
+                    # Custom styled header
+                    st.markdown('<div class="section-header">LinkedIn Campaigns</div>', unsafe_allow_html=True)
+                    
+                    st.markdown('<div class="highlight-box">Analyze your LinkedIn messaging and email campaigns to improve your outreach strategy. Track performance metrics, identify trends, and optimize your campaigns for better results.</div>', unsafe_allow_html=True)
+                    
+                    # Create tabs for Messaging and Email campaigns
+                    campaign_tabs = st.tabs(["Messaging Campaigns", "Email Campaigns"])
+                    
+                    # Campaign data upload/sample option
+                    with campaign_tabs[0]:  # Messaging Campaigns tab
+                        col1, col2 = st.columns([2, 1])
+                        
+                        with col1:
+                            st.subheader("Campaign Performance Analysis")
+                            
+                            # Campaign data file uploader
+                            campaign_file = st.file_uploader("Upload your LinkedIn Messaging campaign data (CSV format)", key="messaging_campaign_upload", type="csv")
+                            
+                            # Use sample data or uploaded data
+                            if campaign_file is not None:
+                                try:
+                                    # Process uploaded campaign data
+                                    campaign_df = process_campaign_data(campaign_file, campaign_type="messaging")
+                                    use_sample_data = False
+                                except Exception as e:
+                                    st.error(f"Error processing campaign data: {str(e)}")
+                                    campaign_df = None
+                                    use_sample_data = True
+                            else:
+                                # Option to use sample data
+                                use_sample_data = st.checkbox("Use sample campaign data for demonstration", value=True, key="use_sample_messaging")
+                                if use_sample_data:
+                                    campaign_df = get_campaign_sample_data()
+                                else:
+                                    campaign_df = None
+                            
+                            # Display campaign analytics if data is available
+                            if campaign_df is not None:
+                                # Calculate campaign statistics
+                                campaign_stats = calculate_campaign_statistics(campaign_df, campaign_type="messaging")
+                                
+                                # Campaign overview metrics
+                                st.markdown("""
+                                <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                            padding: 0.5rem 1rem; 
+                                            border-radius: 8px; 
+                                            margin: 1rem 0;">
+                                    <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                                        Campaign Performance Metrics
+                                    </h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Display key campaign metrics in 4 columns
+                                metric_cols = st.columns(4)
+                                
+                                with metric_cols[0]:
+                                    st.markdown(f"""
+                                    <div class="metric-card">
+                                        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #FE1B04;">📤</div>
+                                        <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.2rem;">Total Campaigns</div>
+                                        <div style="font-size: 1.8rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">{campaign_stats['total_campaigns']}</div>
+                                        <div style="font-size: 0.8rem; color: #666;">
+                                            {campaign_stats['active_campaigns']} active
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with metric_cols[1]:
+                                    st.markdown(f"""
+                                    <div class="metric-card">
+                                        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #FE1B04;">📨</div>
+                                        <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.2rem;">Messages Sent</div>
+                                        <div style="font-size: 1.8rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">{campaign_stats['total_sent']}</div>
+                                        <div style="font-size: 0.8rem; color: #666;">
+                                            {campaign_stats['total_delivered']} delivered
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with metric_cols[2]:
+                                    st.markdown(f"""
+                                    <div class="metric-card">
+                                        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #FE1B04;">📊</div>
+                                        <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.2rem;">Avg. Open Rate</div>
+                                        <div style="font-size: 1.8rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">{campaign_stats['avg_open_rate']:.1f}%</div>
+                                        <div style="font-size: 0.8rem; color: {'#2CA02C' if campaign_stats['avg_open_rate'] > 25 else '#D62728'};">
+                                            {format_metric_change(campaign_stats.get('conversion_rate_week_change', 0), "percentage")}
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with metric_cols[3]:
+                                    st.markdown(f"""
+                                    <div class="metric-card">
+                                        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #FE1B04;">🎯</div>
+                                        <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.2rem;">Conversion Rate</div>
+                                        <div style="font-size: 1.8rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">{campaign_stats['avg_conversion_rate']:.1f}%</div>
+                                        <div style="font-size: 0.8rem; color: {'#2CA02C' if campaign_stats.get('conversion_rate_week_change', 0) > 0 else '#D62728'};">
+                                            {format_metric_change(campaign_stats.get('conversion_rate_week_change', 0), "percentage")}
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                # Campaign visualizations (3 rows x 2 columns)
+                                st.markdown("""
+                                <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                            padding: 0.5rem 1rem; 
+                                            border-radius: 8px; 
+                                            margin: 1rem 0;">
+                                    <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                                        Campaign Analysis Dashboard
+                                    </h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Create visualization grid
+                                row1_col1, row1_col2 = st.columns(2)
+                                row2_col1, row2_col2 = st.columns(2)
+                                row3_col1, row3_col2 = st.columns(2)
+                                
+                                with row1_col1:
+                                    st.subheader("Campaign Performance Over Time")
+                                    st.plotly_chart(create_campaign_performance_chart(campaign_df), use_container_width=True)
+                                
+                                with row1_col2:
+                                    st.subheader("Conversion Rates")
+                                    st.plotly_chart(create_campaign_rates_chart(campaign_df), use_container_width=True)
+                                
+                                with row2_col1:
+                                    st.subheader("Campaign Comparison")
+                                    st.plotly_chart(create_campaign_comparison_chart(campaign_df), use_container_width=True)
+                                
+                                with row2_col2:
+                                    st.subheader("Campaign Funnel Analysis")
+                                    st.plotly_chart(create_campaign_funnel_chart(campaign_df), use_container_width=True)
+                                
+                                with row3_col1:
+                                    st.subheader("Performance by Day of Week")
+                                    st.plotly_chart(create_day_of_week_performance_chart(campaign_df), use_container_width=True)
+                                
+                                with row3_col2:
+                                    st.subheader("Metric Correlations")
+                                    st.plotly_chart(create_campaign_heatmap(campaign_df), use_container_width=True)
+                            
+                            else:
+                                # No data state
+                                st.info("Upload your LinkedIn Campaigns data or use sample data to view the analysis.")
+                        
+                        with col2:
+                            st.subheader("Campaign Insights")
+                            
+                            if campaign_df is not None:
+                                # Generate AI recommendations based on campaign data
+                                recommendations = generate_campaign_recommendations(campaign_df, campaign_stats)
+                                
+                                # Display recommendations
+                                st.markdown("""
+                                <div style="background-color: #FFF0EE; 
+                                            padding: 1.2rem;
+                                            border-radius: 0.8rem;
+                                            margin: 1rem 0;
+                                            border-left: 4px solid #FE1B04;">
+                                    <h4 style="margin-top: 0;">Campaign Recommendations</h4>
+                                """, unsafe_allow_html=True)
+                                
+                                for i, rec in enumerate(recommendations):
+                                    st.markdown(f"""
+                                    <div style="margin: 0.5rem 0; padding: 0.5rem; background-color: rgba(255, 255, 255, 0.7); border-radius: 4px;">
+                                        <div style="display: flex; align-items: flex-start;">
+                                            <div style="color: #FE1B04; font-weight: bold; margin-right: 0.5rem;">{i+1}.</div>
+                                            <div>{rec}</div>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                st.markdown("</div>", unsafe_allow_html=True)
+                                
+                                # Display campaign data table
+                                st.subheader("Campaign Data")
+                                st.dataframe(
+                                    campaign_df[['Date', 'Campaign Name', 'Status', 'Sent', 'Delivered', 
+                                                'Opens', 'Responses', 'Conversions', 'Open Rate', 
+                                                'Response Rate', 'Conversion Rate']],
+                                    use_container_width=True,
+                                    height=300
+                                )
+                            else:
+                                # No data state for recommendations
+                                st.info("Campaign data is required to generate insights and recommendations.")
+                    
+                    with campaign_tabs[1]:  # Email Campaigns tab
+                        # Similar structure to Messaging Campaigns but for Email
+                        col1, col2 = st.columns([2, 1])
+                        
+                        with col1:
+                            st.subheader("Email Campaign Analysis")
+                            
+                            # Campaign data file uploader for email campaigns
+                            email_campaign_file = st.file_uploader("Upload your LinkedIn Email campaign data (CSV format)", key="email_campaign_upload", type="csv")
+                            
+                            # Use sample data or uploaded data
+                            if email_campaign_file is not None:
+                                try:
+                                    # Process uploaded campaign data
+                                    email_campaign_df = process_campaign_data(email_campaign_file, campaign_type="emailing")
+                                    use_email_sample_data = False
+                                except Exception as e:
+                                    st.error(f"Error processing email campaign data: {str(e)}")
+                                    email_campaign_df = None
+                                    use_email_sample_data = True
+                            else:
+                                # Option to use sample data
+                                use_email_sample_data = st.checkbox("Use sample email campaign data for demonstration", value=True, key="use_sample_email")
+                                if use_email_sample_data:
+                                    email_campaign_df = get_campaign_sample_data()
+                                else:
+                                    email_campaign_df = None
+                            
+                            # Display email campaign analytics if data is available
+                            if email_campaign_df is not None:
+                                # Calculate campaign statistics
+                                email_campaign_stats = calculate_campaign_statistics(email_campaign_df, campaign_type="emailing")
+                                
+                                # Display similar visualizations as for messaging campaigns
+                                st.markdown("""
+                                <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                            padding: 0.5rem 1rem; 
+                                            border-radius: 8px; 
+                                            margin: 1rem 0;">
+                                    <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                                        Email Campaign Performance
+                                    </h3>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Create visualization grid for email campaigns
+                                email_row1_col1, email_row1_col2 = st.columns(2)
+                                
+                                with email_row1_col1:
+                                    st.subheader("Email Performance")
+                                    st.plotly_chart(create_campaign_performance_chart(email_campaign_df), use_container_width=True)
+                                
+                                with email_row1_col2:
+                                    st.subheader("Email Campaign Funnel")
+                                    st.plotly_chart(create_campaign_funnel_chart(email_campaign_df), use_container_width=True)
+                            
+                            else:
+                                # No data state
+                                st.info("Upload your LinkedIn Email Campaigns data or use sample data to view the analysis.")
+                        
+                        with col2:
+                            st.subheader("Email Campaign Insights")
+                            
+                            if email_campaign_df is not None:
+                                # Generate AI recommendations based on email campaign data
+                                email_recommendations = generate_campaign_recommendations(email_campaign_df, email_campaign_stats)
+                                
+                                # Display recommendations
+                                st.markdown("""
+                                <div style="background-color: #FFF0EE; 
+                                            padding: 1.2rem;
+                                            border-radius: 0.8rem;
+                                            margin: 1rem 0;
+                                            border-left: 4px solid #FE1B04;">
+                                    <h4 style="margin-top: 0;">Email Campaign Recommendations</h4>
+                                """, unsafe_allow_html=True)
+                                
+                                for i, rec in enumerate(email_recommendations):
+                                    st.markdown(f"""
+                                    <div style="margin: 0.5rem 0; padding: 0.5rem; background-color: rgba(255, 255, 255, 0.7); border-radius: 4px;">
+                                        <div style="display: flex; align-items: flex-start;">
+                                            <div style="color: #FE1B04; font-weight: bold; margin-right: 0.5rem;">{i+1}.</div>
+                                            <div>{rec}</div>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                st.markdown("</div>", unsafe_allow_html=True)
+                            else:
+                                # No data state for recommendations
+                                st.info("Email campaign data is required to generate insights and recommendations.")
+                
                 elif category == "Reports":
                     # Custom styled header
                     st.markdown('<div class="section-header">Linalysis Reports</div>', unsafe_allow_html=True)
