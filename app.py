@@ -17,6 +17,20 @@ from visualization import (
     create_heatmap,
     create_company_metrics_chart
 )
+from campaign_data_processor import (
+    process_campaign_data, 
+    calculate_campaign_statistics, 
+    generate_campaign_recommendations,
+    get_campaign_sample_data
+)
+from campaign_visualization import (
+    create_campaign_performance_chart,
+    create_campaign_rates_chart,
+    create_campaign_comparison_chart,
+    create_campaign_funnel_chart,
+    create_day_of_week_performance_chart,
+    create_campaign_heatmap
+)
 from utils import display_error_message, format_metric_change, generate_chart_analysis
 
 # Page configuration
@@ -212,6 +226,319 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize session state for navigation
+if 'nav_state' not in st.session_state:
+    st.session_state.nav_state = {
+        'current_menu': 'My Dashboard',
+        'current_submenu': None,
+        'current_subsubmenu': None,
+        'menu_expanded': False
+    }
+
+# Navigation bar styling
+st.markdown("""
+<style>
+.navbar {
+    background-color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-brand {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #FE1B04;
+    padding-right: 1rem;
+    border-right: 1px solid #eee;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 180px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1000;
+    border-radius: 4px;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown-btn {
+    background-color: #FE1B04;
+    color: white;
+    padding: 8px 16px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-btn:hover {
+    background-color: #e01803;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #EEE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    cursor: pointer;
+    color: #FE1B04;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+}
+
+.notification-icon {
+    margin-right: 16px;
+    position: relative;
+    cursor: pointer;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #FE1B04;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nested-menu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    display: none;
+    background-color: #f9f9f9;
+    min-width: 180px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1000;
+    border-radius: 4px;
+}
+
+.menu-item-with-nested:hover .nested-menu {
+    display: block;
+}
+
+.sub-nested-menu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    display: none;
+    background-color: #f9f9f9;
+    min-width: 150px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1000;
+    border-radius: 4px;
+}
+
+.nested-item-with-sub:hover .sub-nested-menu {
+    display: block;
+}
+
+.current-page {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.breadcrumb-item {
+    padding: 0 0.5rem;
+}
+
+.breadcrumb-separator {
+    color: #ccc;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Navigation bar with user dropdown
+st.markdown("""
+<div class="navbar">
+    <div style="display: flex; align-items: center;">
+        <div class="nav-brand">Linalysis</div>
+        <div class="user-menu">
+            <div class="user-avatar">JS</div>
+            <div class="dropdown">
+                <div style="cursor: pointer;">John Smith ▼</div>
+                <div class="dropdown-content">
+                    <a href="#" onclick="handleMenuClick('My Dashboard')">My Dashboard</a>
+                    <a href="#" onclick="handleMenuClick('My Summary')">My Summary</a>
+                    
+                    <div class="menu-item-with-nested">
+                        <a href="#" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>My Company</span>
+                            <span>▶</span>
+                        </a>
+                        <div class="nested-menu">
+                            <a href="#" onclick="handleSubMenuClick('My Company', 'Summary')">Summary</a>
+                            <a href="#" onclick="handleSubMenuClick('My Company', 'Graph')">Graph</a>
+                            <a href="#" onclick="handleSubMenuClick('My Company', 'Data')">Data</a>
+                            <a href="#" onclick="handleSubMenuClick('My Company', 'Settings')">Settings</a>
+                        </div>
+                    </div>
+                    
+                    <div class="menu-item-with-nested">
+                        <a href="#" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>My Campaigns</span>
+                            <span>▶</span>
+                        </a>
+                        <div class="nested-menu">
+                            <div class="nested-item-with-sub">
+                                <a href="#" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Messaging</span>
+                                    <span>▶</span>
+                                </a>
+                                <div class="sub-nested-menu">
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Messaging', 'Summary')">Summary</a>
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Messaging', 'Graphs')">Graphs</a>
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Messaging', 'Data')">Data</a>
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Messaging', 'Settings')">Settings</a>
+                                </div>
+                            </div>
+                            <div class="nested-item-with-sub">
+                                <a href="#" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Emailing</span>
+                                    <span>▶</span>
+                                </a>
+                                <div class="sub-nested-menu">
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Emailing', 'Summary')">Summary</a>
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Emailing', 'Graphs')">Graphs</a>
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Emailing', 'Data')">Data</a>
+                                    <a href="#" onclick="handleSubSubMenuClick('My Campaigns', 'Emailing', 'Settings')">Settings</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="#" onclick="handleMenuClick('My Data')">My Data</a>
+                    <a href="#" onclick="handleMenuClick('My Account')">My Account</a>
+                    <div style="border-top: 1px solid #eee; margin-top: 0.5rem;"></div>
+                    <a href="#" onclick="handleMenuClick('Logout')">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="nav-right">
+        <div class="notification-icon">
+            <span style="font-size: 1.2rem;">🔔</span>
+            <div class="notification-badge">3</div>
+        </div>
+        <div class="dropdown">
+            <button class="dropdown-btn">
+                <span style="margin-right: 0.5rem;">+ Create</span>
+            </button>
+            <div class="dropdown-content">
+                <a href="#">New Campaign</a>
+                <a href="#">New Report</a>
+                <a href="#">Import Data</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleMenuClick(menuItem) {
+    // In real implementation, this would update session state via server callback
+    console.log('Menu clicked:', menuItem);
+}
+
+function handleSubMenuClick(menuItem, subMenuItem) {
+    // Handle submenu clicks
+    console.log('Submenu clicked:', menuItem, subMenuItem);
+}
+
+function handleSubSubMenuClick(menuItem, subMenuItem, subSubMenuItem) {
+    // Handle sub-submenu clicks
+    console.log('Sub-submenu clicked:', menuItem, subMenuItem, subSubMenuItem);
+}
+</script>
+""", unsafe_allow_html=True)
+
+# Create breadcrumb navigation based on current state
+breadcrumb_items = ["Home"]
+if st.session_state.nav_state['current_menu']:
+    breadcrumb_items.append(st.session_state.nav_state['current_menu'])
+if st.session_state.nav_state['current_submenu']:
+    breadcrumb_items.append(st.session_state.nav_state['current_submenu'])
+if st.session_state.nav_state['current_subsubmenu']:
+    breadcrumb_items.append(st.session_state.nav_state['current_subsubmenu'])
+
+breadcrumb_html = '<div class="breadcrumb">'
+for i, item in enumerate(breadcrumb_items):
+    breadcrumb_html += f'<div class="breadcrumb-item">{item}</div>'
+    if i < len(breadcrumb_items) - 1:
+        breadcrumb_html += '<div class="breadcrumb-separator">›</div>'
+breadcrumb_html += '</div>'
+
+st.markdown(breadcrumb_html, unsafe_allow_html=True)
+
+# Display current page title
+current_title = st.session_state.nav_state['current_menu']
+if st.session_state.nav_state['current_submenu']:
+    current_title += f" • {st.session_state.nav_state['current_submenu']}"
+if st.session_state.nav_state['current_subsubmenu']:
+    current_title += f" • {st.session_state.nav_state['current_subsubmenu']}"
+
+st.markdown(f'<div class="current-page">{current_title}</div>', unsafe_allow_html=True)
+
 # Custom title with styling
 st.markdown('<div class="main-header">Linalysis Dashboard</div>', unsafe_allow_html=True)
 st.markdown("""
@@ -270,7 +597,7 @@ if uploaded_file is not None:
             category = st.sidebar.radio(
                 "View Category",
                 ["Dashboard", "Connections", "Profile Views", "Search Appearances", "SSI Score", 
-                 "Invitations", "Reports", "Settings", "Billing"]
+                 "Invitations", "Campaigns", "Reports", "Settings", "Billing"]
             )
             
             # Add time period selector for Dashboard
