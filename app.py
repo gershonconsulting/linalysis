@@ -222,9 +222,19 @@ if uploaded_file is not None:
             # Set category based on query params instead of radio button
             category = current_page
             
-            # If Dashboard is selected with a time period, adjust the date range accordingly
-            default_start_date = max(min_date, max_date - timedelta(days=90))
-            if current_page == "Dashboard":
+            # Variable needed for date selection will be set in the date filter section
+            
+            # Date filter
+            st.sidebar.markdown('<div class="section-header" style="font-size: 1.2rem;">Filter Data</div>', unsafe_allow_html=True)
+            
+            min_date = df['Date'].min().date()
+            max_date = df['Date'].max().date()
+            
+            # By default, show all data
+            default_start_date = min_date
+            
+            # Adjust date range based on selected time period in Dashboard
+            if current_page == "Dashboard" and time_period != "All":
                 if time_period == "Week":
                     default_start_date = max(min_date, max_date - timedelta(days=7))
                 elif time_period == "Month":
@@ -232,17 +242,11 @@ if uploaded_file is not None:
                 elif time_period == "Quarter":
                     default_start_date = max(min_date, max_date - timedelta(days=90))
             
-            # Date filter
-            st.sidebar.header("Filter Data")
-            
-            min_date = df['Date'].min().date()
-            max_date = df['Date'].max().date()
-            
-            # Calculate default date range (last 3 months if available)
-            default_start_date = max(min_date, max_date - timedelta(days=90))
-            
+            # Create a container with custom styling for date inputs
+            st.sidebar.markdown('<div class="input-container">', unsafe_allow_html=True)
             start_date = st.sidebar.date_input("Start Date", default_start_date, min_value=min_date, max_value=max_date)
             end_date = st.sidebar.date_input("End Date", max_date, min_value=min_date, max_value=max_date)
+            st.sidebar.markdown('</div>', unsafe_allow_html=True)
             
             if start_date > end_date:
                 st.sidebar.error("Start date must be before end date")
