@@ -478,6 +478,11 @@ if uploaded_file is not None:
                             fig = create_company_metrics_chart(filtered_df, "Invitations")
                             fig.update_layout(title="Pending Invitations Over Time")
                             st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Add Invitations AI analysis
+                            invitations_change = stats['invitations_week_change'] if 'invitations_week_change' in stats else invitations_change
+                            invitations_pct_change = stats['invitations_week_pct_change'] if 'invitations_week_pct_change' in stats else 0
+                            display_ai_analysis("Invitations", invitations_value, invitations_change, invitations_pct_change)
                         else:
                             st.markdown(chart_card("Invitations", "<div style='padding: 1rem; color: #666;'>No invitations data available.</div>", "📩"), unsafe_allow_html=True)
                     
@@ -489,56 +494,99 @@ if uploaded_file is not None:
                                 create_company_metrics_chart(filtered_df, "Company Followers"), 
                                 use_container_width=True
                             )
+                            
+                            # Add company followers AI analysis
+                            company_current = filtered_df['Company Followers'].iloc[-1]
+                            company_previous = filtered_df['Company Followers'].iloc[0]
+                            company_change = company_current - company_previous
+                            company_pct_change = (company_change / company_previous * 100) if company_previous > 0 else 0
+                            
+                            display_ai_analysis("Company Followers", company_current, company_change, company_pct_change)
                         else:
-                            st.markdown(chart_card("Key Performance Metrics", f"""
-                            <div style="padding: 0.5rem;">
-                                <div style="margin-bottom: 0.5rem;">
-                                    <span style="font-weight: bold; color: #333;">Average growth:</span>
-                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                            # Display performance summary with color-coded metrics
+                            st.markdown(chart_card("Key Performance Summary", "", "📝"), unsafe_allow_html=True)
+                            
+                            # Determine color codes for each metric based on performance
+                            growth_color = "#2CA02C" if stats['avg_connections_growth'] > 3 else "#FF7F0E" if stats['avg_connections_growth'] > 1 else "#D62728"
+                            views_color = "#2CA02C" if stats['avg_views'] > 10 else "#FF7F0E" if stats['avg_views'] > 5 else "#D62728"
+                            ssi_color = "#2CA02C" if stats['avg_ssi'] > 70 else "#FF7F0E" if stats['avg_ssi'] > 50 else "#D62728"
+                            ratio_color = "#2CA02C" if stats['view_connection_ratio'] < 10 else "#FF7F0E" if stats['view_connection_ratio'] < 20 else "#D62728"
+                            
+                            st.markdown(f"""
+                            <div style="background-color: rgba(50, 50, 50, 0.05); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="margin-bottom: 0.8rem;">
+                                    <span style="font-weight: bold; color: #333;">Daily connection growth:</span>
+                                    <span style="float: right; color: {growth_color}; font-weight: bold;">
                                         {stats['avg_connections_growth']:.2f}
                                     </span>
                                     <span style="float: right; color: #666; margin-right: 5px;">
                                         connections/day
                                     </span>
                                 </div>
-                                <div style="margin-bottom: 0.5rem;">
+                                <div style="margin-bottom: 0.8rem;">
                                     <span style="font-weight: bold; color: #333;">Monthly projection:</span>
-                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                    <span style="float: right; color: {growth_color}; font-weight: bold;">
                                         {stats['projected_monthly_growth']:.0f}
                                     </span>
                                     <span style="float: right; color: #666; margin-right: 5px;">
                                         connections/month
                                     </span>
                                 </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <span style="font-weight: bold; color: #333;">Average views:</span>
-                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                <div style="margin-bottom: 0.8rem;">
+                                    <span style="font-weight: bold; color: #333;">Daily profile views:</span>
+                                    <span style="float: right; color: {views_color}; font-weight: bold;">
                                         {stats['avg_views']:.1f}
                                     </span>
                                     <span style="float: right; color: #666; margin-right: 5px;">
                                         views/day
                                     </span>
                                 </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <span style="font-weight: bold; color: #333;">Average SSI:</span>
-                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
+                                <div style="margin-bottom: 0.8rem;">
+                                    <span style="font-weight: bold; color: #333;">Average SSI Score:</span>
+                                    <span style="float: right; color: {ssi_color}; font-weight: bold;">
                                         {stats['avg_ssi']:.1f}
                                     </span>
                                     <span style="float: right; color: #666; margin-right: 5px;">
                                         / 100
                                     </span>
                                 </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <span style="font-weight: bold; color: #333;">View-Connection ratio:</span>
-                                    <span style="float: right; color: #FE1B04; font-weight: bold;">
-                                        {stats['view_connection_ratio']:.2f}
+                                <div style="margin-bottom: 0.8rem;">
+                                    <span style="font-weight: bold; color: #333;">Views per connection:</span>
+                                    <span style="float: right; color: {ratio_color}; font-weight: bold;">
+                                        {stats['view_connection_ratio']:.1f}
                                     </span>
                                     <span style="float: right; color: #666; margin-right: 5px;">
-                                        views per connection
+                                        views
                                     </span>
                                 </div>
                             </div>
-                            """, "📝"), unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
+                            
+                            # Add overall performance analysis
+                            search_change = stats['search_week_change'] if 'search_week_change' in stats else stats['search_change']
+                            search_pct_change = stats['search_week_pct_change'] if 'search_week_pct_change' in stats else 0
+                            
+                            # Generate overall AI insight
+                            st.markdown("""
+                            <div style="background-color: rgba(44, 160, 44, 0.1); 
+                                        border-left: 4px solid #2CA02C; 
+                                        padding: 0.8rem; 
+                                        border-radius: 4px;
+                                        margin: 0.5rem 0 1.5rem 0;">
+                                <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 1.5rem; margin-right: 0.5rem;">🧠</span>
+                                    <span style="font-weight: 600; color: #2CA02C;">AI Performance Summary</span>
+                                </div>
+                                <div style="color: #333; font-size: 0.9rem;">
+                                    Based on your LinkedIn metrics, your overall performance shows 
+                                    <strong style="color: #2CA02C;">steady growth</strong> in your network.
+                                    Your profile is gaining visibility with an average of 
+                                    <strong style="color: #2CA02C;">{stats['avg_views']:.1f} views</strong> 
+                                    and <strong style="color: #2CA02C;">{stats['avg_search']:.1f} search appearances</strong> per day.
+                                    To accelerate growth, consider increasing your posting frequency and engagement with your existing network.
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                 
                 elif category == "Connections":
                     # Display connections header with gradient styling
@@ -872,6 +920,36 @@ if uploaded_file is not None:
                     
                     # Correlation heatmap
                     st.plotly_chart(create_heatmap(filtered_df), use_container_width=True)
+                    
+                    # Add AI analysis for search appearances
+                    search_change = stats['search_week_change'] if 'search_week_change' in stats else stats['search_change']
+                    search_pct_change = stats['search_week_pct_change'] if 'search_week_pct_change' in stats else 0
+                    
+                    analysis_text, color, emoji = generate_chart_analysis(
+                        "Search Appearances", stats['latest_search'], search_change, search_pct_change, 7
+                    )
+                    
+                    # Convert hex color to RGB for background with opacity
+                    r = int(color[1:3], 16)
+                    g = int(color[3:5], 16)
+                    b = int(color[5:7], 16)
+                    
+                    st.markdown(f"""
+                    <div style="background-color: rgba({r}, {g}, {b}, 0.1); 
+                                border-left: 4px solid {color}; 
+                                padding: 0.8rem; 
+                                border-radius: 4px;
+                                margin: 0.5rem 0 1.5rem 0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.5rem; margin-right: 0.5rem;">{emoji}</span>
+                            <span style="font-weight: 600; color: {color};">AI Insight: Search Visibility</span>
+                        </div>
+                        <div style="color: #333; font-size: 0.9rem;">
+                            {analysis_text} The correlation heatmap shows how your search appearances relate to other metrics.
+                            A strong correlation with profile views suggests that search visibility directly impacts profile traffic.
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     # Additional insights
                     st.subheader("Profile Views Insights")
@@ -1294,6 +1372,36 @@ if uploaded_file is not None:
                     # Main SSI chart
                     st.subheader("SSI Score Evolution")
                     st.plotly_chart(create_ssi_chart(filtered_df), use_container_width=True)
+                    
+                    # Add SSI AI analysis
+                    ssi_change = stats['ssi_week_change'] if 'ssi_week_change' in stats else stats['ssi_change']
+                    ssi_pct_change = stats['ssi_week_pct_change'] if 'ssi_week_pct_change' in stats else 0
+                    
+                    analysis_text, color, emoji = generate_chart_analysis(
+                        "SSI", stats['latest_ssi'], ssi_change, ssi_pct_change, 7
+                    )
+                    
+                    # Convert hex color to RGB for background with opacity
+                    r = int(color[1:3], 16)
+                    g = int(color[3:5], 16)
+                    b = int(color[5:7], 16)
+                    
+                    st.markdown(f"""
+                    <div style="background-color: rgba({r}, {g}, {b}, 0.1); 
+                                border-left: 4px solid {color}; 
+                                padding: 0.8rem; 
+                                border-radius: 4px;
+                                margin: 0.5rem 0 1.5rem 0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 1.5rem; margin-right: 0.5rem;">{emoji}</span>
+                            <span style="font-weight: 600; color: {color};">AI Insight: Social Selling Index</span>
+                        </div>
+                        <div style="color: #333; font-size: 0.9rem;">
+                            {analysis_text} Your SSI score is comprised of four pillars: Professional Brand, Finding the Right People, 
+                            Engaging with Insights, and Building Relationships. Focus on improving each component to boost your overall SSI score.
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     # Weekly and monthly SSI in two columns
                     col1, col2 = st.columns(2)
