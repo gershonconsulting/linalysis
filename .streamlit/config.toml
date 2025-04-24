@@ -1,11 +1,16 @@
+
+[browser]
+gatherUsageStats = false
+
 [server]
-headless = true
-address = "0.0.0.0"
-port = 5000
+maxUploadSize = 200
+maxMessageSize = 200
+enableXsrfProtection = false
+enableCORS = false
 
 [theme]
-primaryColor = "#FE1B04"  # Linalysis red color
+primaryColor = "#FE1B04"
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#FFF0EE"  # Light red background
-textColor = "#262626"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
 font = "sans serif"
