@@ -33,6 +33,8 @@ from campaign_visualization import (
 )
 from utils import display_error_message, format_metric_change, generate_chart_analysis
 
+from linkedin_auth import initialize_linkedin_auth, get_linkedin_auth_url, handle_linkedin_callback, fetch_user_info
+
 # Page configuration
 st.set_page_config(
     page_title="Linalysis Dashboard",
@@ -40,6 +42,35 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Initialize LinkedIn authentication
+initialize_linkedin_auth()
+
+# Handle LinkedIn authentication
+if not st.session_state.linkedin_token:
+    st.markdown("""
+        <div style="text-align: center; padding: 2rem;">
+            <h1>Welcome to Linalysis</h1>
+            <p>Please connect with LinkedIn to continue</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    auth_url = get_linkedin_auth_url()
+    st.markdown(f"""
+        <div style="text-align: center;">
+            <a href="{auth_url}" class="linkedin-button">
+                <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="20" height="20" style="margin-right: 10px;">
+                Connect with LinkedIn
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# Check for authentication callback
+params = st.experimental_get_query_params()
+if 'code' in params:
+    if handle_linkedin_callback(params['code'][0]):
+        st.experimental_rerun()
 
 # App title and description
 # st.title("Linalysis Dashboard") - replaced with custom styling below

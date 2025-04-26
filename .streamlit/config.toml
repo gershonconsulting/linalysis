@@ -8,6 +8,11 @@ maxMessageSize = 200
 enableXsrfProtection = false
 enableCORS = false
 
+[oauth]
+linkedin_client_id = ""
+linkedin_client_secret = ""
+linkedin_redirect_uri = "http://localhost:5000/oauth2callback"
+
 [theme]
 primaryColor = "#FE1B04"
 backgroundColor = "#FFFFFF"
