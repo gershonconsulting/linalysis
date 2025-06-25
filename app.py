@@ -33,7 +33,7 @@ from campaign_visualization import (
 )
 from utils import display_error_message, format_metric_change, generate_chart_analysis
 
-from linkedin_auth import initialize_linkedin_auth, get_linkedin_auth_url, handle_linkedin_callback, fetch_user_info
+# from linkedin_auth import initialize_linkedin_auth, get_linkedin_auth_url, handle_linkedin_callback, fetch_user_info
 
 # Page configuration
 st.set_page_config(
@@ -43,34 +43,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize LinkedIn authentication
-initialize_linkedin_auth()
-
-# Handle LinkedIn authentication
-if not st.session_state.linkedin_token:
-    st.markdown("""
-        <div style="text-align: center; padding: 2rem;">
-            <h1>Welcome to Linalysis</h1>
-            <p>Please connect with LinkedIn to continue</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    auth_url = get_linkedin_auth_url()
-    st.markdown(f"""
-        <div style="text-align: center;">
-            <a href="{auth_url}" class="linkedin-button">
-                <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="20" height="20" style="margin-right: 10px;">
-                Connect with LinkedIn
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
-    st.stop()
-
-# Check for authentication callback
-params = st.experimental_get_query_params()
-if 'code' in params:
-    if handle_linkedin_callback(params['code'][0]):
-        st.experimental_rerun()
+# Demo mode - skip LinkedIn authentication
+if 'linkedin_token' not in st.session_state:
+    st.session_state.linkedin_token = "demo_token"
 
 # App title and description
 # st.title("Linalysis Dashboard") - replaced with custom styling below
@@ -2335,106 +2310,285 @@ if uploaded_file is not None:
                 
                 elif category == "Reports":
                     # Custom styled header
-                    st.markdown('<div class="section-header">Linalysis Reports</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="section-header">Linalysis Analytics Dashboard</div>', unsafe_allow_html=True)
                     
-                    st.markdown('<div class="highlight-box">Generate comprehensive reports based on your LinkedIn data. These reports provide in-depth analysis and actionable insights to help you optimize your LinkedIn strategy.</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="highlight-box">Comprehensive analytics and insights for your LinkedIn performance. View detailed metrics, trends, and actionable recommendations.</div>', unsafe_allow_html=True)
                     
-                    # Report type selection
-                    report_type = st.radio(
-                        "Report Type",
-                        ["Weekly Report", "Monthly Report"],
-                        horizontal=True
-                    )
+                    # Key Metrics Overview (Top Row)
+                    st.markdown("""
+                    <div style="background: linear-gradient(90deg, rgba(254, 27, 4, 0.7) 0%, rgba(254, 27, 4, 0.3) 100%); 
+                                padding: 0.5rem 1rem; 
+                                border-radius: 8px; 
+                                margin: 1rem 0;">
+                        <h3 style="color: white; margin:0; text-align:center; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+                            Key Performance Indicators
+                        </h3>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Report configuration
-                    st.subheader("Report Configuration")
+                    # Top metrics row with circular progress indicators
+                    top_metrics_col1, top_metrics_col2, top_metrics_col3 = st.columns(3)
                     
-                    col1, col2 = st.columns(2)
+                    with top_metrics_col1:
+                        # LinkedIn reply rate (circular progress)
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin: 0 0 1rem 0; color: #333;">LinkedIn reply rate</h4>
+                            <div style="position: relative; width: 120px; height: 120px; margin: 0 auto;">
+                                <svg width="120" height="120" style="transform: rotate(-90deg);">
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="#f0f0f0" stroke-width="8"/>
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="#0066cc" stroke-width="8" 
+                                            stroke-dasharray="157" stroke-dashoffset="78.5" stroke-linecap="round"/>
+                                </svg>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; color: #0066cc;">
+                                    51%
+                                </div>
+                            </div>
+                            <p style="margin: 1rem 0 0 0; color: #666; font-size: 0.9rem;">Recommendations</p>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
+                    with top_metrics_col2:
+                        # Response sentiment analysis (pie chart)
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin: 0 0 1rem 0; color: #333;">Response sentiment analysis</h4>
+                            <div style="position: relative; width: 120px; height: 120px; margin: 0 auto;">
+                                <svg width="120" height="120" style="transform: rotate(-90deg);">
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="#22c55e" stroke-width="12" 
+                                            stroke-dasharray="188" stroke-dashoffset="0"/>
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="#ef4444" stroke-width="12" 
+                                            stroke-dasharray="62" stroke-dashoffset="-188"/>
+                                </svg>
+                            </div>
+                            <div style="margin-top: 1rem; font-size: 0.85rem;">
+                                <div style="display: flex; justify-content: center; gap: 1rem;">
+                                    <span style="color: #22c55e;">● Positive (75%)</span>
+                                    <span style="color: #ef4444;">● Negative (25%)</span>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with top_metrics_col3:
+                        # LinkedIn Statistics
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <h4 style="margin: 0 0 1rem 0; color: #333;">LinkedIn Statistics</h4>
+                            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <span style="color: #666;">Total sent</span>
+                                    <span style="font-weight: bold; color: #333;">{stats['latest_connections']}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <span style="color: #666;">Profile visits new</span>
+                                    <span style="font-weight: bold; color: #333;">{stats['latest_views']}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <span style="color: #666;">Search appearances</span>
+                                    <span style="font-weight: bold; color: #333;">{stats['latest_search']}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                                    <span style="color: #666;">SSI Score</span>
+                                    <span style="font-weight: bold; color: #333;">{stats['latest_ssi']}</span>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Campaign engagement funnel
+                    st.markdown("""
+                    <div style="margin: 2rem 0 1rem 0;">
+                        <h4 style="color: #333;">LinkedIn campaign engagement funnel</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Create funnel visualization
+                    col1, col2 = st.columns([2, 1])
                     with col1:
-                        include_connections = st.checkbox("Include Connections Analysis", value=True)
-                        include_views = st.checkbox("Include Profile Views Analysis", value=True)
-                        include_search = st.checkbox("Include Search Appearances Analysis", value=True)
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <svg width="100%" height="200" viewBox="0 0 600 200">
+                                <!-- Funnel stages -->
+                                <polygon points="50,20 550,20 500,60 100,60" fill="#0066cc" opacity="0.8"/>
+                                <polygon points="100,60 500,60 450,100 150,100" fill="#0066cc" opacity="0.7"/>
+                                <polygon points="150,100 450,100 400,140 200,140" fill="#0066cc" opacity="0.6"/>
+                                <polygon points="200,140 400,140 350,180 250,180" fill="#0066cc" opacity="0.5"/>
+                                
+                                <!-- Labels -->
+                                <text x="300" y="45" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Messages sent</text>
+                                <text x="300" y="85" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Messages opened</text>
+                                <text x="300" y="125" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Profile visits</text>
+                                <text x="300" y="165" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Replied to message</text>
+                            </svg>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
                     with col2:
-                        include_ssi = st.checkbox("Include SSI Score Analysis", value=True)
-                        include_invitations = st.checkbox("Include Invitations Analysis", value=True)
-                        include_recommendations = st.checkbox("Include Recommendations", value=True)
+                        # Funnel metrics
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <h5 style="margin: 0 0 1rem 0; color: #333;">Conversion Rates</h5>
+                            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <span style="color: #666;">Open Rate</span>
+                                    <span style="font-weight: bold; color: #0066cc;">65%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <span style="color: #666;">Visit Rate</span>
+                                    <span style="font-weight: bold; color: #0066cc;">45%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0;">
+                                    <span style="color: #666;">Reply Rate</span>
+                                    <span style="font-weight: bold; color: #0066cc;">30%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                                    <span style="color: #666;">Connect Rate</span>
+                                    <span style="font-weight: bold; color: #0066cc;">15%</span>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
-                    # Date range for the report
-                    if report_type == "Weekly Report":
-                        st.info("Weekly report will include data from the past 7 days.")
-                        report_end_date = st.date_input("Report End Date", max_date, min_value=min_date, max_value=max_date)
-                        report_start_date = report_end_date - timedelta(days=7)
-                    else:  # Monthly Report
-                        st.info("Monthly report will include data from the past 30 days.")
-                        report_end_date = st.date_input("Report End Date", max_date, min_value=min_date, max_value=max_date)
-                        report_start_date = report_end_date - timedelta(days=30)
+                    # Second row of metrics
+                    st.markdown("""
+                    <div style="margin: 2rem 0 1rem 0;">
+                        <h4 style="color: #333;">Performance Metrics</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Email delivery options
-                    st.subheader("Delivery Options")
-                    delivery_email = st.text_input("Email Address for Report Delivery")
+                    metrics_row2_col1, metrics_row2_col2, metrics_row2_col3, metrics_row2_col4 = st.columns(4)
                     
-                    # Generate report button
-                    if st.button("Generate Report"):
-                        if delivery_email:
-                            # Filter data for the report period
-                            report_df = df[(df['Date'].dt.date >= report_start_date) & (df['Date'].dt.date <= report_end_date)]
-                            
-                            if not report_df.empty:
-                                # Here we would generate the report and send it
-                                # For now, just show a success message
-                                st.success(f"Your {report_type.lower()} has been generated and sent to {delivery_email}!")
-                                
-                                # Show report preview
-                                st.subheader("Report Preview")
-                                
-                                # Key metrics for the report period
-                                report_stats = calculate_statistics(report_df)
-                                
-                                # Display metrics based on selected options
-                                metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
-                                
-                                if include_connections:
-                                    with metrics_col1:
-                                        connections_change = report_df['Connections'].iloc[-1] - report_df['Connections'].iloc[0]
-                                        st.metric(
-                                            label="Connections Growth", 
-                                            value=connections_change,
-                                            delta=connections_change
-                                        )
-                                
-                                if include_views:
-                                    with metrics_col2:
-                                        views_change = report_df['Views'].iloc[-1] - report_df['Views'].iloc[0]
-                                        st.metric(
-                                            label="Profile Views", 
-                                            value=int(report_df['Views'].sum()),
-                                            delta=views_change
-                                        )
-                                
-                                if include_search:
-                                    with metrics_col3:
-                                        search_change = report_df['Search Appearance'].iloc[-1] - report_df['Search Appearance'].iloc[0]
-                                        st.metric(
-                                            label="Search Appearances", 
-                                            value=int(report_df['Search Appearance'].sum()),
-                                            delta=search_change
-                                        )
-                                
-                                # Sample charts that would be in the report
-                                if include_connections:
-                                    st.plotly_chart(create_connections_chart(report_df), use_container_width=True)
-                                
-                                if include_views and include_search:
-                                    st.plotly_chart(create_metrics_comparison_chart(report_df), use_container_width=True)
-                                
-                                if include_ssi:
-                                    st.plotly_chart(create_ssi_chart(report_df), use_container_width=True)
-                            else:
-                                st.error(f"No data available for the selected period ({report_start_date} to {report_end_date}).")
-                        else:
-                            st.warning("Please enter an email address for report delivery.")
+                    with metrics_row2_col1:
+                        # Follow-up sent
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #333; font-size: 0.9rem;">LinkedIn follow-ups sent</h4>
+                            <div style="font-size: 2.5rem; font-weight: bold; color: #0066cc; margin: 1rem 0;">349</div>
+                            <div style="font-size: 2.5rem; font-weight: bold; color: #22c55e;">70%</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with metrics_row2_col2:
+                        # Reply rate comparison
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #333; font-size: 0.9rem;">LinkedIn reply rate</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
+                                <div>
+                                    <div style="font-size: 1.5rem; font-weight: bold; color: #0066cc;">9%</div>
+                                    <div style="font-size: 0.8rem; color: #666;">Industry avg</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 1.5rem; font-weight: bold; color: #22c55e;">12%</div>
+                                    <div style="font-size: 0.8rem; color: #666;">Your rate</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #22c55e;">+25% vs industry</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with metrics_row2_col3:
+                        # Reply rate comparison bars
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #333; font-size: 0.9rem;">LinkedIn reply rate comparison</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: end; margin: 1rem 0; height: 80px;">
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <div style="height: 60px; width: 40px; background: #0066cc; border-radius: 4px; display: flex; align-items: end; justify-content: center; color: white; font-weight: bold; padding-bottom: 0.5rem; font-size: 0.8rem;">9%</div>
+                                    <div style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Previous</div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <div style="height: 80px; width: 40px; background: #22c55e; border-radius: 4px; display: flex; align-items: end; justify-content: center; color: white; font-weight: bold; padding-bottom: 0.5rem; font-size: 0.8rem;">12%</div>
+                                    <div style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Current</div>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with metrics_row2_col4:
+                        # Profile visits with/without followup
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: #333; font-size: 0.9rem;">Profile app reply received after</h4>
+                            <div style="margin: 1rem 0;">
+                                <div style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">No follow up</div>
+                                <div style="height: 40px; background: #0066cc; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-bottom: 0.5rem;">{stats['latest_views']}</div>
+                                <div style="font-size: 0.8rem; color: #666; margin-bottom: 0.5rem;">With follow up</div>
+                                <div style="height: 60px; background: #22c55e; border-radius: 30px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">{int(stats['latest_views'] * 1.4)}</div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Bottom section - Detailed analytics
+                    st.markdown("""
+                    <div style="margin: 2rem 0 1rem 0;">
+                        <h4 style="color: #333;">Detailed Analytics</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Charts section
+                    charts_col1, charts_col2 = st.columns(2)
+                    
+                    with charts_col1:
+                        st.subheader("Connection Locations")
+                        # Display world map visualization placeholder
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); height: 300px; display: flex; align-items: center; justify-content: center; color: #666;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 3rem;">🗺️</div>
+                                <div>World Map View</div>
+                                <div style="font-size: 0.8rem; margin-top: 1rem;">
+                                    USA: 45% | Europe: 30% | Asia: 25%
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with charts_col2:
+                        st.subheader("Campaign Metrics")
+                        # Campaign metrics with progress circle
+                        st.markdown("""
+                        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                            <h5 style="margin: 0 0 1rem 0; color: #333;">Campaign members with LinkedIn premium</h5>
+                            <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 1rem auto;">
+                                <svg width="120" height="120" style="transform: rotate(-90deg);">
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="#f0f0f0" stroke-width="12"/>
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="#0066cc" stroke-width="12" 
+                                            stroke-dasharray="314" stroke-dashoffset="78.5" stroke-linecap="round"/>
+                                </svg>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.8rem; font-weight: bold; color: #0066cc;">
+                                    75%
+                                </div>
+                            </div>
+                            <div style="color: #666; font-size: 0.9rem;">Premium members respond 2.3x more</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Data tables section
+                    st.markdown("""
+                    <div style="margin: 2rem 0 1rem 0;">
+                        <h4 style="color: #333;">Campaign Performance Data</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Sample campaign data table
+                    campaign_data = {
+                        'Campaign': ['Growth Campaign', 'Sales Outreach', 'Network Building', 'Content Promotion'],
+                        'Outgoing invitations': [245, 189, 156, 203],
+                        'Status': ['Active', 'Completed', 'Active', 'Paused'],
+                        'Connection rate': ['23%', '31%', '19%', '27%'],
+                        'Period': ['Last 30 days', 'Last 60 days', 'Last 30 days', 'Last 45 days']
+                    }
+                    
+                    import pandas as pd
+                    campaign_df_display = pd.DataFrame(campaign_data)
+                    
+                    st.dataframe(
+                        campaign_df_display,
+                        use_container_width=True,
+                        hide_index=True
+                    )
                 
                 elif category == "Settings":
                     # Custom styled header
