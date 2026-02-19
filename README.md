@@ -14,8 +14,9 @@ A comprehensive LinkedIn analytics dashboard built with Streamlit for analyzing 
 - 📉 **Trend Analysis** - Period-over-period comparisons and insights
 - 🎨 **Professional UI** - Custom-styled dashboard with brand colors
 
-## 🌐 Repository
+## 🌐 Links
 
+- **Live App**: https://linalysis.us (Genspark Hosted Deploy)
 - **GitHub**: https://github.com/gershonconsulting/linalysis
 - **Status**: ✅ Active
 - **Last Updated**: February 18, 2026
@@ -129,21 +130,24 @@ To enable LinkedIn OAuth:
 2. Set up LinkedIn App credentials
 3. Configure redirect URIs in `.streamlit/secrets.toml`
 
-## 🚀 Deployment Options
+## 🚀 Deployment
 
-This Python Streamlit application can be deployed to:
+### Current Deployment: Genspark Hosted Deploy
+This application is configured for deployment to **linalysis.us** using Genspark's Hosted Deploy feature.
 
-### Streamlit Cloud (Recommended)
-1. Push code to GitHub (already done ✅)
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Connect your GitHub repository
-4. Deploy with one click
+**Deployment files included:**
+- `requirements.txt` - Python dependencies
+- `Procfile` - Application startup command
+- `runtime.txt` - Python version specification
+- `.streamlit/config.toml` - Production configuration
 
-### Other Platforms
-- **Heroku**: Use `setup.sh` and `Procfile`
+**See [GENSPARK_DEPLOY.md](GENSPARK_DEPLOY.md) for complete deployment instructions.**
+
+### Alternative Platforms
+- **Streamlit Cloud**: share.streamlit.io
 - **Railway**: Direct GitHub integration
 - **Render**: Python web service deployment
-- **AWS/GCP/Azure**: Container deployment
+- **Heroku**: Use included Procfile
 
 ## 📝 Current Status
 

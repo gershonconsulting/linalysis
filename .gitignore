@@ -49,3 +49,7 @@ linalysis.zip
 # Environment variables
 .env
 .env.local
+
+# Logs
+streamlit.log
+*.log
