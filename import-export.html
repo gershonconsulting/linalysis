@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Import / Export</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="import-export"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Import / Export</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+      <div class="page-header">
+        <h2>Import / Export</h2>
+        <p>Upload new LinkedIn CSVs or download your existing data in a format of your choice.</p>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="card-header"><h3>Import data</h3><span class="muted">CSV</span></div>
+          <div style="padding:30px;border:2px dashed var(--border);border-radius:10px;text-align:center;background:var(--bg)">
+            <div style="font-size:32px;margin-bottom:6px">📁</div>
+            <div style="font-weight:700;margin-bottom:4px">Drag a CSV here</div>
+            <div class="muted" style="font-size:12px">or <a href="#" onclick="toast('File picker coming soon'); return false;" style="color:var(--brand);text-decoration:underline">browse your computer</a></div>
+            <div class="muted" style="font-size:11px;margin-top:10px">Expected format: LinkedIn export with columns Date, Connections, Views, SSI, etc.</div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:6px">Recent imports</div>
+            <div style="font-size:13px">
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border)"><span>linalysis_olivier_attia_2026-04-16.csv</span><span class="muted">1,602 rows · 2 days ago</span></div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border)"><span>linalysis_olivier_attia_2026-02-01.csv</span><span class="muted">1,556 rows · 2 months ago</span></div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0"><span>linalysis_olivier_attia_2025-12-15.csv</span><span class="muted">1,491 rows · 4 months ago</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Export data</h3><span class="muted">Multiple formats</span></div>
+          <div style="display:grid;gap:10px">
+            <button class="btn" style="justify-content:flex-start;padding:12px 14px" onclick="toast('CSV download started')">📄 Download as CSV<span style="margin-left:auto" class="muted">~95 KB</span></button>
+            <button class="btn" style="justify-content:flex-start;padding:12px 14px" onclick="toast('JSON download started')">{ } Download as JSON<span style="margin-left:auto" class="muted">~180 KB</span></button>
+            <button class="btn" style="justify-content:flex-start;padding:12px 14px" onclick="toast('Excel download started')">📊 Download as XLSX<span style="margin-left:auto" class="muted">~85 KB</span></button>
+            <button class="btn" style="justify-content:flex-start;padding:12px 14px" onclick="toast('Parquet download started')">🗄️ Download as Parquet<span style="margin-left:auto" class="muted">~45 KB</span></button>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:6px">Scheduled exports</div>
+            <div style="font-size:13px">
+              <label style="display:flex;align-items:center;gap:10px;padding:6px 0"><input type="checkbox" checked /> Email me a CSV every Monday</label>
+              <label style="display:flex;align-items:center;gap:10px;padding:6px 0"><input type="checkbox" /> Email me a JSON every month</label>
+              <label style="display:flex;align-items:center;gap:10px;padding:6px 0"><input type="checkbox" /> Auto-push to my Google Drive</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Data volume over time</div>
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Total rows imported, by month</h3><span class="muted">Last 12 months</span></div><div class="chart-wrap"><canvas id="monthly"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Export activity</h3><span class="muted">Last 12 months</span></div><div class="chart-wrap"><canvas id="exp"></canvas></div></div>
+      </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+
+const months=['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+new Chart(document.getElementById('monthly'),{type:'bar',data:{labels:months,datasets:[{data:[22,25,28,27,30,28,29,30,25,28,27,24],backgroundColor:'#FE1B04',borderRadius:4}]},options:chartOpts});
+new Chart(document.getElementById('exp'),{type:'bar',data:{labels:months,datasets:[{label:'CSV',data:[4,5,4,3,5,4,4,6,5,4,5,3],backgroundColor:'#FE1B04',borderRadius:3},{label:'JSON',data:[1,2,1,0,1,2,1,2,1,1,2,1],backgroundColor:'#0a66c2',borderRadius:3},{label:'XLSX',data:[2,1,2,2,1,2,3,2,1,2,1,2],backgroundColor:'#2ca02c',borderRadius:3}]},options:{...chartOpts,plugins:{legend:{display:true,position:'top',labels:{font:{size:11}}}},scales:{...chartOpts.scales,x:{stacked:true,grid:{display:false},ticks:{color:'#9ca3af',font:{size:10}}},y:{stacked:true,grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}}});
+
+</script>
+</body></html>

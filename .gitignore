@@ -1,55 +1,18 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Local files
-.local/
-.replit
-.streamlit/secrets.toml
-
 # OS
 .DS_Store
 Thumbs.db
 
-# Application specific
-*.tar.gz
-*.zip
-linalysis.tar.gz
-linalysis.zip
+# Editors
+.vscode/
+.idea/
+*.swp
 
-# Environment variables
+# Build artifacts
+_deploy/
+node_modules/
+dist/
+.cache/
+
+# Env
 .env
 .env.local
-
-# Logs
-streamlit.log
-*.log

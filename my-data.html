@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — My data</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="my-data"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>My data</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+      <div class="page-header">
+        <h2>My data</h2>
+        <p>Your complete LinkedIn tracking data — 1,602 rows from Mar 30, 2021 to Mar 27, 2026.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Rows</div><div class="kpi-value">1,602</div><div class="kpi-sub">one per day</div></div>
+        <div class="kpi"><div class="kpi-label">Metrics tracked</div><div class="kpi-value">16</div><div class="kpi-sub">per row</div></div>
+        <div class="kpi"><div class="kpi-label">Days of coverage</div><div class="kpi-value">1,847</div><div class="kpi-sub">gaps on weekends/holidays</div></div>
+        <div class="kpi"><div class="kpi-label">First entry</div><div class="kpi-value">2021-03-30</div><div class="kpi-sub">5 years of history</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Data density by year</h3><span class="muted">Entries per year</span></div><div class="chart-wrap"><canvas id="density"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Connections distribution</h3><span class="muted">Histogram</span></div><div class="chart-wrap"><canvas id="dist"></canvas></div></div>
+      </div>
+
+      <div class="section-title">Latest 30 rows</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border)">
+          <input placeholder="Filter by date or value..." style="flex:1;max-width:320px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeyup="filterTable(this.value)" />
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="exportCSV()">Export CSV</button>
+            <button class="btn" onclick="exportJSON()">Export JSON</button>
+          </div>
+        </div>
+        <div style="max-height:600px;overflow:auto">
+          <table class="data-table" id="dataTable">
+            <thead><tr><th>Date</th><th>Conn.</th><th>Views</th><th>Search app.</th><th>Invit.</th><th>SSI</th><th>SSI Ind.</th><th>SSI Net.</th><th>Co. Foll.</th><th>Co. Visit.</th><th>Co. Search</th><th>Co. New Foll.</th><th>Co. Impr.</th><th>Co. Clicks</th></tr></thead>
+            <tbody id="dataBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+
+// Generate realistic-looking table rows from the dataset approximation
+const sample = [
+['2026-03-27',29355,1418,921,531,70,1,1,1314,78,21,5,13,2],
+['2026-03-26',29374,1391,921,531,69,1,1,1313,78,21,5,13,2],
+['2026-03-25',29382,1371,977,531,69,1,1,1313,78,21,5,13,2],
+['2026-03-24',29389,1329,1567,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-23',29394,1307,1567,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-22',29432,1287,1567,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-21',29480,1261,1567,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-20',29500,1242,1567,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-19',29516,1233,1567,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-18',29519,1228,1546,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-17',29527,1219,1327,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-16',29519,1217,1327,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-15',29518,1226,1327,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-14',29517,1233,1327,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-13',29515,1231,1327,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-10',29560,1228,916,531,69,1,1,1204,78,21,5,13,2],
+['2026-03-09',29566,1222,916,531,69,1,1,1204,78,21,5,13,2],
+['2026-01-11',29858,1141,378,531,72,1,1,1204,78,21,5,13,2],
+['2026-01-10',29894,1139,378,535,73,1,1,1202,78,22,5,12,2],
+['2026-01-09',29897,1126,378,515,73,1,1,1202,78,18,5,9,2],
+['2026-01-08',29896,1117,378,499,73,1,1,1194,78,17,5,8,2],
+['2026-01-07',29900,1108,347,476,74,1,1,1192,78,15,5,5,2],
+['2026-01-06',29902,1109,347,452,74,1,1,1189,78,11,5,7,2],
+['2026-01-05',29900,1118,347,426,74,1,1,1185,78,11,5,8,2],
+['2026-01-04',29938,1133,347,428,74,1,1,1184,78,9,5,7,2],
+['2026-01-03',29979,1131,347,429,74,1,1,1181,78,4,5,5,2],
+['2026-01-02',29990,1129,347,437,70,1,1,1179,78,8,5,5,2],
+['2026-01-01',29991,1117,347,423,70,1,1,1175,78,11,5,6,2],
+['2025-12-31',29994,1109,354,380,70,1,1,1175,78,16,5,11,2],
+['2025-12-30',29990,1123,354,345,70,1,1,1174,78,20,5,7,2]
+];
+function renderTable(data){
+  document.getElementById('dataBody').innerHTML = data.map(r => '<tr>' + r.map(v => '<td>'+v+'</td>').join('') + '</tr>').join('');
+}
+function filterTable(q){
+  q = q.toLowerCase().trim();
+  renderTable(!q ? sample : sample.filter(r => r.some(v => String(v).toLowerCase().includes(q))));
+}
+function exportCSV(){ const rows = [['Date','Connections','Views','Search Appearance','Invitations','SSI','SSI Industry','SSI Network','Company Followers','Company Unique Visitors','Company Search Appearances','Company New Followers','Company Post Impressions','Company Custom Clicks'], ...sample]; const csv = rows.map(r=>r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'linalysis-data.csv'; a.click(); toast('CSV downloaded'); }
+function exportJSON(){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(sample,null,2)], {type:'application/json'})); a.download = 'linalysis-data.json'; a.click(); toast('JSON downloaded'); }
+renderTable(sample);
+
+new Chart(document.getElementById('density'),{type:'bar',data:{labels:['2021','2022','2023','2024','2025','2026'],datasets:[{data:[278,330,332,325,277,60],backgroundColor:'#FE1B04',borderRadius:4}]},options:chartOpts});
+// Histogram of connections (approximate buckets)
+new Chart(document.getElementById('dist'),{type:'bar',data:{labels:['18-20K','20-22K','22-24K','24-26K','26-28K','28-30K'],datasets:[{data:[102,188,277,312,358,365],backgroundColor:'#0a66c2',borderRadius:4}]},options:chartOpts});
+
+</script>
+</body></html>

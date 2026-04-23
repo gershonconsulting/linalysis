@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Emailing</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="emailing"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Emailing</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+      <div class="page-header">
+        <h2>Emailing</h2>
+        <p>Email outreach and sequences. Connects to your SMTP/Gmail/Outlook — values below use a realistic sample.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Emails sent</div><div class="kpi-value">612</div><div class="kpi-delta up">▲ 88</div><div class="kpi-sub">last 30 days</div></div>
+        <div class="kpi"><div class="kpi-label">Open rate</div><div class="kpi-value">42%</div><div class="kpi-delta up">▲ 3 pts</div><div class="kpi-sub">vs prev 30d</div></div>
+        <div class="kpi"><div class="kpi-label">Click rate</div><div class="kpi-value">11%</div><div class="kpi-delta up">▲ 1 pt</div><div class="kpi-sub">vs prev 30d</div></div>
+        <div class="kpi"><div class="kpi-label">Reply rate</div><div class="kpi-value">8%</div><div class="kpi-delta flat">—</div><div class="kpi-sub">vs prev 30d</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Volume last 30 days</h3><span class="muted">Sent / Opened / Clicked / Replied</span></div><div class="chart-wrap"><canvas id="vol"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Best send time</h3><span class="muted">Open rate by hour (EST)</span></div><div class="chart-wrap"><canvas id="time"></canvas></div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Subject line performance</h3><span class="muted">Open rate — top 6</span></div><div class="chart-wrap"><canvas id="subj"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Sequence step drop-off</h3><span class="muted">4-step follow-up</span></div><div class="chart-wrap"><canvas id="seq"></canvas></div></div>
+      </div>
+
+      <div class="section-title">Deliverability</div>
+      <div class="grid cols-3">
+        <div class="card"><div class="card-header"><h3>Bounce rate</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="bounce"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Spam rate</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="spam"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Unsubscribes</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="unsub"></canvas></div></div>
+      </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+
+new Chart(document.getElementById('vol'),{type:'bar',data:{labels:['Sent','Opened','Clicked','Replied'],datasets:[{data:[612,257,67,49],backgroundColor:['#d1d5db','#0a66c2','#FE1B04','#2ca02c'],borderRadius:6,maxBarThickness:60}]},options:chartOpts});
+new Chart(document.getElementById('time'),{type:'bar',data:{labels:['6','7','8','9','10','11','12','13','14','15','16','17','18'],datasets:[{data:[18,32,48,42,38,35,28,25,30,36,40,32,22],backgroundColor:'#FE1B04',borderRadius:4}]},options:chartOpts});
+new Chart(document.getElementById('subj'),{type:'bar',data:{labels:['Quick q about X','Intro — <mutual>','3 mins?','Loved your piece on','Your thoughts on','Worth a chat?'],datasets:[{data:[58,52,47,44,41,38],backgroundColor:'#0a66c2',borderRadius:4}]},options:{...chartOpts,indexAxis:'y'}});
+new Chart(document.getElementById('seq'),{type:'bar',data:{labels:['Step 1','Step 2','Step 3','Step 4'],datasets:[{data:[612,489,321,178],backgroundColor:'#7a48a8',borderRadius:4}]},options:chartOpts});
+function tinyLine(id,data,color){new Chart(document.getElementById(id),{type:'line',data:{labels:data.map(()=>''),datasets:[{data,borderColor:color,backgroundColor:color+'22',fill:true,borderWidth:2,tension:0.3,pointRadius:0}]},options:chartOpts});}
+tinyLine('bounce',[2,1,2,3,2,1,1,2,3,2,1,2,2,1,2,3,2,1,1,2,2,1,2,3,1,2,2,1,2,1],'#b76b00');
+tinyLine('spam',  [0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0],'#cc1016');
+tinyLine('unsub', [1,0,1,0,2,1,0,1,1,2,0,1,1,0,2,1,0,1,1,1,0,2,1,0,1,1,1,0,1,1],'#555555');
+
+</script>
+</body></html>

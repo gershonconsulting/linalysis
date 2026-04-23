@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Summary</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar" data-active="summary"></aside>
+  <main>
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+        <h1>Summary</h1>
+      </div>
+      <div class="topbar-right">
+        <a class="btn" href="/dashboard.html">Dashboard</a>
+        <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+        <span class="avatar" title="Olivier">O</span>
+      </div>
+    </div>
+    <div class="content">
+
+      <div class="page-header">
+        <h2>Executive summary</h2>
+        <p>High-level view of everything Linalysis tracks. Data range: Mar 30, 2021 → Mar 27, 2026 (1,602 days).</p>
+      </div>
+
+      <div class="summary">
+        <div class="summary-text">You've grown from <strong>18,353</strong> to <strong>29,355</strong> connections (<strong>+60%</strong>) over 5 years — your SSI is <strong>70</strong>, top 1% industry &amp; network, and your company <strong>Gershon Consulting</strong> grew <strong>+110 followers</strong> in the last 30 days.</div>
+      </div>
+
+      <div class="section-title">Headline KPIs (latest · 30-day delta)</div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Connections</div><div class="kpi-value">29,355</div><div class="kpi-delta down">▼ 211 (-0.7%)</div><div class="kpi-sub">5-year growth +60%</div></div>
+        <div class="kpi"><div class="kpi-label">Views</div><div class="kpi-value">1,418</div><div class="kpi-delta up">▲ 196 (+16.0%)</div><div class="kpi-sub">vs previous 30d</div></div>
+        <div class="kpi"><div class="kpi-label">SSI</div><div class="kpi-value">70</div><div class="kpi-delta up">▲ 1 pt</div><div class="kpi-sub">top 1% industry &amp; network</div></div>
+        <div class="kpi"><div class="kpi-label">Invitations</div><div class="kpi-value">531</div><div class="kpi-delta flat">— flat</div><div class="kpi-sub">backlog needs triage</div></div>
+        <div class="kpi"><div class="kpi-label">Company followers</div><div class="kpi-value">1,314</div><div class="kpi-delta up">▲ 110 (+9.1%)</div><div class="kpi-sub">Gershon Consulting</div></div>
+        <div class="kpi"><div class="kpi-label">Co. post reach</div><div class="kpi-value">13</div><div class="kpi-delta up">▲ 6 (+86%)</div><div class="kpi-sub">impressions / day</div></div>
+      </div>
+
+      <div class="section-title">Personal metrics — 30-day trend</div>
+      <div class="metric-grid three">
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Connections</div><div class="metric-pct down">-0.7%</div></div><div class="metric-sub">29,566 → 29,355</div><div class="metric-chart"><canvas id="c1"></canvas></div><div class="metric-insight">Deliberate pruning as you approach the 30K cap — right move for profile quality.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Views</div><div class="metric-pct up">+16.0%</div></div><div class="metric-sub">1,222 → 1,418/day</div><div class="metric-chart"><canvas id="c2"></canvas></div><div class="metric-insight">Sharp bump this month — likely tied to a recent post or mention reaching beyond first-degree network.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Search appearances</div><div class="metric-pct up">+160%</div></div><div class="metric-sub">354 → 921</div><div class="metric-chart"><canvas id="c3"></canvas></div><div class="metric-insight">Huge spike. Usually follows profile-keyword updates or mentions on third-party sites.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">SSI</div><div class="metric-pct up">+1.4%</div></div><div class="metric-sub">69 → 70</div><div class="metric-chart"><canvas id="c4"></canvas></div><div class="metric-insight">Top 1% of both industry and network. Diminishing returns past this — ceiling is ~75 in practice.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Invitations pending</div><div class="metric-pct flat">0.00%</div></div><div class="metric-sub">531 → 531</div><div class="metric-chart"><canvas id="c5"></canvas></div><div class="metric-insight">Backlog hasn't moved in 30+ days. Either triage or pause incoming invites to reset.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">SSI Industry &amp; Network %ile</div><div class="metric-pct up">Top 1%</div></div><div class="metric-sub">Both at percentile 1 throughout</div><div class="metric-chart"><canvas id="c6"></canvas></div><div class="metric-insight">Consistently in the elite band. Earlier spikes were transient drops below top tier.</div></div>
+      </div>
+
+      <div class="section-title">Company metrics — Gershon Consulting</div>
+      <div class="metric-grid three">
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Followers</div><div class="metric-pct up">+9.1%</div></div><div class="metric-sub">1,204 → 1,314</div><div class="metric-chart"><canvas id="d1"></canvas></div><div class="metric-insight">Fastest sustained growth rate on record (~3.7/day). Posting cadence is working.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Unique visitors</div><div class="metric-pct flat">0%</div></div><div class="metric-sub">~78/day steady</div><div class="metric-chart"><canvas id="d2"></canvas></div><div class="metric-insight">Stable baseline of organic discovery. Content push would move it higher.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Search appearances</div><div class="metric-pct up">+5%</div></div><div class="metric-sub">~21/day</div><div class="metric-chart"><canvas id="d3"></canvas></div><div class="metric-insight">Low but stable. Check which keywords drive these — tagline optimization could lift.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">New followers</div><div class="metric-pct up">~5/day</div></div><div class="metric-sub">Visitor → follower ~6%</div><div class="metric-chart"><canvas id="d4"></canvas></div><div class="metric-insight">Healthy conversion for services firms. Industry average is 3-4%.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Post impressions</div><div class="metric-pct up">+86%</div></div><div class="metric-sub">7 → 13/day</div><div class="metric-chart"><canvas id="d5"></canvas></div><div class="metric-insight">Big improvement but still ~1% of follower count — frequency/format need refresh.</div></div>
+        <div class="metric-card"><div class="metric-head"><div class="metric-title">Custom clicks</div><div class="metric-pct flat">0%</div></div><div class="metric-sub">~2/day</div><div class="metric-chart"><canvas id="d6"></canvas></div><div class="metric-insight">Close to noise. If a CTA link exists, it's underperforming — audit the placement.</div></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+  function toast(msg, ms = 2200) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._to);
+    toast._to = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 8 } },
+      y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+    }
+  };
+
+  // Simple line helper
+  function line(id, data, color) {
+    new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels: data.map(()=>'') , datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
+      options: chartOpts
+    });
+  }
+  const CONN30 = [29566,29560,29515,29517,29518,29519,29527,29519,29516,29500,29480,29432,29394,29389,29382,29374,29355];
+  const VIEWS30 = [1222,1228,1231,1233,1226,1217,1219,1228,1233,1242,1261,1287,1307,1329,1371,1391,1418];
+  const SEARCH30 = [916,916,1327,1327,1327,1327,1327,1327,1327,1546,1567,1567,1567,1567,1567,977,921];
+  const SSI30 = [69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,70];
+  const INV30 = [531,531,531,531,531,531,531,531,531,531,531,531,531,531,531,531,531];
+  line('c1', CONN30, '#2244a4');
+  line('c2', VIEWS30, '#555555');
+  line('c3', SEARCH30, '#7a48a8');
+  line('c4', SSI30, '#FE1B04');
+  line('c5', INV30, '#2ca02c');
+  // Dual line for SSI Industry/Network
+  new Chart(document.getElementById('c6'), {
+    type: 'line',
+    data: { labels: INV30.map(()=>''), datasets: [
+      { label: 'Industry', data: INV30.map(()=>1), borderColor: '#f39c12', backgroundColor: 'rgba(243,156,18,0.1)', borderWidth: 2, pointRadius: 0 },
+      { label: 'Network',  data: INV30.map(()=>1), borderColor: '#0a66c2', backgroundColor: 'rgba(10,102,194,0.1)', borderWidth: 2, pointRadius: 0 },
+    ]},
+    options: { ...chartOpts, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10 } } } }, scales: { ...chartOpts.scales, y: { min: 0, max: 15, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+  });
+  line('d1', [1204,1209,1213,1218,1224,1229,1234,1239,1244,1250,1256,1262,1268,1275,1282,1289,1296,1302,1308,1314], '#FE1B04');
+  line('d2', [78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78], '#0a66c2');
+  line('d3', [20,20,20,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21], '#7a48a8');
+  line('d4', [5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5], '#2ca02c');
+  line('d5', [7,8,8,9,9,10,10,11,11,12,12,12,13,13,13,13,13,13,13,13], '#b76b00');
+  line('d6', [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], '#555555');
+
+</script>
+</body>
+</html>

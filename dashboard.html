@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Dashboard</title>
+<meta name="description" content="LinkedIn analytics dashboard — profile, campaign metrics, and Social Selling Index tracking." />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar" id="sidebar" data-active="dashboard"></aside>
+
+  <main>
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+        <h1>Dashboard</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Search connections, campaigns..." />
+        </div>
+        <a class="btn" href="/troubleshooting.html">Setup check</a>
+        <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+        <span class="avatar" title="Olivier">O</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="summary">
+        <div class="summary-text">
+          <strong>Tracking since</strong> Mar 30, 2021 → <strong>Mar 27, 2026</strong> · <strong>1,602 days</strong> · <strong>+11,002</strong> new connections (18,353 → 29,355)
+        </div>
+        <a class="btn" href="/reports.html">View reports →</a>
+      </div>
+
+      <div class="page-header">
+        <h2>Analytics overview</h2>
+        <div class="date-tools">
+          <div class="seg" role="tablist" aria-label="Metric mode">
+            <button class="active" onclick="setMode(this, 'change')">Change</button>
+            <button onclick="setMode(this, 'average')">Average</button>
+          </div>
+          <div class="seg" role="tablist" aria-label="Date range">
+            <button onclick="setRange(this, '7')">7d</button>
+            <button class="active" onclick="setRange(this, '30')">30d</button>
+            <button onclick="setRange(this, '90')">90d</button>
+            <button onclick="setRange(this, 'custom')">Custom</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">Connections</div>
+          <div class="kpi-value">29,355</div>
+          <div class="kpi-delta down">▼ 211 (-0.7%)</div>
+          <div class="kpi-sub">curated pruning this month</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Profile views</div>
+          <div class="kpi-value">1,418</div>
+          <div class="kpi-delta up">▲ 196 (+16.0%)</div>
+          <div class="kpi-sub">vs previous 30d</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">SSI score</div>
+          <div class="kpi-value">70</div>
+          <div class="kpi-delta up">▲ 1 pt</div>
+          <div class="kpi-sub">top 1% of industry &amp; network</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Company followers</div>
+          <div class="kpi-value">1,314</div>
+          <div class="kpi-delta up">▲ 110 (+9.1%)</div>
+          <div class="kpi-sub">Gershon Consulting · 30d</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Connections over time</h3>
+            <span class="muted">Daily, last 30 days</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="connChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>SSI score over time</h3>
+            <span class="muted">Daily, last 90 days</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="ssiChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="card-header">
+            <h3>Industry vs network SSI</h3>
+            <span class="muted">Percentile rank</span>
+          </div>
+          <div class="chart-wrap short">
+            <canvas id="indChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Recent activity</h3>
+            <a href="/summary.html" class="muted">View all</a>
+          </div>
+          <div>
+            <div class="feed-item ok">
+              <div class="feed-dot"></div>
+              <div class="feed-text">
+                <strong>SSI</strong> climbed from <strong>69 → 70</strong> — still top 1% industry &amp; network
+                <div class="feed-time">Last 30 days</div>
+              </div>
+            </div>
+            <div class="feed-item info">
+              <div class="feed-dot"></div>
+              <div class="feed-text">
+                Profile views up <strong>16%</strong> — 1,418/day vs 1,222 a month ago
+                <div class="feed-time">Last 30 days</div>
+              </div>
+            </div>
+            <div class="feed-item ok">
+              <div class="feed-dot"></div>
+              <div class="feed-text">
+                <strong>Gershon Consulting</strong> gained <strong>+110 followers</strong> (1,204 → 1,314)
+                <div class="feed-time">Last 30 days</div>
+              </div>
+            </div>
+            <div class="feed-item warn">
+              <div class="feed-dot"></div>
+              <div class="feed-text">
+                <strong>531 invitations</strong> awaiting review — queue hasn't budged in 30d
+                <div class="feed-time">Pending</div>
+              </div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-dot"></div>
+              <div class="feed-text">
+                Connection pruning continues — <strong>-211</strong> net over 30d (near LinkedIn's 30K cap)
+                <div class="feed-time">Last 30 days</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="/nav.js" defer></script>
+<script>
+  function toast(msg, ms = 2200) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._to);
+    toast._to = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  function setMode(btn, mode) {
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    toast(`Mode: ${mode}`);
+  }
+  function setRange(btn, range) {
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    toast(range === 'custom' ? 'Custom range — picker coming soon' : `Range: last ${range} days`);
+  }
+
+  const commonOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
+      y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 11 } } }
+    }
+  };
+
+  // Connections over time — real Olivier data
+  new Chart(document.getElementById('connChart'), {
+    type: 'line',
+    data: {
+      labels: ["12-30","12-31","01-01","01-02","01-03","01-04","01-05","01-06","01-07","01-08","01-09","01-10","01-11","03-09","03-10","03-13","03-14","03-15","03-16","03-17","03-18","03-19","03-20","03-21","03-22","03-23","03-24","03-25","03-26","03-27"],
+      datasets: [{
+        data: [29990,29994,29991,29990,29979,29938,29900,29902,29900,29896,29897,29894,29858,29566,29560,29515,29517,29518,29519,29527,29519,29516,29500,29480,29432,29394,29389,29382,29374,29355],
+        borderColor: '#FE1B04',
+        backgroundColor: (ctx) => {
+          const c = ctx.chart.ctx, a = ctx.chart.chartArea;
+          if (!a) return 'rgba(254,27,4,0.1)';
+          const g = c.createLinearGradient(0, a.top, 0, a.bottom);
+          g.addColorStop(0, 'rgba(254,27,4,0.25)');
+          g.addColorStop(1, 'rgba(254,27,4,0.01)');
+          return g;
+        },
+        fill: true, borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: '#FE1B04'
+      }]
+    },
+    options: commonOpts
+  });
+
+  // SSI over time — real data, last 90 daily entries
+  new Chart(document.getElementById('ssiChart'), {
+    type: 'line',
+    data: {
+      labels: Array(90).fill(''),
+      datasets: [{
+        data: [72,75,75,75,74,74,74,75,75,75,75,75,74,74,74,74,74,74,75,74,74,72,70,70,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,70,70,70,70,70,70,70,70,71,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,74,74,74,74,74,73,73,73,72,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,70],
+        borderColor: '#FE1B04', backgroundColor: 'rgba(254,27,4,0.08)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#FE1B04'
+      }]
+    },
+    options: { ...commonOpts, scales: { x: { grid: { display: false }, ticks: { display: false } }, y: { min: 65, max: 80, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 11 } } } } }
+  });
+
+  // Industry / network percentile — top 1% for both
+  new Chart(document.getElementById('indChart'), {
+    type: 'bar',
+    data: {
+      labels: ['You', 'Industry avg', 'Network avg'],
+      datasets: [{ data: [99, 50, 50], backgroundColor: ['#FE1B04', '#d1d5db', '#9ca3af'], borderRadius: 6, maxBarThickness: 50 }]
+    },
+    options: { ...commonOpts, scales: { x: { grid: { display: false }, ticks: { color: '#6e6e73', font: { size: 12 } } }, y: { max: 100, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v + 'th' } } } }
+  });
+</script>
+</body>
+</html>

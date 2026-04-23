@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Company</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar" data-active="company"></aside>
+  <main>
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+        <h1>Company</h1>
+      </div>
+      <div class="topbar-right">
+        <a class="btn" href="/dashboard.html">Dashboard</a>
+        <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+        <span class="avatar" title="Olivier">O</span>
+      </div>
+    </div>
+    <div class="content">
+
+      <div class="page-header">
+        <h2>Gershon Consulting</h2>
+        <p>Company page performance — followers, visitors, reach, and discovery.</p>
+      </div>
+
+      <div class="summary">
+        <div class="summary-text"><strong>Gershon Consulting</strong> · 1,314 followers · <strong>+110 in 30d</strong> (+9.1%) · 78 unique visitors/day · 6% visitor→follower conversion</div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Followers</div><div class="kpi-value">1,314</div><div class="kpi-delta up">▲ 110 (+9.1%)</div><div class="kpi-sub">30-day growth</div></div>
+        <div class="kpi"><div class="kpi-label">Unique visitors</div><div class="kpi-value">78</div><div class="kpi-delta flat">— stable</div><div class="kpi-sub">per day</div></div>
+        <div class="kpi"><div class="kpi-label">Post impressions</div><div class="kpi-value">13</div><div class="kpi-delta up">▲ +86%</div><div class="kpi-sub">per day</div></div>
+        <div class="kpi"><div class="kpi-label">Visitor → follower</div><div class="kpi-value">6.4%</div><div class="kpi-delta up">above avg</div><div class="kpi-sub">conversion</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Followers, last 90 days</h3><span class="muted">+110 net in 30d</span></div><div class="chart-wrap"><canvas id="foll90"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Unique visitors vs New followers</h3><span class="muted">Daily</span></div><div class="chart-wrap"><canvas id="visFoll"></canvas></div></div>
+      </div>
+
+      <div class="grid cols-3">
+        <div class="card"><div class="card-header"><h3>Search appearances</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="coSearch"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Post impressions</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="coImp"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Custom clicks</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="coClicks"></canvas></div></div>
+      </div>
+
+      <div class="section-title">Posting cadence (simulated)</div>
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Posts per week</h3><span class="muted">Rolling</span></div><div class="chart-wrap short"><canvas id="coPosts"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Average impressions per post</h3><span class="muted">Last 10 posts</span></div><div class="chart-wrap short"><canvas id="coAvgImp"></canvas></div></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+  function toast(msg, ms = 2200) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._to);
+    toast._to = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 8 } },
+      y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+    }
+  };
+
+  function line(id, labels, data, color) {
+    new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
+      options: chartOpts
+    });
+  }
+  const D90 = Array(90).fill('').map((_,i)=>i+1);
+  // Followers going up
+  const foll90 = Array.from({length:90}, (_,i)=> 1145 + Math.round(i*1.88 + Math.sin(i/5)*3));
+  new Chart(document.getElementById('foll90'), {
+    type: 'line',
+    data: { labels: D90.map(()=>''), datasets: [{ label:'Followers', data: foll90, borderColor:'#FE1B04', backgroundColor:'rgba(254,27,4,0.15)', fill:true, borderWidth:2.5, tension:0.35, pointRadius:0 }] },
+    options: chartOpts
+  });
+  // Visitors vs New followers dual
+  const vis30 = Array(30).fill(78);
+  const nf30  = Array(30).fill(5);
+  new Chart(document.getElementById('visFoll'), {
+    type: 'line',
+    data: { labels: vis30.map(()=>''), datasets: [
+      { label: 'Unique visitors', data: vis30, borderColor: '#0a66c2', backgroundColor: 'rgba(10,102,194,0.1)', borderWidth: 2, pointRadius: 0, yAxisID: 'y' },
+      { label: 'New followers',   data: nf30,  borderColor: '#2ca02c', backgroundColor: 'rgba(44,160,44,0.1)',  borderWidth: 2, pointRadius: 0, yAxisID: 'y1' },
+    ]},
+    options: { ...chartOpts, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 11 } } } }, scales: { x: { grid: { display: false }, ticks: { display: false } }, y: { position: 'left', beginAtZero: true, ticks: { color: '#0a66c2', font: { size: 10 } } }, y1: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: { color: '#2ca02c', font: { size: 10 } } } } }
+  });
+  line('coSearch', Array(30).fill(''), Array(30).fill(21), '#7a48a8');
+  line('coImp',    Array(30).fill(''), [7,7,8,8,9,9,10,10,10,11,11,11,11,12,12,12,12,12,13,13,13,13,13,13,13,13,13,13,13,13], '#b76b00');
+  line('coClicks', Array(30).fill(''), Array(30).fill(2), '#555555');
+
+  // Posting cadence (simulated weekly)
+  new Chart(document.getElementById('coPosts'), {
+    type: 'bar',
+    data: { labels: ['Wk1','Wk2','Wk3','Wk4','Wk5','Wk6','Wk7','Wk8','Wk9','Wk10','Wk11','Wk12'], datasets: [{ data: [1,2,2,3,3,2,3,4,3,4,4,5], backgroundColor: '#FE1B04', borderRadius: 4 }] },
+    options: chartOpts
+  });
+  new Chart(document.getElementById('coAvgImp'), {
+    type: 'bar',
+    data: { labels: ['P1','P2','P3','P4','P5','P6','P7','P8','P9','P10'], datasets: [{ data: [48, 72, 31, 95, 62, 108, 77, 55, 134, 89], backgroundColor: '#0a66c2', borderRadius: 4 }] },
+    options: chartOpts
+  });
+
+</script>
+</body>
+</html>

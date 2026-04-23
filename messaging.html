@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Messaging</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="messaging"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Messaging</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+      <div class="page-header">
+        <h2>Messaging</h2>
+        <p>LinkedIn direct-message activity. Real inbox data comes via the Linalysis extension — values below use a realistic sample.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Messages sent</div><div class="kpi-value">431</div><div class="kpi-delta up">▲ 62 (+17%)</div><div class="kpi-sub">last 30 days</div></div>
+        <div class="kpi"><div class="kpi-label">Reply rate</div><div class="kpi-value">31%</div><div class="kpi-delta up">▲ 4 pts</div><div class="kpi-sub">vs previous 30d</div></div>
+        <div class="kpi"><div class="kpi-label">Avg time-to-reply</div><div class="kpi-value">4.2 h</div><div class="kpi-delta up">▼ 1.1 h faster</div><div class="kpi-sub">median</div></div>
+        <div class="kpi"><div class="kpi-label">Conversations active</div><div class="kpi-value">38</div><div class="kpi-delta flat">steady</div><div class="kpi-sub">last 7 days</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Sent &amp; received, last 30 days</h3><span class="muted">Daily</span></div><div class="chart-wrap"><canvas id="sent"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Reply rate by day of week</h3><span class="muted">Last 12 weeks</span></div><div class="chart-wrap"><canvas id="dow"></canvas></div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Message length vs reply rate</h3><span class="muted">Last 500 messages</span></div><div class="chart-wrap"><canvas id="len"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Top 5 replied templates</h3><span class="muted">By % reply</span></div><div class="chart-wrap"><canvas id="tmpl"></canvas></div></div>
+      </div>
+
+      <div class="section-title">Conversation flow</div>
+      <div class="card"><div class="chart-wrap"><canvas id="conv"></canvas></div></div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+
+new Chart(document.getElementById('sent'),{type:'line',data:{labels:Array(30).fill(''),datasets:[{label:'Sent',data:[12,14,11,18,22,9,8,15,17,19,21,16,18,22,14,12,17,19,23,25,20,18,16,14,12,17,19,21,22,20],borderColor:'#FE1B04',backgroundColor:'rgba(254,27,4,0.1)',fill:true,borderWidth:2,tension:0.3,pointRadius:0},{label:'Received',data:[4,5,4,6,7,3,3,5,6,6,7,5,6,7,4,4,5,6,8,8,7,6,5,4,4,5,6,7,7,6],borderColor:'#0a66c2',backgroundColor:'rgba(10,102,194,0.1)',fill:true,borderWidth:2,tension:0.3,pointRadius:0}]},options:{...chartOpts,plugins:{legend:{display:true,position:'top',labels:{font:{size:11}}}}}});
+new Chart(document.getElementById('dow'),{type:'bar',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{data:[38,42,45,40,32,12,8],backgroundColor:'#FE1B04',borderRadius:4}]},options:chartOpts});
+new Chart(document.getElementById('len'),{type:'scatter',data:{datasets:[{label:'Messages',data:[{x:40,y:52},{x:80,y:48},{x:120,y:38},{x:200,y:28},{x:300,y:18},{x:150,y:35},{x:90,y:44},{x:60,y:50},{x:180,y:32},{x:250,y:22},{x:110,y:40},{x:140,y:36},{x:50,y:55}],backgroundColor:'rgba(254,27,4,0.6)'}]},options:{...chartOpts,scales:{x:{grid:{color:'#f1f1f3'},title:{display:true,text:'characters',color:'#9ca3af',font:{size:10}},ticks:{color:'#9ca3af',font:{size:10}}},y:{grid:{color:'#f1f1f3'},title:{display:true,text:'reply %',color:'#9ca3af',font:{size:10}},ticks:{color:'#9ca3af',font:{size:10}}}}}});
+new Chart(document.getElementById('tmpl'),{type:'bar',data:{labels:['Short intro','Question open','Mutual connection','Insight share','Event follow-up'],datasets:[{data:[41,38,34,29,22],backgroundColor:'#0a66c2',borderRadius:4}]},options:{...chartOpts,indexAxis:'y'}});
+new Chart(document.getElementById('conv'),{type:'bar',data:{labels:['1st msg','Replied to 1st','2nd msg sent','Replied to 2nd','Meeting booked'],datasets:[{data:[431,135,98,52,18],backgroundColor:['#d1d5db','#0a66c2','#7a48a8','#FE1B04','#2ca02c'],borderRadius:6,maxBarThickness:50}]},options:chartOpts});
+
+</script>
+</body></html>

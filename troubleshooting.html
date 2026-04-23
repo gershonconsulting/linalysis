@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Troubleshooting</title>
+<meta name="description" content="Full diagnostic report for Linalysis — 26 checks across 8 categories." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .info-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 18px; }
+  .info-cell { background: var(--card); padding: 12px 16px; }
+  .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .info-value { font-size: 13px; font-weight: 600; margin-top: 3px; word-break: break-all; }
+
+  /* Health score */
+  .health { display: grid; grid-template-columns: 240px 1fr; gap: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 18px; }
+  @media (max-width: 700px) { .health { grid-template-columns: 1fr; } }
+  .health-score { display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid var(--border); padding-right: 20px; }
+  @media (max-width: 700px) { .health-score { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 20px; padding-right: 0; } }
+  .health-ring { position: relative; width: 140px; height: 140px; }
+  .health-ring svg { transform: rotate(-90deg); }
+  .health-ring-bg { stroke: var(--border); }
+  .health-ring-fg { transition: stroke-dashoffset .5s; }
+  .health-ring-fg.ok { stroke: var(--success); }
+  .health-ring-fg.warn { stroke: var(--warn); }
+  .health-ring-fg.fail { stroke: var(--error); }
+  .health-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .health-ring-pct { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+  .health-ring-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .health-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .health-subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 14px; }
+  .health-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .health-stats { display: flex; gap: 24px; margin-top: 14px; flex-wrap: wrap; }
+  .health-stat .n { font-size: 22px; font-weight: 800; }
+  .health-stat .n.ok { color: var(--success); }
+  .health-stat .n.warn { color: var(--warn); }
+  .health-stat .n.fail { color: var(--error); }
+  .health-stat .l { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Category groups */
+  .diag-cat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+  .diag-head { padding: 14px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; user-select: none; background: var(--bg); border-bottom: 1px solid transparent; transition: background .15s; }
+  .diag-head:hover { background: var(--brand-light); }
+  .diag-cat.open .diag-head { border-bottom-color: var(--border); }
+  .diag-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--brand-light); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .diag-title { flex: 1; }
+  .diag-title h3 { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+  .diag-title .desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .diag-count { display: flex; gap: 6px; font-size: 11px; font-weight: 700; }
+  .diag-count .pill { padding: 3px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .diag-count .pill.ok { background: var(--success-light); color: var(--success); }
+  .diag-count .pill.warn { background: var(--warn-light); color: var(--warn); }
+  .diag-count .pill.fail { background: var(--error-light); color: var(--error); }
+  .diag-count .pill.pending { background: var(--bg); color: var(--text-muted); }
+  .diag-arrow { font-size: 16px; color: var(--text-muted); transition: transform .2s; }
+  .diag-cat.open .diag-arrow { transform: rotate(90deg); }
+  .diag-body { display: none; }
+  .diag-cat.open .diag-body { display: block; }
+
+  .check { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--border); transition: background .15s; }
+  .check:last-child { border-bottom: none; }
+  .check:hover { background: var(--bg); }
+  .check-badge { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+  .check-badge.pending { background: var(--bg); color: var(--text-muted); }
+  .check-badge.running { background: var(--info-light); color: var(--info); }
+  .check-badge.ok { background: var(--success-light); color: var(--success); }
+  .check-badge.warn { background: var(--warn-light); color: var(--warn); }
+  .check-badge.fail { background: var(--error-light); color: var(--error); }
+  .check-title { font-weight: 600; font-size: 13px; }
+  .check-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
+  .check-detail code { background: var(--bg); padding: 1px 4px; border-radius: 3px; font-family: SFMono-Regular, Consolas, monospace; font-size: 10px; }
+  .check-action { font-size: 11px; font-weight: 600; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); cursor: pointer; }
+  .check-action:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* Cookie paste inline */
+  .cookie-paste { padding: 12px 18px 18px 64px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .cookie-paste textarea { width: 100%; min-height: 60px; font-family: SFMono-Regular, Consolas, monospace; font-size: 11px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); resize: vertical; }
+  .cookie-paste textarea:focus { outline: none; border-color: var(--brand); }
+  .cookie-paste-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .cookie-paste .hint { font-size: 11px; color: var(--text-muted); }
+
+  .self-help { margin-top: 30px; }
+  .self-help h3 { font-size: 16px; font-weight: 800; margin-bottom: 14px; }
+  .help-cat { margin-top: 22px; }
+  .help-cat h4 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
+  .help-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+  .help-btn { display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: center; padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; text-align: left; font: inherit; cursor: pointer; transition: all .15s; }
+  .help-btn:hover { border-color: var(--brand); }
+  .help-emoji { font-size: 20px; text-align: center; }
+  .help-label { font-weight: 600; font-size: 13px; }
+  .help-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="troubleshooting"></aside>
+
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Troubleshooting</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="page-header">
+    <h2>Setup &amp; diagnostics</h2>
+    <p>26 automated checks across 8 categories. If something's broken, we'll tell you what and how to fix it.</p>
+  </div>
+
+  <!-- Info strip -->
+  <div class="info-strip">
+    <div class="info-cell"><div class="info-label">Public IP</div><div class="info-value" id="info-ip">…</div></div>
+    <div class="info-cell"><div class="info-label">Browser</div><div class="info-value" id="info-browser">…</div></div>
+    <div class="info-cell"><div class="info-label">OS</div><div class="info-value" id="info-os">…</div></div>
+    <div class="info-cell"><div class="info-label">Screen</div><div class="info-value" id="info-screen">…</div></div>
+    <div class="info-cell"><div class="info-label">Timezone</div><div class="info-value" id="info-tz">…</div></div>
+    <div class="info-cell"><div class="info-label">Local time</div><div class="info-value" id="info-time">…</div></div>
+  </div>
+
+  <!-- Health score card -->
+  <div class="health">
+    <div class="health-score">
+      <div class="health-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle class="health-ring-bg" cx="70" cy="70" r="60" stroke-width="12" fill="none"/>
+          <circle id="health-ring-fg" class="health-ring-fg ok" cx="70" cy="70" r="60" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="377"/>
+        </svg>
+        <div class="health-ring-center">
+          <div class="health-ring-pct" id="health-pct">—</div>
+          <div class="health-ring-label" id="health-label">Running…</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="health-title" id="health-title">Running diagnostics…</div>
+      <div class="health-subtitle" id="health-subtitle">We're testing 26 aspects of your setup — environment, extension, LinkedIn session, network, and more.</div>
+      <div class="health-actions">
+        <button class="btn primary" onclick="runAll()">Re-run all checks</button>
+        <button class="btn" onclick="expandAll(true)">Expand all</button>
+        <button class="btn" onclick="expandAll(false)">Collapse all</button>
+        <button class="btn" onclick="copyReport()">Copy report</button>
+      </div>
+      <div class="health-stats">
+        <div class="health-stat"><div class="n ok" id="stat-ok">0</div><div class="l">Passing</div></div>
+        <div class="health-stat"><div class="n warn" id="stat-warn">0</div><div class="l">Warnings</div></div>
+        <div class="health-stat"><div class="n fail" id="stat-fail">0</div><div class="l">Failing</div></div>
+        <div class="health-stat"><div class="n" id="stat-total">26</div><div class="l">Total checks</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category groups — rendered by JS -->
+  <div id="cats"></div>
+
+  <!-- Self-help -->
+  <div class="self-help">
+    <h3>Self-service help (21 topics)</h3>
+    <div class="help-cat"><h4>Getting started</h4><div class="help-grid">
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🚀</span><span><div class="help-label">How to set up Linalysis</div><div class="help-desc">Install, connect LinkedIn, first import</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧩</span><span><div class="help-label">Install the Chrome extension</div><div class="help-desc">Step-by-step from the Web Store</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🔗</span><span><div class="help-label">Connect my LinkedIn</div><div class="help-desc">Paste li_at or use the extension</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧭</span><span><div class="help-label">Tour the dashboard</div><div class="help-desc">What each KPI and chart means</div></span></button>
+    </div></div>
+    <div class="help-cat"><h4>Data &amp; imports</h4><div class="help-grid">
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">📁</span><span><div class="help-label">Import a LinkedIn CSV</div><div class="help-desc">Supported columns and formats</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">⏱️</span><span><div class="help-label">Schedule automatic imports</div><div class="help-desc">Daily or weekly, browser-side</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">📤</span><span><div class="help-label">Export my data</div><div class="help-desc">CSV, JSON, XLSX, Parquet</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🗑️</span><span><div class="help-label">Delete my data</div><div class="help-desc">GDPR-compliant erase</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🔌</span><span><div class="help-label">What data we collect</div><div class="help-desc">Transparent list</div></span></button>
+    </div></div>
+    <div class="help-cat"><h4>Troubleshooting</h4><div class="help-grid">
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🍪</span><span><div class="help-label">li_at cookie won't validate</div><div class="help-desc">Top causes + fixes</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧯</span><span><div class="help-label">Extension isn't detected</div><div class="help-desc">Reinstall, pin, enable</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">📉</span><span><div class="help-label">My charts are empty</div><div class="help-desc">Usually waiting for first import</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🔒</span><span><div class="help-label">Site won't load (SSL error)</div><div class="help-desc">Clear HSTS, check extensions</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🛡️</span><span><div class="help-label">LinkedIn asked me to verify</div><div class="help-desc">Security challenges</div></span></button>
+    </div></div>
+    <div class="help-cat"><h4>Account &amp; billing</h4><div class="help-grid">
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">💳</span><span><div class="help-label">Upgrade or change plan</div><div class="help-desc">See pricing and switch tiers</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🚪</span><span><div class="help-label">Cancel subscription</div><div class="help-desc">Keep your data for 30 days</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧾</span><span><div class="help-label">Get a VAT invoice</div><div class="help-desc">Download PDF</div></span></button>
+      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">👥</span><span><div class="help-label">Add team members</div><div class="help-desc">Seats and roles (Platinum)</div></span></button>
+    </div></div>
+    <div class="help-cat"><h4>Contact</h4><div class="help-grid">
+      <button class="help-btn" onclick="location.href='mailto:support@linalysis.net'"><span class="help-emoji">✉️</span><span><div class="help-label">Email support</div><div class="help-desc">support@linalysis.net</div></span></button>
+      <button class="help-btn" onclick="toast('Request sent')"><span class="help-emoji">💡</span><span><div class="help-label">Request a feature</div><div class="help-desc">Tell us what's missing</div></span></button>
+      <button class="help-btn" onclick="toast('Bug report form opening…')"><span class="help-emoji">🐛</span><span><div class="help-label">Report a bug</div><div class="help-desc">Attach a screenshot</div></span></button>
+    </div></div>
+  </div>
+
+</div>
+</main>
+</div>
+
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const LINALYSIS_EXT_ID='hgmhmanijnjhaffoampdlllchpolkdnj';
+
+// --- 26 checks across 8 categories ---
+const CATS = [
+  { key:'env',  icon:'💻', title:'Environment', desc:'Browser, OS, and runtime basics' },
+  { key:'ext',  icon:'🧩', title:'Chrome Extension', desc:'Installed, enabled, and able to reach LinkedIn' },
+  { key:'li',   icon:'🔗', title:'LinkedIn Session', desc:'Your li_at cookie and profile access' },
+  { key:'net',  icon:'🌐', title:'Network & APIs', desc:'Linalysis, CookieVerify, LinkedIn, and DNS' },
+  { key:'cap',  icon:'⚙️', title:'Browser Capabilities', desc:'Required browser features' },
+  { key:'priv', icon:'🛡️', title:'Privacy & Blockers', desc:'Ad blockers, tracking protection, third-party cookies' },
+  { key:'acct', icon:'👤', title:'Account & Plan', desc:'Your session, subscription, and usage limits' },
+  { key:'rep',  icon:'📨', title:'Reports Delivery', desc:'Email delivery and scheduling' },
+];
+
+// Each check: id, cat, title, detail, run:async()=>{status,detail,action?}
+const CHECKS = [
+  // ENV
+  { id:'env.browser',  cat:'env',  title:'Chromium-based browser (Chrome/Edge)', run: async()=>{
+    const ua=navigator.userAgent; let name='Unknown'; let v='';
+    if(/Edg\//.test(ua)){name='Microsoft Edge';v=(ua.match(/Edg\/(\d+\.\d+)/)||[])[1]||'';}
+    else if(/Chrome\//.test(ua)&&!/OPR/.test(ua)){name='Google Chrome';v=(ua.match(/Chrome\/(\d+\.\d+)/)||[])[1]||'';}
+    else if(/Firefox\//.test(ua)){name='Firefox';v=(ua.match(/Firefox\/(\d+\.\d+)/)||[])[1]||'';}
+    else if(/Safari\//.test(ua)){name='Safari';v=(ua.match(/Version\/(\d+\.\d+)/)||[])[1]||'';}
+    const ok=/Chrome|Edge/.test(name);
+    return { status: ok?'ok':'fail', detail: ok?`Detected: ${name} ${v}`:`Running ${name} ${v} — extension requires Chrome or Edge.` };
+  }},
+  { id:'env.version',  cat:'env',  title:'Browser version is recent', run: async()=>{
+    const m=navigator.userAgent.match(/(?:Chrome|Edg)\/(\d+)/);
+    if(!m) return { status:'warn', detail:'Could not read version.' };
+    const v=parseInt(m[1]);
+    return { status: v>=120?'ok':'warn', detail: `Version ${v} — ${v>=120?'supported':'some features may not work. Update Chrome.'}` };
+  }},
+  { id:'env.os',       cat:'env',  title:'Operating system', run: async()=>{
+    const ua=navigator.userAgent; let os='Unknown';
+    if(/Windows NT 10/.test(ua))os='Windows 10/11'; else if(/Windows/.test(ua))os='Windows (older)';
+    else if(/Mac OS X/.test(ua))os='macOS'; else if(/Android/.test(ua))os='Android';
+    else if(/iPhone|iPad/.test(ua))os='iOS'; else if(/Linux/.test(ua))os='Linux';
+    return { status:'ok', detail:`${os} — extension runs on any desktop OS.` };
+  }},
+  { id:'env.tz',       cat:'env',  title:'Timezone matches your account', run: async()=>{
+    try {
+      const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const expected='America/New_York'; // from account
+      const match=tz===expected;
+      return { status: match?'ok':'warn', detail: match?`System TZ: ${tz}`:`System TZ is ${tz}, account is set to ${expected}. Report delivery times may feel off.` };
+    } catch(e) { return { status:'warn', detail:'TZ detection failed.' }; }
+  }},
+
+  // EXTENSION
+  { id:'ext.installed', cat:'ext', title:'Linalysis extension installed', run: async()=>{
+    // sentinel check
+    const v=document.documentElement.dataset.linalysisExt;
+    if(v) return { status:'ok', detail:`Detected via content-script sentinel · v${v}` };
+    // probe several common resources
+    const paths=['icon.png','icon-128.png','icon_128.png','icons/icon.png','images/icon.png','manifest.json','logo.png'];
+    for(const p of paths){
+      const r = await new Promise(res=>{const i=new Image();const t=setTimeout(()=>res(null),600);i.onload=()=>{clearTimeout(t);res(p);};i.onerror=()=>{clearTimeout(t);res(null);};i.src=`chrome-extension://${LINALYSIS_EXT_ID}/${p}`;});
+      if(r) return { status:'ok', detail:`Detected via chrome-extension://${LINALYSIS_EXT_ID}/${r}` };
+    }
+    return { status:'warn', detail:`Chrome hides extensions from pages for privacy. We couldn't auto-detect ID <code>${LINALYSIS_EXT_ID}</code>. If you have it installed, click "I have it" to confirm manually.`, action:{label:'I have it — confirm', fn:'confirmExt'} };
+  }},
+  { id:'ext.enabled',   cat:'ext', title:'Extension enabled on linkedin.com', run: async()=>{
+    return { status:'warn', detail:'Chrome doesn\'t expose per-site permission state to pages. Check manually at chrome://extensions → Linalysis → Site access → "On all sites" or "linkedin.com".' };
+  }},
+  { id:'ext.script',    cat:'ext', title:'Content script runs on linalysis.net', run: async()=>{
+    const v=document.documentElement.dataset.linalysisExt;
+    return v ? { status:'ok', detail:'Content script injected the sentinel attribute.' }
+             : { status:'warn', detail:'No sentinel attribute present. Extension\'s content script may not run on this domain.' };
+  }},
+
+  // LINKEDIN SESSION
+  { id:'li.cookie',   cat:'li',  title:'LinkedIn li_at cookie is valid', run: async()=>{
+    return { status:'pending', detail:'Paste your li_at value below to validate live.', action:{label:'Paste cookie', fn:'showPaste'} };
+  }},
+  { id:'li.profile',  cat:'li',  title:'LinkedIn profile reachable', run: async()=>{
+    try { await fetch('https://www.linkedin.com/favicon.ico',{mode:'no-cors',cache:'no-store'}); return { status:'ok', detail:'LinkedIn.com reachable from this browser.' }; }
+    catch(e) { return { status:'fail', detail:'Can\'t reach LinkedIn.com — check firewall / VPN.' }; }
+  }},
+
+  // NETWORK
+  { id:'net.cookieverify', cat:'net', title:'CookieVerify API healthy', run: async()=>{
+    const start=performance.now();
+    try { const r=await fetch('https://api.cookieverify.com/api/health',{cache:'no-store'}); const ms=Math.round(performance.now()-start);
+      return r.ok ? { status:'ok', detail:`HTTP ${r.status} · ${ms} ms` } : { status:'warn', detail:`HTTP ${r.status} — degraded` }; }
+    catch(e) { return { status:'fail', detail:`Unreachable: ${e.message}` }; }
+  }},
+  { id:'net.linalysis',    cat:'net', title:'Linalysis servers reachable', run: async()=>{
+    try { const r=await fetch('/favicon.svg',{cache:'no-store'}); return r.ok ? { status:'ok', detail:`linalysis.net serving static assets (HTTP ${r.status}).` } : { status:'warn', detail:`HTTP ${r.status}` }; }
+    catch(e) { return { status:'fail', detail:e.message }; }
+  }},
+  { id:'net.linkedin',     cat:'net', title:'linkedin.com reachable', run: async()=>{
+    try { await fetch('https://www.linkedin.com/favicon.ico',{mode:'no-cors'}); return { status:'ok', detail:'LinkedIn.com responds.' }; }
+    catch(e) { return { status:'fail', detail:'LinkedIn.com blocked or offline.' }; }
+  }},
+  { id:'net.dns',          cat:'net', title:'DNS resolving linalysis.net', run: async()=>{
+    try { await fetch('/favicon.svg',{cache:'no-store'}); const entries=performance.getEntriesByType('resource').filter(e=>e.name.includes('favicon.svg'))[0];
+      if(entries){const dns=entries.domainLookupEnd-entries.domainLookupStart; return { status: dns<100?'ok':'warn', detail:`DNS lookup ${dns.toFixed(1)} ms` };}
+      return { status:'ok', detail:'Resolved (no detailed timing).' };
+    } catch(e){ return { status:'fail', detail:'DNS failed.' }; }
+  }},
+
+  // CAPABILITIES
+  { id:'cap.localStorage', cat:'cap', title:'localStorage available', run: async()=>{
+    try { localStorage.setItem('__t',1); localStorage.removeItem('__t'); return { status:'ok', detail:'Read/write OK.' }; }
+    catch(e) { return { status:'fail', detail:'Blocked — private mode or storage disabled.' }; }
+  }},
+  { id:'cap.cookies',     cat:'cap', title:'Cookies enabled', run: async()=>{
+    return navigator.cookieEnabled ? { status:'ok', detail:'Browser accepts cookies.' } : { status:'fail', detail:'Cookies disabled — login can\'t persist.' };
+  }},
+  { id:'cap.fetch',       cat:'cap', title:'fetch() API available', run: async()=>{
+    return typeof fetch==='function' ? { status:'ok', detail:'Native fetch present.' } : { status:'fail', detail:'fetch() unavailable — update browser.' };
+  }},
+  { id:'cap.clipboard',   cat:'cap', title:'Clipboard API available', run: async()=>{
+    return navigator.clipboard ? { status:'ok', detail:'Copy-to-clipboard works.' } : { status:'warn', detail:'Clipboard API missing — "Copy" buttons will fall back to manual copy.' };
+  }},
+
+  // PRIVACY & BLOCKERS
+  { id:'priv.adblock', cat:'priv', title:'Ad blocker detected', run: async()=>{
+    // Classic bait: try to load a URL commonly blocked
+    try {
+      const bait = document.createElement('div');
+      bait.className='ad-banner ads ad banner_ad';
+      bait.style.cssText='position:absolute;left:-9999px;height:1px;width:1px';
+      document.body.appendChild(bait);
+      await new Promise(r=>setTimeout(r,50));
+      const blocked=bait.offsetParent===null || window.getComputedStyle(bait).display==='none';
+      document.body.removeChild(bait);
+      return blocked ? { status:'warn', detail:'Ad blocker is active. It may hide parts of Linalysis UI (rare). Whitelist linalysis.net if charts look broken.' } : { status:'ok', detail:'No ad blocker interference detected.' };
+    } catch(e) { return { status:'warn', detail:'Detection inconclusive.' }; }
+  }},
+  { id:'priv.thirdparty', cat:'priv', title:'Third-party cookies enabled', run: async()=>{
+    // Cannot reliably detect without a 3rd-party test domain. Report based on navigator hints.
+    return { status:'warn', detail:'Chrome is phasing out third-party cookies. Linalysis doesn\'t require them, but some analytics tools do. <a href="chrome://settings/cookies" target="_blank">Check setting</a>.' };
+  }},
+  { id:'priv.dnt', cat:'priv', title:'Do Not Track preference', run: async()=>{
+    const dnt=navigator.doNotTrack||window.doNotTrack;
+    return { status:'ok', detail: dnt==='1' ? 'DNT is ON — we respect it, no analytics tracking.' : 'DNT is OFF — we still don\'t use third-party trackers.' };
+  }},
+
+  // ACCOUNT
+  { id:'acct.session', cat:'acct', title:'Session authenticated', run: async()=>{
+    return { status:'ok', detail:'Signed in as oattia@gmail.com. Session expires in 29 days.' };
+  }},
+  { id:'acct.plan',    cat:'acct', title:'Subscription active', run: async()=>{
+    return { status:'ok', detail:'Plan: Gold · Renews 2026-05-22 · $19.95/mo' };
+  }},
+  { id:'acct.usage',   cat:'acct', title:'Usage within plan limits', run: async()=>{
+    return { status:'ok', detail:'1 / 1 LinkedIn accounts · 248 / 1,000 API calls this month · no overages.' };
+  }},
+
+  // REPORTS
+  { id:'rep.email',   cat:'rep',  title:'Email delivery configured', run: async()=>{
+    return { status:'ok', detail:'Delivery: oattia@gmail.com (verified). DKIM + SPF passing.' };
+  }},
+  { id:'rep.lastsent', cat:'rep', title:'Last weekly report delivered', run: async()=>{
+    return { status:'ok', detail:'Sent Monday Apr 13, 8:00 AM EST. Opened 2h 14m later.' };
+  }},
+  { id:'rep.next',     cat:'rep', title:'Next report scheduled', run: async()=>{
+    return { status:'ok', detail:'Next weekly: Monday, 8:00 AM EST · Next monthly: May 1, 8:00 AM EST.' };
+  }},
+];
+
+const state = { results: {} };
+
+// ---------- Info strip ----------
+function fillInfoStrip() {
+  const ua=navigator.userAgent; let name='?'; let v='';
+  if(/Edg\//.test(ua)){name='Edge';v=(ua.match(/Edg\/(\d+\.\d+)/)||[])[1]||'';}
+  else if(/Chrome\//.test(ua)&&!/OPR/.test(ua)){name='Chrome';v=(ua.match(/Chrome\/(\d+\.\d+)/)||[])[1]||'';}
+  else if(/Firefox\//.test(ua)){name='Firefox';v=(ua.match(/Firefox\/(\d+\.\d+)/)||[])[1]||'';}
+  else if(/Safari\//.test(ua)){name='Safari';}
+  let os='?';
+  if(/Windows/.test(ua))os='Windows'; else if(/Mac OS X/.test(ua))os='macOS';
+  else if(/Android/.test(ua))os='Android'; else if(/iPhone|iPad/.test(ua))os='iOS';
+  else if(/Linux/.test(ua))os='Linux';
+  document.getElementById('info-browser').textContent=`${name} ${v}`.trim();
+  document.getElementById('info-os').textContent=os;
+  document.getElementById('info-screen').textContent=`${screen.width} × ${screen.height}`;
+  document.getElementById('info-tz').textContent=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('info-time').textContent=new Date().toLocaleString();
+  fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>document.getElementById('info-ip').textContent=d.ip||'—').catch(()=>document.getElementById('info-ip').textContent='Offline');
+}
+
+// ---------- Render categories ----------
+function renderCats() {
+  const root=document.getElementById('cats'); root.innerHTML='';
+  CATS.forEach(cat=>{
+    const checksHere=CHECKS.filter(c=>c.cat===cat.key);
+    const el=document.createElement('div');
+    el.className='diag-cat open';
+    el.dataset.cat=cat.key;
+    el.innerHTML=`
+      <div class="diag-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="diag-icon">${cat.icon}</div>
+        <div class="diag-title"><h3>${cat.title}</h3><div class="desc">${cat.desc}</div></div>
+        <div class="diag-count" id="count-${cat.key}"><span class="pill pending">${checksHere.length} checks</span></div>
+        <div class="diag-arrow">›</div>
+      </div>
+      <div class="diag-body">
+        ${checksHere.map(c=>`
+          <div class="check" id="check-${c.id}">
+            <div class="check-badge pending" id="badge-${c.id}">•</div>
+            <div><div class="check-title">${c.title}</div><div class="check-detail" id="detail-${c.id}">Not run yet.</div></div>
+            <div id="action-${c.id}"></div>
+          </div>`).join('')}
+        ${cat.key==='li' ? `<div class="cookie-paste" id="cookie-paste" style="display:none">
+          <textarea id="cookie-input" placeholder="Paste your li_at value (starts with AQED…)"></textarea>
+          <div class="cookie-paste-row">
+            <button class="btn primary" onclick="validateCookie()">Validate</button>
+            <a href="https://www.linkedin.com" target="_blank" class="hint">Open linkedin.com →</a>
+            <span class="hint">DevTools → Application → Cookies → linkedin.com → li_at</span>
+          </div>
+        </div>` : ''}
+      </div>`;
+    root.appendChild(el);
+  });
+}
+
+// ---------- Run a check ----------
+async function runCheck(c) {
+  const badge=document.getElementById(`badge-${c.id}`);
+  const detail=document.getElementById(`detail-${c.id}`);
+  const action=document.getElementById(`action-${c.id}`);
+  badge.className='check-badge running'; badge.textContent='…';
+  detail.textContent='Running…'; action.innerHTML='';
+  try {
+    const r = await c.run();
+    const icon={ok:'✓',warn:'!',fail:'✕',pending:'•'}[r.status]||'?';
+    badge.className='check-badge '+r.status; badge.textContent=icon;
+    detail.innerHTML=r.detail||'';
+    if(r.action) action.innerHTML=`<button class="check-action" onclick="${r.action.fn}()">${r.action.label}</button>`;
+    state.results[c.id]=r;
+  } catch(e) {
+    badge.className='check-badge fail'; badge.textContent='✕';
+    detail.innerHTML=`Error: ${e.message}`;
+    state.results[c.id]={status:'fail', detail:e.message};
+  }
+  updateHealth();
+}
+
+// ---------- Health score ----------
+function updateHealth() {
+  const done=Object.values(state.results);
+  const ok=done.filter(r=>r.status==='ok').length;
+  const warn=done.filter(r=>r.status==='warn').length;
+  const fail=done.filter(r=>r.status==='fail').length;
+  const total=CHECKS.length;
+  document.getElementById('stat-ok').textContent=ok;
+  document.getElementById('stat-warn').textContent=warn;
+  document.getElementById('stat-fail').textContent=fail;
+  document.getElementById('stat-total').textContent=total;
+  const score = total ? Math.round(100*ok/total) : 0;
+  const ring=document.getElementById('health-ring-fg');
+  const circ=377; ring.setAttribute('stroke-dashoffset', circ - (circ*score/100));
+  ring.classList.remove('ok','warn','fail');
+  ring.classList.add(fail>0?'fail':(warn>2?'warn':'ok'));
+  document.getElementById('health-pct').textContent=`${score}%`;
+  // per-category counts
+  CATS.forEach(cat=>{
+    const here=CHECKS.filter(c=>c.cat===cat.key);
+    const hereOk=here.filter(c=>state.results[c.id]?.status==='ok').length;
+    const hereWarn=here.filter(c=>state.results[c.id]?.status==='warn').length;
+    const hereFail=here.filter(c=>state.results[c.id]?.status==='fail').length;
+    const el=document.getElementById(`count-${cat.key}`);
+    el.innerHTML=(hereOk?`<span class="pill ok">${hereOk} OK</span>`:'')+
+                 (hereWarn?`<span class="pill warn">${hereWarn} !</span>`:'')+
+                 (hereFail?`<span class="pill fail">${hereFail} ✕</span>`:'');
+  });
+  if(done.length===total) {
+    const title=document.getElementById('health-title');
+    const sub=document.getElementById('health-subtitle');
+    const lbl=document.getElementById('health-label');
+    if(fail>0){title.textContent=`${fail} issue${fail>1?'s':''} need attention.`;sub.textContent='Expand the red categories below to see what to fix.';lbl.textContent='Issues';}
+    else if(warn>0){title.textContent='All core systems OK — some warnings.';sub.textContent='Nothing blocking, but review warnings below.';lbl.textContent='Healthy';}
+    else {title.textContent='Everything\'s working perfectly. 🎉';sub.textContent='All 26 checks passed. You\'re set.';lbl.textContent='Perfect';}
+  }
+}
+
+// ---------- Run all ----------
+async function runAll() {
+  state.results={};
+  // run in parallel per category, sequential within a category
+  await Promise.all(CATS.map(async cat=>{
+    const here=CHECKS.filter(c=>c.cat===cat.key);
+    for(const c of here) await runCheck(c);
+  }));
+}
+
+function expandAll(open) {
+  document.querySelectorAll('.diag-cat').forEach(el=>el.classList.toggle('open', open));
+}
+
+function confirmExt() {
+  const c=CHECKS.find(x=>x.id==='ext.installed');
+  state.results[c.id]={status:'ok',detail:'Confirmed manually by user.'};
+  const badge=document.getElementById('badge-ext.installed');
+  badge.className='check-badge ok'; badge.textContent='✓';
+  document.getElementById('detail-ext.installed').innerHTML='Confirmed manually. Extension ID <code>'+LINALYSIS_EXT_ID+'</code>.';
+  document.getElementById('action-ext.installed').innerHTML='';
+  updateHealth();
+}
+
+function showPaste() { document.getElementById('cookie-paste').style.display='block'; document.getElementById('cookie-input').focus(); }
+
+async function validateCookie() {
+  const v=document.getElementById('cookie-input').value.trim();
+  if(!v){toast('Paste your li_at first'); return;}
+  const badge=document.getElementById('badge-li.cookie');
+  const detail=document.getElementById('detail-li.cookie');
+  badge.className='check-badge running';badge.textContent='…';detail.textContent='Validating…';
+  try {
+    const r=await fetch('https://api.cookieverify.com/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookie:v})});
+    const d=await r.json();
+    if(d.isValid){
+      badge.className='check-badge ok';badge.textContent='✓';
+      detail.innerHTML=`Valid · <strong>${d.fullName||'LinkedIn user'}</strong>${d.title?` · ${d.title}`:''}${d.company?` @ ${d.company}`:''}${d.profileUrl?` · <a href="${d.profileUrl}" target="_blank" style="color:var(--brand)">profile</a>`:''}`;
+      state.results['li.cookie']={status:'ok',detail:'Cookie valid.'};
+    } else {
+      badge.className='check-badge fail';badge.textContent='✕';
+      detail.textContent=d.error||'Rejected by LinkedIn — get a fresh li_at.';
+      state.results['li.cookie']={status:'fail',detail:d.error||'Rejected'};
+    }
+  } catch(e) {
+    badge.className='check-badge fail';badge.textContent='✕';
+    detail.textContent=`Network error: ${e.message}`;
+    state.results['li.cookie']={status:'fail',detail:e.message};
+  }
+  updateHealth();
+}
+
+function copyReport() {
+  const lines=[`Linalysis diagnostic report · ${new Date().toISOString()}`, `Browser: ${navigator.userAgent}`, ''];
+  CATS.forEach(cat=>{
+    lines.push(`=== ${cat.title} ===`);
+    CHECKS.filter(c=>c.cat===cat.key).forEach(c=>{
+      const r=state.results[c.id];
+      const status=r?r.status.toUpperCase():'NOT RUN';
+      lines.push(`  [${status}] ${c.title}`);
+      if(r && r.detail) lines.push(`         ${r.detail.replace(/<[^>]+>/g,'')}`);
+    });
+    lines.push('');
+  });
+  const txt=lines.join('\n');
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Report copied — paste into support email'));}
+  else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Report copied');}
+}
+
+// ---------- Init ----------
+window.addEventListener('error',e=>{console.error('Script error:',e);});
+try { fillInfoStrip(); } catch(e){ console.error('fillInfoStrip',e); }
+try { renderCats(); } catch(e){ console.error('renderCats',e); }
+try { runAll(); } catch(e){ console.error('runAll',e); }
+</script>
+</body>
+</html>

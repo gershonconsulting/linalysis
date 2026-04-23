@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Pricing</title>
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .hero { text-align: center; padding: 30px 0 40px; }
+  .hero h2 { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .hero p { font-size: 16px; color: var(--text-muted); max-width: 600px; margin: 0 auto; }
+
+  .billing-toggle {
+    display: inline-flex;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    margin: 24px auto 40px;
+  }
+  .billing-toggle button {
+    padding: 10px 24px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-muted);
+    position: relative;
+  }
+  .billing-toggle button.active {
+    background: var(--brand);
+    color: #fff;
+  }
+  .billing-toggle .save-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: var(--success-light);
+    color: var(--success);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .billing-toggle button.active .save-badge { background: rgba(255,255,255,0.25); color: #fff; }
+
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 60px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  @media (max-width: 900px) { .plan-grid { grid-template-columns: 1fr; } }
+
+  .plan {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .plan:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
+  .plan.featured {
+    border-color: var(--brand);
+    background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+  }
+  .plan-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--brand);
+    color: #fff;
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .plan-name { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+  .plan-tagline { font-size: 13px; color: var(--text-muted); margin-top: 4px; min-height: 38px; }
+  .plan-price { display: flex; align-items: baseline; gap: 6px; margin: 20px 0 6px; }
+  .plan-price .amount { font-size: 48px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--text); }
+  .plan-price .amount.zero { color: var(--success); }
+  .plan-price .unit { color: var(--text-muted); font-size: 14px; font-weight: 600; }
+  .plan-sub { font-size: 12px; color: var(--text-muted); min-height: 18px; }
+  .plan-sub .strike { text-decoration: line-through; margin-right: 6px; }
+  .plan-sub .save { color: var(--success); font-weight: 700; }
+
+  .plan-cta {
+    display: block;
+    padding: 13px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    margin: 22px 0 20px;
+    border: 2px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .plan-cta:hover { border-color: var(--brand); color: var(--brand); }
+  .plan.featured .plan-cta { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .plan.featured .plan-cta:hover { background: var(--brand-dark); }
+
+  .plan-features { list-style: none; padding: 0; margin: 0; }
+  .plan-features li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .plan-features li::before {
+    content: '✓';
+    color: var(--success);
+    font-weight: 800;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    background: var(--success-light);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+  .plan-features li.off { opacity: 0.4; }
+  .plan-features li.off::before { content: '–'; color: var(--text-muted); background: var(--bg); }
+  .plan-features li strong { font-weight: 700; }
+
+  /* Comparison table */
+  .compare { margin-top: 60px; }
+  .compare h3 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 24px; }
+  .compare-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .compare-table th, .compare-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .compare-table thead th {
+    background: var(--bg);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .compare-table th.price-col, .compare-table td.price-col { text-align: center; }
+  .compare-table td.price-col.yes { color: var(--success); font-weight: 700; }
+  .compare-table td.price-col.no { color: var(--border); font-size: 18px; }
+  .compare-table tbody tr:last-child td { border-bottom: none; }
+  .compare-table tbody tr:hover { background: var(--brand-light); }
+  .compare-table .section-row td { background: var(--bg); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 12px 16px; }
+
+  /* FAQ */
+  .faq { margin-top: 60px; max-width: 800px; margin-left: auto; margin-right: auto; }
+  .faq h3 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 24px; }
+  .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+  .faq-q { padding: 16px 20px; cursor: pointer; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .faq-q::after { content: '+'; font-size: 22px; font-weight: 300; color: var(--text-muted); transition: transform .2s; }
+  .faq-item.open .faq-q::after { transform: rotate(45deg); }
+  .faq-a { padding: 0 20px 16px; font-size: 13.5px; color: var(--text-muted); line-height: 1.6; display: none; }
+  .faq-item.open .faq-a { display: block; }
+
+  .trust-strip {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .trust-strip strong { color: var(--text); font-weight: 700; }
+</style>
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="pricing"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Pricing</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/account.html">My account</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+  <div class="hero">
+    <h2>Pick the plan that fits</h2>
+    <p>Start free — upgrade when you want richer analytics, longer history, or team seats. Cancel any time; we keep your data for 30 days after cancellation in case you come back.</p>
+  </div>
+
+    <!-- Stripe Pricing Table (live) -->
+  <div style="margin: 20px 0 40px; min-height: 480px">
+    <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
+    <stripe-pricing-table pricing-table-id="prctbl_1TPCG8DStIvP1yFiMdrSm5Gj"
+                          publishable-key="pk_live_51RDifKDStIvP1yFiPN8pa06P7SXwkS8IrRCjjv2gptlhkSZSZMDIcn9Ge8gaMdMbNPN1YALuSg0PDmvZE59oEWb8003bsw475s">
+    </stripe-pricing-table>
+  </div>
+
+<div class="trust-strip">
+    <strong>Trusted by 1,200+ solo operators, agencies, and SaaS founders.</strong> 14-day free trial on Pro — no credit card required. Cancel any time; 30-day data retention.
+  </div>
+
+  <!-- Feature comparison -->
+  <div class="compare">
+    <h3>Full feature comparison</h3>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="price-col">Silver</th>
+          <th class="price-col">Gold</th>
+          <th class="price-col">Platinum</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="section-row"><td colspan="4">Profile analytics</td></tr>
+        <tr><td>Connections, Views, SSI, Invitations</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Search Appearances</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>SSI Industry &amp; Network percentile</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Historical data</td><td class="price-col">30 days</td><td class="price-col yes">Unlimited</td><td class="price-col yes">Unlimited</td></tr>
+
+        <tr class="section-row"><td colspan="4">Company page</td></tr>
+        <tr><td>Company followers &amp; visitors</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Post impressions &amp; reach</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+
+        <tr class="section-row"><td colspan="4">Reports &amp; insights</td></tr>
+        <tr><td>Weekly email report</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Monthly email report</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>AI-generated insights per metric</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Custom report designs</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">✓</td></tr>
+        <tr><td>White-label reports</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">✓</td></tr>
+
+        <tr class="section-row"><td colspan="4">Outreach</td></tr>
+        <tr><td>Campaigns, Messaging, Emailing dashboards</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+
+        <tr class="section-row"><td colspan="4">Data &amp; API</td></tr>
+        <tr><td>CSV export</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>JSON / Excel / Parquet export</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>REST API</td><td class="price-col no">—</td><td class="price-col">1K calls/mo</td><td class="price-col yes">Unlimited</td></tr>
+        <tr><td>Webhooks</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">✓</td></tr>
+
+        <tr class="section-row"><td colspan="4">Team &amp; accounts</td></tr>
+        <tr><td>LinkedIn accounts tracked</td><td class="price-col">1</td><td class="price-col">1</td><td class="price-col yes">Up to 10</td></tr>
+        <tr><td>Team seats</td><td class="price-col">1</td><td class="price-col">1</td><td class="price-col yes">5 (+ $15/seat)</td></tr>
+        <tr><td>SSO (Google / Microsoft)</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Audit logs</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">✓</td></tr>
+
+        <tr class="section-row"><td colspan="4">Support</td></tr>
+        <tr><td>Community support</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Priority email (24h)</td><td class="price-col no">—</td><td class="price-col yes">✓</td><td class="price-col yes">✓</td></tr>
+        <tr><td>Dedicated CSM + 2h priority</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">✓</td></tr>
+        <tr><td>SLA</td><td class="price-col no">—</td><td class="price-col no">—</td><td class="price-col yes">99.9%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FAQ -->
+  <div class="faq">
+    <h3>Frequently asked questions</h3>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I try Pro or Business before paying?</div><div class="faq-a">Yes. Pro comes with a 14-day free trial — no credit card required. Business has a 30-day pilot arranged with our sales team; <a href="mailto:sales@linalysis.net" style="color:var(--brand)">email us</a> and we'll set one up.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What happens when I cancel?</div><div class="faq-a">Your access continues until the end of the billing period. Your data stays with us for 30 days in case you come back. After 30 days, it's permanently deleted (GDPR-compliant). You can also export everything to CSV/JSON/XLSX before cancelling.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Do you store my LinkedIn password?</div><div class="faq-a">Never. Linalysis reads your LinkedIn session cookie (<code>li_at</code>) which you paste into the troubleshooting page — we validate it once via the CookieVerify API and then only use it via the Chrome extension, which runs entirely in your browser. We never store your password. You can revoke access any time by logging out of LinkedIn.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I switch plans?</div><div class="faq-a">Yes, any time. Upgrades are prorated and take effect immediately. Downgrades apply at the next billing period. If you're on yearly and switch mid-term, unused time is credited against the new plan.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is Business only for agencies?</div><div class="faq-a">Not exclusively — it's for anyone who needs multi-seat access (in-house marketing teams, founders with EA support, sales teams tracking prospects) or needs >1 LinkedIn account. If you're a solo operator, Pro is almost always the right pick.</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What payment methods do you accept?</div><div class="faq-a">Credit and debit cards (Visa, Mastercard, Amex), Apple Pay, Google Pay, and SEPA for EU customers. Business plans can also pay by invoice (annual, min. 5 seats).</div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I get a VAT invoice?</div><div class="faq-a">Yes — go to <a href="/account.html" style="color:var(--brand)">Account → Billing history → Get invoice</a>, or email <a href="mailto:billing@linalysis.net" style="color:var(--brand)">billing@linalysis.net</a>.</div></div>
+  </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+  function toast(m, ms=2200) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._to); toast._to=setTimeout(()=>t.classList.remove('show'), ms); }
+  function setBilling(btn) {
+    const mode = btn.dataset.billing;
+    document.querySelectorAll('.billing-toggle button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('[data-price-monthly]').forEach(el => { el.textContent = el.dataset['price' + mode.charAt(0).toUpperCase() + mode.slice(1)]; });
+    document.querySelectorAll('[data-sub-monthly]').forEach(el => { el.textContent = el.dataset['sub' + mode.charAt(0).toUpperCase() + mode.slice(1)]; });
+    // Update /month vs /year next to amount
+    document.querySe

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Campaigns</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="campaigns"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Campaigns</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+      <div class="page-header">
+        <h2>Campaigns</h2>
+        <p>Outreach campaigns running on LinkedIn. Connect Waalaxy / Expandi / Sales Navigator for live data — values below use demo data.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Active campaigns</div><div class="kpi-value">4</div><div class="kpi-delta up">▲ 1 this month</div><div class="kpi-sub">running now</div></div>
+        <div class="kpi"><div class="kpi-label">Contacts reached</div><div class="kpi-value">1,247</div><div class="kpi-delta up">▲ 312</div><div class="kpi-sub">this month</div></div>
+        <div class="kpi"><div class="kpi-label">Accept rate</div><div class="kpi-value">28%</div><div class="kpi-delta up">▲ 3 pts</div><div class="kpi-sub">last 30 days</div></div>
+        <div class="kpi"><div class="kpi-label">Reply rate</div><div class="kpi-value">17%</div><div class="kpi-delta flat">—</div><div class="kpi-sub">last 30 days</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card"><div class="card-header"><h3>Contacts reached, last 30 days</h3><span class="muted">Daily</span></div><div class="chart-wrap"><canvas id="reach"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Accept vs Reply rates</h3><span class="muted">Weekly</span></div><div class="chart-wrap"><canvas id="rates"></canvas></div></div>
+      </div>
+
+      <div class="section-title">Active campaigns</div>
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="card-header"><h3>Q2 SaaS DACH</h3><span class="muted">Active · started Feb 14</span></div>
+          <div class="metric-sub">Target: Heads of Growth at SaaS 50-500 employees · DACH</div>
+          <div class="chart-wrap short"><canvas id="camp1"></canvas></div>
+          <div class="metric-insight">31% accept rate is above Linalysis demo benchmark (24%). 18% reply rate suggests intro message is hitting — keep running.</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Fintech intros</h3><span class="muted">Active · started Mar 3</span></div>
+          <div class="metric-sub">Target: CFOs at Fintech 100-500 employees · EU + US</div>
+          <div class="chart-wrap short"><canvas id="camp2"></canvas></div>
+          <div class="metric-insight">24% accept / 14% reply — standard performance. Consider A/B testing a shorter first message.</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Investor outreach</h3><span class="muted">Active · started Jan 8</span></div>
+          <div class="metric-sub">Target: Principals and partners at VC funds · global</div>
+          <div class="chart-wrap short"><canvas id="camp3"></canvas></div>
+          <div class="metric-insight">Low volume (8/wk) but very high 45% accept rate — VCs respond to warm, specific outreach.</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Demo request follow-up</h3><span class="muted">Active · started Mar 20</span></div>
+          <div class="metric-sub">Target: Contacts who opened but didn\'t reply to first intro</div>
+          <div class="chart-wrap short"><canvas id="camp4"></canvas></div>
+          <div class="metric-insight">Early but promising — 22% reply on second touch. Classic re-engagement pattern.</div>
+        </div>
+      </div>
+
+      <div class="section-title">Funnel — last 30 days</div>
+      <div class="card">
+        <div class="chart-wrap"><canvas id="funnel"></canvas></div>
+      </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+
+new Chart(document.getElementById('reach'),{type:'line',data:{labels:Array(30).fill(''),datasets:[{data:[32,28,35,41,38,45,42,38,40,44,48,51,47,44,42,45,49,52,48,44,41,47,50,53,56,52,48,44,42,45],borderColor:'#FE1B04',backgroundColor:'rgba(254,27,4,0.15)',fill:true,borderWidth:2.5,tension:0.35,pointRadius:0}]},options:chartOpts});
+new Chart(document.getElementById('rates'),{type:'line',data:{labels:['Wk1','Wk2','Wk3','Wk4'],datasets:[{label:'Accept',data:[25,26,28,28],borderColor:'#0a66c2',backgroundColor:'rgba(10,102,194,0.1)',fill:true,borderWidth:2,pointRadius:3,tension:0.3},{label:'Reply',data:[15,16,17,17],borderColor:'#FE1B04',backgroundColor:'rgba(254,27,4,0.1)',fill:true,borderWidth:2,pointRadius:3,tension:0.3}]},options:{...chartOpts,plugins:{legend:{display:true,position:'top',labels:{font:{size:11}}}}}});
+function campBar(id,accept,reply){new Chart(document.getElementById(id),{type:'bar',data:{labels:['Sent','Accepted','Replied'],datasets:[{data:[100,accept,reply],backgroundColor:['#d1d5db','#0a66c2','#FE1B04'],borderRadius:4,maxBarThickness:40}]},options:chartOpts});}
+campBar('camp1',31,18); campBar('camp2',24,14); campBar('camp3',45,28); campBar('camp4',35,22);
+new Chart(document.getElementById('funnel'),{type:'bar',data:{labels:['Invites sent','Accepted','Replied','Booked meeting'],datasets:[{data:[1247,349,212,38],backgroundColor:['#d1d5db','#0a66c2','#FE1B04','#2ca02c'],borderRadius:6,maxBarThickness:60}]},options:{...chartOpts,indexAxis:'y'}});
+
+</script>
+</body></html>

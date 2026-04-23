@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Reports</title>
+<meta name="description" content="Weekly and monthly LinkedIn analytics reports, delivered automatically." />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #FE1B04;
+    --brand-dark: #d11200;
+    --brand-light: #fff5f5;
+    --text: #1d1d1f;
+    --text-muted: #6e6e73;
+    --border: #e5e7eb;
+    --bg: #fafafa;
+    --card: #ffffff;
+    --radius: 12px;
+    --sidebar-w: 240px;
+    --topbar-h: 64px;
+    --success: #057642;
+    --warn: #b76b00;
+    --info: #0a66c2;
+  }
+  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+  .sidebar { background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-weight: 800; font-size: 20px; color: var(--brand); letter-spacing: -0.02em; }
+  .brand svg { width: 28px; height: 28px; }
+  .nav-group { margin-top: 10px; }
+  .nav-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 8px 12px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-weight: 500; color: var(--text); transition: background .15s ease, color .15s ease; }
+  .nav-item:hover { background: var(--brand-light); color: var(--brand); }
+  .nav-item.active { background: var(--brand); color: #fff; }
+  .nav-item .icon { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-spacer { flex: 1; }
+  .sidebar-footer { padding: 12px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 10px; }
+
+  .topbar { position: sticky; top: 0; z-index: 10; height: var(--topbar-h); background: rgba(255,255,255,0.85); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; gap: 16px; }
+  .topbar h1 { font-size: 18px; font-weight: 700; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--card); color: var(--text); transition: all .15s ease; }
+  .btn:hover { border-color: var(--brand); color: var(--brand); }
+  .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .btn.primary:hover { background: var(--brand-dark); color: #fff; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+
+  .content { padding: 28px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .page-header { margin-bottom: 22px; }
+  .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .page-header p { color: var(--text-muted); }
+
+  /* Hero cards (weekly + monthly status) */
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+  .hero-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--brand-light) 0%, transparent 60%); pointer-events: none; }
+  .hero-card > * { position: relative; }
+  .hero-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brand); }
+  .hero-title { font-size: 18px; font-weight: 800; margin-top: 6px; }
+  .hero-schedule { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+  .countdown { display: flex; gap: 10px; margin: 16px 0 14px; }
+  .cd-cell { flex: 1; background: rgba(255,255,255,0.7); border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
+  .cd-num { font-size: 24px; font-weight: 800; color: var(--brand); line-height: 1; font-variant-numeric: tabular-nums; }
+  .cd-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+  .sub-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--bg); border-radius: 8px; font-size: 13px; }
+  .switch { position: relative; width: 40px; height: 22px; background: var(--border); border-radius: 999px; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: all .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .switch.on { background: var(--brand); }
+  .switch.on::after { left: 20px; }
+
+  /* Report preview cards */
+  .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 28px 0 12px; }
+
+  .report-preview {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .report-band {
+    padding: 16px 24px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .report-band.weekly { background: linear-gradient(135deg, var(--brand) 0%, #ff5a3d 100%); }
+  .report-band.monthly { background: linear-gradient(135deg, #1d1d1f 0%, #3d3d42 100%); }
+  .report-band .label { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+  .report-band h3 { font-size: 20px; font-weight: 800; margin-top: 2px; }
+  .report-band .range { font-size: 13px; opacity: 0.9; margin-top: 2px; }
+  .report-band .meta { text-align: right; font-size: 11px; opacity: 0.9; }
+
+  .report-body { padding: 24px; }
+  .report-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .r-kpi { padding: 14px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
+  .r-kpi .n { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
+  .r-kpi .l { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
+  .r-kpi .d { font-size: 11px; font-weight: 700; margin-top: 4px; }
+  .r-kpi .d.up { color: var(--success); }
+  .r-kpi .d.down { color: var(--brand); }
+  .r-kpi .d.flat { color: var(--text-muted); }
+
+  .report-columns {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 1000px) { .report-columns { grid-template-columns: 1fr; } }
+
+  .report-chart-wrap { height: 220px; position: relative; }
+  .r-block { margin-top: 18px; }
+  .r-block h4 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
+  .r-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    gap: 12px;
+  }
+  .r-row:last-child { border-bottom: none; }
+  .r-row .lhs { color: var(--text); }
+  .r-row .rhs { font-weight: 700; color: var(--text); white-space: nowrap; }
+  .r-rec {
+    padding: 10px 12px;
+    border-left: 3px solid var(--info);
+    background: var(--bg);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .r-rec strong { color: var(--info); }
+
+  /* Tab toggle */
+  .view-toggle { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; margin-bottom: 16px; }
+  .view-toggle button { padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .view-toggle button.active { background: var(--brand); color: #fff; }
+
+  .history-item { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .history-item:last-child { border-bottom: none; }
+  .history-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--brand-light); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; }
+  .history-date { font-weight: 600; }
+  .history-sub { font-size: 12px; color: var(--text-muted); }
+
+  #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; background: var(--text); color: #fff; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transform: translateY(8px); transition: all .3s; pointer-events: none; max-width: 360px; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; top: 0; left: -100%; width: 240px; z-index: 50; transition: left .2s; }
+    .sidebar.open { left: 0; }
+    .topbar { padding: 0 14px; }
+    .content { padding: 16px; }
+    .menu-toggle { display: inline-flex !important; }
+  }
+  .menu-toggle { display: none; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar" id="sidebar" data-active="reports"></aside>
+
+  <main>
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+        <h1>Reports</h1>
+      </div>
+      <div class="topbar-right">
+        <a class="btn" href="/dashboard.html">Dashboard</a>
+        <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+        <span class="avatar" title="Olivier">O</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="page-header">
+        <h2>Automated reports</h2>
+        <p>Weekly and monthly one-pagers delivered to your inbox. Previews below are generated from your actual LinkedIn data (latest export 2026-03-27).</p>
+      </div>
+
+      <!-- Hero cards with delivery countdowns -->
+      <div class="hero-grid">
+        <div class="hero-card">
+          <div class="hero-label">Weekly report</div>
+          <div class="hero-title">Every Monday, 8:00 AM EST</div>
+          <div class="hero-schedule">Covers the last 7 days. Next delivery in:</div>
+          <div class="countdown" id="cd-weekly">
+            <div class="cd-cell"><div class="cd-num" data-cd="d">—</div><div class="cd-lbl">Days</div></div>
+            <div class="cd-cell"><div class="cd-num" data-cd="h">—</div><div class="cd-lbl">Hrs</div></div>
+            <div class="cd-cell"><div class="cd-num" data-cd="m">—</div><div class="cd-lbl">Min</div></div>
+            <div class="cd-cell"><div class="cd-num" data-cd="s">—</div><div class="cd-lbl">Sec</div></div>
+          </div>
+          <div class="sub-toggle">
+            <div class="switch on" id="sub-weekly" onclick="toggleSub(this, 'weekly')"></div>
+            <span><strong>Subscribed</strong> · delivered to oattia@gmail.com</span>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <div class="hero-label">Monthly report</div>
+          <div class="hero-title">1st of each month, 8:00 AM EST</div>
+          <div class="hero-schedule">Covers the previous calendar month. Next delivery in:</div>
+          <div class="countdown" id="cd-monthly">
+            <div class="cd-cell"><div class="cd-num" data-cd="d">—</div><div class="cd-lbl">Days</div></div>
+            <div class="cd-cell"><div class="cd-num" data-cd="h">—</div><div class="cd-lbl">Hrs</div></div>
+            <div class="cd-cell"><div class="cd-num" data-cd="m">—</div><div class="cd-lbl">Min</div></div>
+            <div class="cd-cell"><div class="cd-num" data-cd="s">—</div><div class="cd-lbl">Sec</div></div>
+          </div>
+          <div class="sub-toggle">
+            <div class="switch on" id="sub-monthly" onclick="toggleSub(this, 'monthly')"></div>
+            <span><strong>Subscribed</strong> · delivered to oattia@gmail.com</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- View toggle -->
+      <div class="section-title">Report previews — with your real data</div>
+      <div class="view-toggle" role="tablist">
+        <button class="active" onclick="showView(this, 'both')">Show both</button>
+        <button onclick="showView(this, 'weekly')">Weekly only</button>
+        <button onclick="showView(this, 'monthly')">Monthly only</button>
+      </div>
+
+      <!-- ============ WEEKLY ============ -->
+      <div class="report-preview" id="view-weekly">
+        <div class="report-band weekly">
+          <div>
+            <div class="label">Weekly report</div>
+            <h3>Olivier Attia — LinkedIn</h3>
+            <div class="range">Mar 21 – Mar 27, 2026 · 7 days</div>
+          </div>
+          <div class="meta">Delivered<br>Mon Mar 30, 8:00 AM EST</div>
+        </div>
+        <div class="report-body">
+          <div class="report-kpis">
+            <div class="r-kpi"><div class="n">29,355</div><div class="l">Connections</div><div class="d down">▼ 125 this week</div></div>
+            <div class="r-kpi"><div class="n">9,364</div><div class="l">Profile views (7d)</div><div class="d up">▲ 1,338 avg/day</div></div>
+            <div class="r-kpi"><div class="n">70</div><div class="l">SSI score</div><div class="d up">▲ 1 pt</div></div>
+            <div class="r-kpi"><div class="n">531</div><div class="l">Invitations</div><div class="d flat">— no change</div></div>
+            <div class="r-kpi"><div class="n">1,314</div><div class="l">Company followers</div><div class="d up">▲ 25 this week</div></div>
+          </div>
+
+          <div class="report-columns">
+            <div>
+              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Connections, 7-day trend</h4>
+              <div class="report-chart-wrap"><canvas id="chart-w"></canvas></div>
+
+              <div class="r-block">
+                <h4>AI recommendations for next week</h4>
+                <div class="r-rec"><strong>1.</strong> Triage the <strong>531-invitation backlog</strong> — it's been flat 30+ days. 15 minutes this week clears ~100.</div>
+                <div class="r-rec"><strong>2.</strong> You're <strong>645 connections from the 30K cap</strong>. Pruning continues (-125 this week) — keep quality-over-quantity going.</div>
+                <div class="r-rec"><strong>3.</strong> Schedule 2 posts for Gershon Consulting — company follower growth is accelerating (+25 this week).</div>
+              </div>
+            </div>
+
+            <div>
+              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Highlights</h4>
+              <div class="r-row"><span class="lhs">Connection count</span><span class="rhs">29,355 (near 30K cap)</span></div>
+              <div class="r-row"><span class="lhs">SSI climb</span><span class="rhs">69 → 70</span></div>
+              <div class="r-row"><span class="lhs">Industry percentile</span><span class="rhs">Top 1%</span></div>
+              <div class="r-row"><span class="lhs">Network percentile</span><span class="rhs">Top 1%</span></div>
+              <div class="r-row"><span class="lhs">Peak daily views</span><span class="rhs">1,418 (Mar 27)</span></div>
+              <div class="r-row"><span class="lhs">Invitations in backlog</span><span class="rhs">531 (unchanged)</span></div>
+              <div class="r-row"><span class="lhs">Gershon Consulting growth</span><span class="rhs">+25 followers</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ MONTHLY ============ -->
+      <div class="report-preview" id="view-monthly">
+        <div class="report-band monthly">
+          <div>
+            <div class="label">Monthly report</div>
+            <h3>Olivier Attia — LinkedIn</h3>
+            <div class="range">Feb 26 – Mar 27, 2026 · 30 days</div>
+          </div>
+          <div class="meta">Delivered<br>Wed Apr 1, 8:00 AM EST</div>
+        </div>
+        <div class="report-body">
+          <div class="report-kpis">
+            <div class="r-kpi"><div class="n">29,355</div><div class="l">Connections</div><div class="d down">▼ 211 (-0.7%)</div></div>
+            <div class="r-kpi"><div class="n">1,418</div><div class="l">Views (latest)</div><div class="d up">▲ 196 (+16.0%)</div></div>
+            <div class="r-kpi"><div class="n">70</div><div class="l">SSI score</div><div class="d up">▲ 1 pt</div></div>
+            <div class="r-kpi"><div class="n">531</div><div class="l">Invitations</div><div class="d flat">— stable</div></div>
+            <div class="r-kpi"><div class="n">1,314</div><div class="l">Company followers</div><div class="d up">▲ 110 (+9.1%)</div></div>
+            <div class="r-kpi"><div class="n">1 / 1</div><div class="l">Industry / Network %ile</div><div class="d up">Top 1%</div></div>
+          </div>
+
+          <div class="report-columns">
+            <div>
+              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">SSI, last 90 days</h4>
+              <div class="report-chart-wrap"><canvas id="chart-m"></canvas></div>
+
+              <div class="r-block">
+                <h4>AI observations for this month</h4>
+                <div class="r-rec"><strong>Most important trend:</strong> Gershon Consulting follower growth hit a <strong>5-year high</strong> at +110/mo (≈3.7/day). Posting cadence is working — keep it.</div>
+                <div class="r-rec"><strong>Watch:</strong> Post impressions (~13/day vs 1,314 followers) are below LinkedIn baseline. Reach-per-follower under 1% means format or frequency needs adjustment.</div>
+                <div class="r-rec"><strong>Steady state:</strong> Invitations queue has been flat at 531 for 30+ days. If you're not triaging, turn off incoming invites for a reset.</div>
+                <div class="r-rec"><strong>Ceiling:</strong> You're 645 away from LinkedIn's 30K cap. Deliberate pruning (-211 this month) is the right strategy at your scale.</div>
+              </div>
+            </div>
+
+            <div>
+              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Month-over-month</h4>
+              <div class="r-row"><span class="lhs">Connections</span><span class="rhs">29,566 → 29,355 (-211)</span></div>
+              <div class="r-row"><span class="lhs">Profile views</span><span class="rhs">1,222 → 1,418 (+196)</span></div>
+              <div class="r-row"><span class="lhs">Search appearances</span><span class="rhs">354 → 921 (+567)</span></div>
+              <div class="r-row"><span class="lhs">SSI</span><span class="rhs">69 → 70 (+1)</span></div>
+              <div class="r-row"><span class="lhs">Company followers</span><span class="rhs">1,204 → 1,314 (+110)</span></div>
+              <div class="r-row"><span class="lhs">Company visitors/day</span><span class="rhs">~78 (stable)</span></div>
+              <div class="r-row"><span class="lhs">Company post impressions</span><span class="rhs">7 → 13 (+85%)</span></div>
+
+              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin:18px 0 8px">Best / worst</h4>
+              <div class="r-row"><span class="lhs">✅ Best metric</span><span class="rhs">Company followers +9.1%</span></div>
+              <div class="r-row"><span class="lhs">⚠️ Worst metric</span><span class="rhs">Connections -0.7%</span></div>
+              <div class="r-row"><span class="lhs">🎯 Most surprising</span><span class="rhs">Search appearances +160%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="section-title">Report history</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+        <div class="history-item">
+          <div class="history-icon">W</div>
+          <div><div class="history-date">Weekly · Apr 13 – Apr 19</div><div class="history-sub">Delivered Apr 13, 8:00 AM EST · opened 2h later</div></div>
+          <button class="btn" onclick="toast('Opening report…')">View</button>
+        </div>
+        <div class="history-item">
+          <div class="history-icon">W</div>
+          <div><div class="history-date">Weekly · Apr 6 – Apr 12</div><div class="history-sub">Delivered Apr 6, 8:00 AM EST</div></div>
+          <button class="btn" onclick="toast('Opening report…')">View</button>
+        </div>
+        <div class="history-item">
+          <div class="history-icon">M</div>
+          <div><div class="history-date">Monthly · March 2026</div><div class="history-sub">Delivered Apr 1, 8:00 AM EST</div></div>
+          <button class="btn" onclick="toast('Opening report…')">View</button>
+        </div>
+        <div class="history-item">
+          <div class="history-icon">W</div>
+          <div><div class="history-date">Weekly · Mar 30 – Apr 5</div><div class="history-sub">Delivered Mar 30, 8:00 AM EST</div></div>
+          <button class="btn" onclick="toast('Opening report…')">View</button>
+        </div>
+        <div class="history-item">
+          <div class="history-icon">M</div>
+          <div><div class="history-date">Monthly · February 2026</div><div class="history-sub">Delivered Mar 1, 8:00 AM EST</div></div>
+          <button class="btn" onclick="toast('Opening report…')">View</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function toast(msg, ms = 2200) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._to);
+    toast._to = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  function toggleSub(el, kind) {
+    el.classList.toggle('on');
+    const on = el.classList.contains('on');
+    el.nextElementSibling.innerHTML = on
+      ? `<strong>Subscribed</strong> · delivered to oattia@gmail.com`
+      : `<strong>Unsubscribed</strong> · you won't receive ${kind} reports`;
+    toast(`${kind.charAt(0).toUpperCase() + kind.slice(1)} report ${on ? 'enabled' : 'paused'}`);
+  }
+  function showView(btn, view) {
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-weekly').style.display = (view === 'both' || view === 'weekly') ? '' : 'none';
+    document.getElementById('view-monthly').style.display = (view === 'both' || view === 'monthly') ? '' : 'none';
+  }
+
+  // ---------- Countdowns ----------
+  function etDate(isoNaive) {
+    const asUtc = new Date(isoNaive + 'Z');
+    const ny = new Date(asUtc.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const offsetMs = asUtc.getTime() - ny.getTime();
+    return new Date(asUtc.getTime() + offsetMs);
+  }
+  function isMondayET(d) {
+    const dow = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' })).getDay();
+    return dow === 1;
+  }
+  function nextMondayAt8ET() {
+    const now = new Date();
+    for (let i = 0; i < 14; i++) {
+      const c = new Date(now);
+      c.setDate(now.getDate() + i);
+      const year = c.getFullYear();
+      const month = String(c.getMonth() + 1).padStart(2, '0');
+      const day = String(c.getDate()).padStart(2, '0');
+      const et = etDate(`${year}-${month}-${day}T08:00:00`);
+      if (isMondayET(et) && et > now) return et;
+    }
+    return null;
+  }
+  function nextFirstOfMonthAt8ET() {
+    const now = new Date();
+    let y = now.getFullYear();
+    let m = now.getMonth() + 1;
+    if (m > 11) { m = 0; y++; }
+    return etDate(`${y}-${String(m + 1).padStart(2, '0')}-01T08:00:00`);
+  }
+  function renderCountdown(containerId, target) {
+    const el = document.getElementById(containerId);
+    const ms = target - new Date();
+    if (ms <= 0) { el.querySelectorAll('[data-cd]').forEach(n => n.textContent = '0'); return; }
+    const d = Math.floor(ms / 86400000);
+    const h = Math.floor(ms / 3600000) % 24;
+    const m = Math.floor(ms / 60000) % 60;
+    const s = Math.floor(ms / 1000) % 60;
+    el.querySelectorAll('[data-cd]').forEach(n => {
+      n.textContent = String({d,h,m,s}[n.dataset.cd]).padStart(2, '0');
+    });
+  }
+  const wTarget = nextMondayAt8ET();
+  const mTarget = nextFirstOfMonthAt8ET();
+  function tick() {
+    if (wTarget) renderCountdown('cd-weekly', wTarget);
+    if (mTarget) renderCountdown('cd-monthly', mTarget);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---------- Charts ----------
+  // 7-day connections trend (weekly report)
+  const weekLabels = ['Mar 21','Mar 22','Mar 23','Mar 24','Mar 25','Mar 26','Mar 27'];
+  const weekConn   = [29480, 29432, 29394, 29389, 29382, 29374, 29355];
+
+  new Chart(document.getElementById('chart-w'), {
+    type: 'line',
+    data: {
+      labels: weekLabels,
+      datasets: [{
+        label: 'Connections',
+        data: weekConn,
+        borderColor: '#FE1B04',
+        backgroundColor: 'rgba(254,27,4,0.12)',
+        fill: true,
+        borderWidth: 2.5,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#FE1B04'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+        y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+      }
+    }
+  });
+
+  // 90-day SSI (monthly report). Use real Olivier data — last 90 SSI values
+  const monthSsiData = [72, 75, 75, 75, 74, 74, 74, 75, 75, 75, 75, 75, 74, 74, 74, 74, 74, 74, 75, 74, 74, 72, 70, 70, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 70, 70, 70, 70, 70, 70, 70, 70, 71, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 74, 74, 74, 74, 74, 73, 73, 73, 72, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 70];
+
+  new Chart(document.getElementById('chart-m'), {
+    type: 'line',
+    data: {
+      labels: monthSsiData.map((_, i) => ''),
+      datasets: [{
+        label: 'SSI',
+        data: monthSsiData,
+        borderColor: '#1d1d1f',
+        backgroundColor: 'rgba(29,29,31,0.08)',
+        fill: true,
+        borderWidth: 2,
+        tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { display: false } },
+        y: { min: 65, max: 80, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+      }
+    }
+  });
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

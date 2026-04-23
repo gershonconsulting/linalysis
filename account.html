@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Account</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="account"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Account</h1>
+  </div>
+  <div class="topbar-right">
+    <a class="btn" href="/dashboard.html">Dashboard</a>
+    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+      <div class="page-header">
+        <h2>Account</h2>
+        <p>Your Linalysis account, subscription, and connected services.</p>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="card-header"><h3>Profile</h3></div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="width:64px;height:64px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px">O</div>
+            <div>
+              <div style="font-size:18px;font-weight:800">Olivier Attia</div>
+              <div class="muted">oattia@gmail.com</div>
+              <div class="muted" style="font-size:12px">Member since April 2021 · 5 years</div>
+            </div>
+          </div>
+          <div style="margin-top:20px;display:grid;gap:8px">
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border)"><span class="muted">Role</span><span><strong>Founder, Gershon Consulting</strong></span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border)"><span class="muted">Timezone</span><span><strong>America/New_York</strong></span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0"><span class="muted">Preferred language</span><span><strong>English (US)</strong></span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Subscription</h3><span class="muted">Pro</span></div>
+          <div style="background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;padding:20px;border-radius:10px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;opacity:0.8">Current plan</div>
+            <div style="font-size:26px;font-weight:800;margin-top:4px">Pro</div>
+            <div style="font-size:13px;opacity:0.9;margin-top:4px">$29/month · renews Apr 27, 2026</div>
+          </div>
+          <div class="metric-sub" style="font-size:13px;margin-bottom:10px"><strong>Includes:</strong> unlimited history, weekly + monthly reports, priority support, API access, up to 5 connected LinkedIn accounts.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn primary" href="/pricing.html" style="text-decoration:none">See all plans</a>
+            <button class="btn">Billing history</button>
+            <button class="btn" onclick="toast('Opening invoice...')">Get invoice</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="card-header"><h3>Usage this month</h3><span class="muted">April 2026</span></div>
+          <div class="chart-wrap"><canvas id="usage"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Connected services</h3></div>
+          <div style="display:grid;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>LinkedIn</strong> <span class="muted" style="font-size:12px">· oattia@gmail.com</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Connected</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Linalysis Chrome Extension</strong> <span class="muted" style="font-size:12px">· v1.x</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Installed</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>CookieVerify API</strong> <span class="muted" style="font-size:12px">· api.cookieverify.com</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Healthy</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Gmail</strong> <span class="muted" style="font-size:12px">· report delivery</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Connected</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Google Drive</strong> <span class="muted" style="font-size:12px">· backup exports</span></span><span class="muted" style="font-size:12px;font-weight:700">Not connected</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Security &amp; privacy</div>
+      <div class="card" style="display:grid;gap:8px">
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0"><input type="checkbox" checked /> Require 2-factor authentication for login</label>
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0"><input type="checkbox" checked /> Email me on unusual sign-ins</label>
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0"><input type="checkbox" /> Allow third-party integrations to read my data</label>
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0"><input type="checkbox" checked /> Delete my data 30 days after cancellation</label>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="btn">Change password</button>
+          <button class="btn">View login history</button>
+          <button class="btn" style="color:var(--brand);border-color:var(--brand)">Delete account</button>
+        </div>
+      </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+
+new Chart(document.getElementById('usage'),{type:'bar',data:{labels:['Imports','Exports','Reports','API calls','Alerts'],datasets:[{data:[12,4,6,248,5],backgroundColor:'#FE1B04'
