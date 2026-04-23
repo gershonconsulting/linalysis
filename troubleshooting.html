@@ -104,8 +104,6 @@
     <h1>Troubleshooting</h1>
   </div>
   <div class="topbar-right">
-    <a class="btn" href="/dashboard.html">Dashboard</a>
-    <a class="btn primary" href="https://linalysis.streamlit.app" target="_blank">Launch app →</a>
     <span class="avatar" title="Olivier">O</span>
   </div>
 </div>
@@ -458,6 +456,7 @@ function updateHealth() {
   document.getElementById('stat-fail').textContent=fail;
   document.getElementById('stat-total').textContent=total;
   const score = total ? Math.round(100*ok/total) : 0;
+  try { localStorage.setItem('linalysis_health_score', String(score)); localStorage.setItem('linalysis_health_at', new Date().toISOString()); } catch(e) {}
   const ring=document.getElementById('health-ring-fg');
   const circ=377; ring.setAttribute('stroke-dashoffset', circ - (circ*score/100));
   ring.classList.remove('ok','warn','fail');
