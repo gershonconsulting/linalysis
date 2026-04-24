@@ -1,0 +1,9 @@
+# Block direct access to the backend root — everything must go through /public
+RewriteEngine On
+RewriteRule ^$ public/ [L]
+RewriteRule (.*) public/$1 [L]
+
+# Deny access to all non-public folders
+<FilesMatch "\.(env|json|lock|md|sql|log|ini)$">
+  Require all denied
+</FilesMatch>

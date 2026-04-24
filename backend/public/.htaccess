@@ -1,0 +1,26 @@
+# Linalysis API — route everything through public/index.php
+RewriteEngine On
+
+# Deny access to dotfiles (.env, .git, etc.)
+RewriteRule "(^|/)\." - [F]
+
+# Send all requests to the front controller unless the file exists
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Force HTTPS (Cloudflare handles the edge, this catches direct hits)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:CF-Visitor} !'"scheme":"https"'
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Security headers
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes

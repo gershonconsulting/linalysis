@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create account — Linalysis</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  body { background: linear-gradient(180deg, #fff5f5 0%, #fafafa 60%); min-height: 100vh; }
+  .auth-wrap { max-width: 460px; margin: 60px auto; padding: 30px; background: #fff; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; font-weight: 800; font-size: 20px; color: var(--brand); }
+  .auth-logo svg { width: 32px; height: 32px; }
+  .auth-wrap h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .auth-wrap .subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 22px; }
+  .auth-field { margin-bottom: 14px; }
+  .auth-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .auth-field input { width: 100%; padding: 10px 12px; font: inherit; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; }
+  .auth-field input:focus { outline: none; border-color: var(--brand); }
+  .auth-btn { width: 100%; padding: 12px; background: var(--brand); color: #fff; border: none; border-radius: 8px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .auth-btn:hover { background: #d61505; }
+  .auth-footer { margin-top: 20px; text-align: center; font-size: 13px; color: var(--text-muted); }
+  .auth-footer a { color: var(--brand); text-decoration: none; font-weight: 600; }
+  .auth-error { padding: 10px 12px; background: var(--error-light); color: var(--error); border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
+  .auth-error.show { display: block; }
+  .auth-fineprint { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-logo">
+      <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#FE1B04"/>
+        <g fill="#fff"><rect x="9" y="17" width="3" height="8" rx="0.5"/><rect x="14.5" y="12" width="3" height="13" rx="0.5"/><rect x="20" y="15" width="3" height="10" rx="0.5"/></g></svg>
+      Linalysis
+    </div>
+    <h1>Create your account</h1>
+    <p class="subtitle">14-day free trial on any paid plan. No card required to start.</p>
+    <div class="auth-error" id="err"></div>
+    <form id="signupForm">
+      <div class="auth-field">
+        <label>Your name</label>
+        <input type="text" id="name" autocomplete="name" />
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="email" required autofocus autocomplete="email" />
+      </div>
+      <div class="auth-field">
+        <label>Password (10+ characters)</label>
+        <input type="password" id="password" required minlength="10" autocomplete="new-password" />
+      </div>
+      <button type="submit" class="auth-btn" id="submitBtn">Create account</button>
+      <p class="auth-fineprint">By creating an account you agree to our <a href="/terms.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.</p>
+    </form>
+    <div class="auth-footer">
+      Already have an account? <a href="/login.html">Sign in</a>
+    </div>
+  </div>
+
+<script src="/api.js"></script>
+<script>
+const form = document.getElementById('signupForm');
+const err = document.getElementById('err');
+const btn = document.getElementById('submitBtn');
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  err.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    await LinalysisAPI.signup(
+      document.getElementById('email').value,
+      document.getElementById('password').value,
+      document.getElementById('name').value
+    );
+    location.href = '/dashboard.html';
+  } catch (ex) {
+    err.textContent = ex.error === 'network'
+      ? 'Backend unreachable — we\'re still wiring up the API. Try again shortly.'
+      : (ex.body?.message || 'Could not create account.');
+    err.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Create account';
+  }
+};
+</script>
+</body>
+</html>

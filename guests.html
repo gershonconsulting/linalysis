@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — My Guests</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="guests"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>My Guests</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+  <div class="page-header">
+    <h2>My Guests</h2>
+    <p>People who viewed your LinkedIn profile, requested connections, or appeared in your search results. Pulled via the Chrome extension.</p>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Profile viewers (30d)</div><div class="kpi-value">1,418</div><div class="kpi-delta up">▲ 196 (+16%)</div><div class="kpi-sub">unique viewers</div></div>
+    <div class="kpi"><div class="kpi-label">Pending invitations</div><div class="kpi-value">531</div><div class="kpi-delta flat">— no change</div><div class="kpi-sub">awaiting your review</div></div>
+    <div class="kpi"><div class="kpi-label">Search appearances</div><div class="kpi-value">921</div><div class="kpi-delta up">▲ +160%</div><div class="kpi-sub">vs previous 30d</div></div>
+    <div class="kpi"><div class="kpi-label">Event attendees</div><div class="kpi-value">0</div><div class="kpi-delta flat">—</div><div class="kpi-sub">no recent events</div></div>
+  </div>
+
+  <div class="grid cols-2">
+    <div class="card"><div class="card-header"><h3>Profile viewers — last 30 days</h3><span class="muted">Daily</span></div><div class="chart-wrap"><canvas id="viewers"></canvas></div></div>
+    <div class="card"><div class="card-header"><h3>Pending invitations over time</h3><span class="muted">Flat backlog · triage needed</span></div><div class="chart-wrap"><canvas id="invites"></canvas></div></div>
+  </div>
+
+  <div class="section-title">Pending invitations (sample)</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="data-table">
+      <thead><tr><th>Name</th><th>Title</th><th>Company</th><th>Sent</th><th>Mutual</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Sarah Chen</strong></td><td>Senior PM</td><td>Stripe</td><td>2 days ago</td><td>23</td><td><button class="btn">Review</button></td></tr>
+        <tr><td><strong>Marcus Lindbergh</strong></td><td>VP Growth</td><td>Acme Agency</td><td>5 days ago</td><td>41</td><td><button class="btn">Review</button></td></tr>
+        <tr><td><strong>Priya Raman</strong></td><td>Founder</td><td>Hexa Labs</td><td>1 week ago</td><td>18</td><td><button class="btn">Review</button></td></tr>
+        <tr><td><strong>Thomas Becker</strong></td><td>CRO</td><td>NorthStar CRM</td><td>1 week ago</td><td>9</td><td><button class="btn">Review</button></td></tr>
+        <tr><td><strong>Jana Ross</strong></td><td>Founder</td><td>Creator Stack</td><td>2 weeks ago</td><td>56</td><td><button class="btn">Review</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Recent profile viewers (sample)</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Name</th><th>Title</th><th>Company</th><th>Industry</th></tr></thead>
+      <tbody>
+        <tr><td>Mar 27</td><td><strong>Eva Johansson</strong></td><td>Head of Marketing</td><td>ScaleSaaS</td><td>SaaS</td></tr>
+        <tr><td>Mar 27</td><td><strong>Ravi Mehta</strong></td><td>Principal PM</td><td>Coinbase</td><td>Crypto</td></tr>
+        <tr><td>Mar 26</td><td><strong>Linda Park</strong></td><td>Recruiter</td><td>Google</td><td>Tech</td></tr>
+        <tr><td>Mar 26</td><td><strong>Dominic Weber</strong></td><td>Partner</td><td>Balderton Capital</td><td>VC</td></tr>
+        <tr><td>Mar 25</td><td><strong>Anonymous viewer</strong></td><td>—</td><td>(anonymous)</td><td>—</td></tr>
+        <tr><td>Mar 25</td><td><strong>Fatima Zahra</strong></td><td>Sales Director</td><td>HubSpot</td><td>SaaS</td></tr>
+        <tr><td>Mar 24</td><td><strong>Michael Tran</strong></td><td>Founder</td><td>DataPipe</td><td>Data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10}}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+new Chart(document.getElementById('viewers'),{type:'line',data:{labels:Array(30).fill(''),datasets:[{data:[1222,1228,1231,1233,1226,1217,1219,1228,1233,1242,1261,1287,1307,1329,1371,1391,1418,1432,1405,1388,1396,1412,1428,1415,1402,1418,1430,1445,1418,1418],borderColor:'#FE1B04',backgroundColor:'rgba(254,27,4,0.1)',fill:true,borderWidth:2,tension:0.3,pointRadius:0}]},options:chartOpts});
+new Chart(document.getElementById('invites'),{type:'line',data:{labels:Array(30).fill(''),datasets:[{data:Array(30).fill(531),borderColor:'#b76b00',backgroundColor:'rgba(183,107,0,0.1)',fill:true,borderWidth:2,tension:0.3,pointRadius:0}]},options:chartOpts});
+</script>
+</body></html>

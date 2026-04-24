@@ -1,0 +1,28 @@
+{
+  "name": "linalysis/backend",
+  "description": "Linalysis backend API (PHP 8.2 + MySQL). Portable to AWS Lambda via Bref.",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.1",
+    "vlucas/phpdotenv": "^5.6",
+    "firebase/php-jwt": "^6.10",
+    "stripe/stripe-php": "^14.0",
+    "phpmailer/phpmailer": "^6.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "Linalysis\\": "src/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "platform-check": false
+  },
+  "scripts": {
+    "serve": "php -S 127.0.0.1:8787 -t public",
+    "migrate": "php bin/migrate.php",
+    "seed": "php bin/seed.php"
+  }
+}

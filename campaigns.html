@@ -71,6 +71,7 @@
 </div>
 </main></div>
 <div id="toast"></div>
+<script src="/api.js"></script>
 <script src="/nav.js" defer></script>
 <script>
 function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}

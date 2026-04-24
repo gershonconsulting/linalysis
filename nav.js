@@ -1,6 +1,6 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar in topbar.
-const LINALYSIS_BUILD = '__BUILD__';
+const LINALYSIS_BUILD = '__BUILD__';  // replaced at deploy: 2026-04-23.0000.backend-v1
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
 (function () {
@@ -87,11 +87,11 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
     avatar.parentElement.insertBefore(badge, avatar);
   }
 
-  function render() {
-    try { renderSidebar(); } catch(e) { console.error('renderSidebar', e); }
-    try { addBuildBadge(); } catch(e) { console.error('addBuildBadge', e); }
-    try { addHealthBadge(); } catch(e) { console.error('addHealthBadge', e); }
-  }
-  if (document.readyState !== 'loading') render();
-  else document.addEventListener('DOMContentLoaded', render);
-})();
+  function addAuthChip() {
+    var avatar = document.querySelector('.topbar .topbar-right .avatar');
+    if (!avatar) return;
+    if (avatar.parentElement.querySelector('.linalysis-auth')) return;
+    if (typeof LinalysisAPI === 'undefined') return;
+    var chip = document.createElement('span');
+    chip.className = 'linalysis-auth';
+    chip.style.cssText = 'font-size:12px;c

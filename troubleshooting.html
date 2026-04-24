@@ -201,6 +201,7 @@
 </div>
 
 <div id="toast"></div>
+<script src="/api.js"></script>
 <script src="/nav.js" defer></script>
 <script>
 function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -343,26 +344,73 @@ const CHECKS = [
     return { status:'ok', detail: dnt==='1' ? 'DNT is ON — we respect it, no analytics tracking.' : 'DNT is OFF — we still don\'t use third-party trackers.' };
   }},
 
-  // ACCOUNT
+  // ACCOUNT — live from /api/account
   { id:'acct.session', cat:'acct', title:'Session authenticated', run: async()=>{
-    return { status:'ok', detail:'Signed in as oattia@gmail.com. Session expires in 29 days.' };
+    try {
+      const d = await LinalysisAPI.account();
+      if (!d?.user) return { status:'fail', detail:'Not signed in. <a href="/login.html" style="color:var(--brand)">Sign in →</a>' };
+      const daysLeft = d.session?.days_left ?? '?';
+      return { status:'ok', detail:`Signed in as ${d.user.email}. Session expires in ${daysLeft} day${daysLeft===1?'':'s'}.` };
+    } catch(e) {
+      if (e.status === 401) return { status:'warn', detail:'Not signed in — <a href="/login.html" style="color:var(--brand)">sign in</a> to enable personalized checks.' };
+      return { status:'warn', detail:`Backend unreachable: ${e.message||e.error}. Account info running in demo mode.` };
+    }
   }},
-  { id:'acct.plan',    cat:'acct', title:'Subscription active', run: async()=>{
-    return { status:'ok', detail:'Plan: Gold · Renews 2026-05-22 · $19.95/mo' };
+  { id:'acct.plan', cat:'acct', title:'Subscription active', run: async()=>{
+    try {
+      const s = await LinalysisAPI.subscription();
+      if (s.plan === 'free') return { status:'warn', detail:'On the Free plan. <a href="/pricing.html" style="color:var(--brand)">Upgrade →</a>' };
+      const renews = s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : '—';
+      const price = s.amount_cents ? `$${(s.amount_cents/100).toFixed(2)}/mo` : '';
+      return { status: s.status==='active'?'ok':'warn', detail:`Plan: ${s.plan.charAt(0).toUpperCase()+s.plan.slice(1)} · Renews ${renews} · ${price}` };
+    } catch(e) {
+      if (e.status === 401) return { status:'warn', detail:'Sign in to see your subscription.' };
+      return { status:'warn', detail:`Backend unreachable — demo mode.` };
+    }
   }},
-  { id:'acct.usage',   cat:'acct', title:'Usage within plan limits', run: async()=>{
-    return { status:'ok', detail:'1 / 1 LinkedIn accounts · 248 / 1,000 API calls this month · no overages.' };
+  { id:'acct.usage', cat:'acct', title:'Usage within plan limits', run: async()=>{
+    try {
+      const u = await LinalysisAPI.usage();
+      return { status:'ok', detail:`${u.limits?.linkedin_accounts||1} / ${u.limits?.linkedin_accounts||1} LinkedIn accounts · ${u.stats_this_month||0} / ${u.limits?.api_calls||1000} days ingested this month.` };
+    } catch(e) {
+      if (e.status === 401) return { status:'warn', detail:'Sign in to see usage.' };
+      return { status:'warn', detail:'Backend unreachable — demo mode.' };
+    }
   }},
 
-  // REPORTS
-  { id:'rep.email',   cat:'rep',  title:'Email delivery configured', run: async()=>{
-    return { status:'ok', detail:'Delivery: oattia@gmail.com (verified). DKIM + SPF passing.' };
+  // REPORTS — live from /api/reports/*
+  { id:'rep.email', cat:'rep', title:'Email delivery configured', run: async()=>{
+    try {
+      const d = await LinalysisAPI.account();
+      if (!d.user) return { status:'warn', detail:'Sign in to verify email delivery.' };
+      return d.user.email_verified
+        ? { status:'ok', detail:`Delivery: ${d.user.email} (verified).` }
+        : { status:'warn', detail:`${d.user.email} is not verified. <a href="/account.html" style="color:var(--brand)">Verify →</a>` };
+    } catch(e) {
+      if (e.status === 401) return { status:'warn', detail:'Sign in to verify email.' };
+      return { status:'warn', detail:'Backend unreachable — demo mode.' };
+    }
   }},
   { id:'rep.lastsent', cat:'rep', title:'Last weekly report delivered', run: async()=>{
-    return { status:'ok', detail:'Sent Monday Apr 13, 8:00 AM EST. Opened 2h 14m later.' };
+    try {
+      const r = await LinalysisAPI.reportsList();
+      if (!r.last_sent) return { status:'warn', detail:'No reports sent yet — first one arrives next Monday.' };
+      const d = new Date(r.last_sent.sent_at);
+      return { status:'ok', detail:`Sent ${d.toLocaleDateString()} at ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — report type: ${r.last_sent.report_type}.` };
+    } catch(e) {
+      if (e.status === 401) return { status:'warn', detail:'Sign in to see report history.' };
+      return { status:'warn', detail:'Backend unreachable — demo mode.' };
+    }
   }},
-  { id:'rep.next',     cat:'rep', title:'Next report scheduled', run: async()=>{
-    return { status:'ok', detail:'Next weekly: Monday, 8:00 AM EST · Next monthly: May 1, 8:00 AM EST.' };
+  { id:'rep.next', cat:'rep', title:'Next report scheduled', run: async()=>{
+    try {
+      const n = await LinalysisAPI.reportsNext();
+      const when = new Date(n.scheduled_for);
+      return { status:'ok', detail:`Next ${n.report_type}: ${when.toLocaleDateString()} at ${when.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.` };
+    } catch(e) {
+      if (e.status === 401) return { status:'warn', detail:'Sign in to see schedule.' };
+      return { status:'warn', detail:'Backend unreachable — demo mode.' };
+    }
   }},
 ];
 
@@ -501,62 +549,4 @@ function confirmExt() {
   const c=CHECKS.find(x=>x.id==='ext.installed');
   state.results[c.id]={status:'ok',detail:'Confirmed manually by user.'};
   const badge=document.getElementById('badge-ext.installed');
-  badge.className='check-badge ok'; badge.textContent='✓';
-  document.getElementById('detail-ext.installed').innerHTML='Confirmed manually. Extension ID <code>'+LINALYSIS_EXT_ID+'</code>.';
-  document.getElementById('action-ext.installed').innerHTML='';
-  updateHealth();
-}
-
-function showPaste() { document.getElementById('cookie-paste').style.display='block'; document.getElementById('cookie-input').focus(); }
-
-async function validateCookie() {
-  const v=document.getElementById('cookie-input').value.trim();
-  if(!v){toast('Paste your li_at first'); return;}
-  const badge=document.getElementById('badge-li.cookie');
-  const detail=document.getElementById('detail-li.cookie');
-  badge.className='check-badge running';badge.textContent='…';detail.textContent='Validating…';
-  try {
-    const r=await fetch('https://api.cookieverify.com/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookie:v})});
-    const d=await r.json();
-    if(d.isValid){
-      badge.className='check-badge ok';badge.textContent='✓';
-      detail.innerHTML=`Valid · <strong>${d.fullName||'LinkedIn user'}</strong>${d.title?` · ${d.title}`:''}${d.company?` @ ${d.company}`:''}${d.profileUrl?` · <a href="${d.profileUrl}" target="_blank" style="color:var(--brand)">profile</a>`:''}`;
-      state.results['li.cookie']={status:'ok',detail:'Cookie valid.'};
-    } else {
-      badge.className='check-badge fail';badge.textContent='✕';
-      detail.textContent=d.error||'Rejected by LinkedIn — get a fresh li_at.';
-      state.results['li.cookie']={status:'fail',detail:d.error||'Rejected'};
-    }
-  } catch(e) {
-    badge.className='check-badge fail';badge.textContent='✕';
-    detail.textContent=`Network error: ${e.message}`;
-    state.results['li.cookie']={status:'fail',detail:e.message};
-  }
-  updateHealth();
-}
-
-function copyReport() {
-  const lines=[`Linalysis diagnostic report · ${new Date().toISOString()}`, `Browser: ${navigator.userAgent}`, ''];
-  CATS.forEach(cat=>{
-    lines.push(`=== ${cat.title} ===`);
-    CHECKS.filter(c=>c.cat===cat.key).forEach(c=>{
-      const r=state.results[c.id];
-      const status=r?r.status.toUpperCase():'NOT RUN';
-      lines.push(`  [${status}] ${c.title}`);
-      if(r && r.detail) lines.push(`         ${r.detail.replace(/<[^>]+>/g,'')}`);
-    });
-    lines.push('');
-  });
-  const txt=lines.join('\n');
-  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Report copied — paste into support email'));}
-  else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Report copied');}
-}
-
-// ---------- Init ----------
-window.addEventListener('error',e=>{console.error('Script error:',e);});
-try { fillInfoStrip(); } catch(e){ console.error('fillInfoStrip',e); }
-try { renderCats(); } catch(e){ console.error('renderCats',e); }
-try { runAll(); } catch(e){ console.error('runAll',e); }
-</script>
-</body>
-</html>
+  badge.c
