@@ -1,0 +1,52 @@
+# Linalysis API configuration — copy to linalysis.properties and fill in.
+# File location: WEB-INF/classes/linalysis.properties
+# Every key can be overridden by env var LINALYSIS_<key_with_dots_as_underscores_upper>
+# e.g. db.url → LINALYSIS_DB_URL
+
+app.env   = production
+app.name  = Linalysis API
+app.build = dev
+
+# ── MySQL ────────────────────────────────────────────
+db.url  = jdbc:mysql://localhost:3306/linalysis?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8mb4
+db.user = linalysis
+db.pass =
+
+# ── CORS (browser → API) ─────────────────────────────
+cors.origins = https://linalysis.net,https://www.linalysis.net,https://linalysis.com,https://www.linalysis.com,https://linalysis.pages.dev
+
+# ── Sessions ─────────────────────────────────────────
+session.cookie.name   = linalysis_session
+session.cookie.domain = .linalysis.com
+session.ttl.days      = 30
+
+# ── Stripe ───────────────────────────────────────────
+# Dashboard → Developers → API keys
+stripe.secret.key      =
+stripe.publishable.key =
+# Dashboard → Developers → Webhooks → your endpoint → Signing secret
+stripe.webhook.secret  =
+
+# ── LinkedIn OAuth (Sign In with LinkedIn — OpenID Connect) ────────────
+# developer.linkedin.com → Apps → your "Linalysis.net" app → Auth tab
+linkedin.client.id     = 7874dx90zakhhq
+linkedin.client.secret =
+# Must exactly match one of the URLs registered in the LinkedIn app.
+# Production:  https://api.linalysis.com/api/auth/linkedin/callback
+# Local dev:   http://localhost:8080/linalysis-api/api/auth/linkedin/callback
+linkedin.redirect.uri  = https://api.linalysis.com/api/auth/linkedin/callback
+# Where the user lands after a successful sign-in (default landing page).
+app.frontend.origin    = https://linalysis.com
+
+# ── Rate limits ──────────────────────────────────────
+rate.auth.per.minute  = 10
+rate.ingest.per.hour  = 100
+
+# ── SMTP (optional — only needed for password reset + weekly reports) ───────
+# If blank, email features are disabled (password reset logs the link, weekly reports skipped).
+smtp.host =
+smtp.port = 465
+smtp.user =
+smtp.pass =
+smtp.from.email = support@linalysis.com
+smtp.from.name  = Linalysis

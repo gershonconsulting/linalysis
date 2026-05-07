@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
+
+  <display-name>Linalysis API</display-name>
+
+  <!-- ─── Servlet registrations ─── -->
+
+  <servlet><servlet-name>Health</servlet-name>   <servlet-class>com.linalysis.servlets.HealthServlet</servlet-class></servlet>
+  <servlet><servlet-name>Auth</servlet-name>     <servlet-class>com.linalysis.servlets.AuthServlet</servlet-class></servlet>
+  <servlet><servlet-name>Account</servlet-name>  <servlet-class>com.linalysis.servlets.AccountServlet</servlet-class></servlet>
+  <servlet><servlet-name>Data</servlet-name>     <servlet-class>com.linalysis.servlets.DataServlet</servlet-class></servlet>
+  <servlet><servlet-name>Ingest</servlet-name>   <servlet-class>com.linalysis.servlets.IngestServlet</servlet-class></servlet>
+  <servlet><servlet-name>Reports</servlet-name>  <servlet-class>com.linalysis.servlets.ReportsServlet</servlet-class></servlet>
+  <servlet><servlet-name>Stripe</servlet-name>   <servlet-class>com.linalysis.servlets.StripeWebhookServlet</servlet-class></servlet>
+  <servlet><servlet-name>LinkedIn</servlet-name> <servlet-class>com.linalysis.servlets.LinkedInOAuthServlet</servlet-class></servlet>
+
+  <!-- ─── URL mappings ─── -->
+
+  <servlet-mapping><servlet-name>Health</servlet-name>  <url-pattern>/</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Health</servlet-name>  <url-pattern>/api/health</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Health</servlet-name>  <url-pattern>/api/version</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>Auth</servlet-name>    <url-pattern>/api/auth/signup</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Auth</servlet-name>    <url-pattern>/api/auth/login</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Auth</servlet-name>    <url-pattern>/api/auth/logout</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Auth</servlet-name>    <url-pattern>/api/auth/me</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Auth</servlet-name>    <url-pattern>/api/auth/forgot</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Auth</servlet-name>    <url-pattern>/api/auth/reset</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>Account</servlet-name> <url-pattern>/api/account</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Account</servlet-name> <url-pattern>/api/account/subscription</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Account</servlet-name> <url-pattern>/api/account/usage</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Account</servlet-name> <url-pattern>/api/account/token</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>Data</servlet-name>    <url-pattern>/api/data/summary</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Data</servlet-name>    <url-pattern>/api/data/connections</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Data</servlet-name>    <url-pattern>/api/data/ssi</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Data</servlet-name>    <url-pattern>/api/data/company</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>Ingest</servlet-name>  <url-pattern>/api/ingest/linkedin</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>Reports</servlet-name> <url-pattern>/api/reports/list</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>Reports</servlet-name> <url-pattern>/api/reports/next</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>Stripe</servlet-name>  <url-pattern>/api/stripe/webhook</url-pattern></servlet-mapping>
+
+  <servlet-mapping><servlet-name>LinkedIn</servlet-name><url-pattern>/api/auth/linkedin/start</url-pattern></servlet-mapping>
+  <servlet-mapping><servlet-name>LinkedIn</servlet-name><url-pattern>/api/auth/linkedin/callback</url-pattern></servlet-mapping>
+
+  <!-- ─── Session cookie security ─── -->
+  <session-config>
+    <cookie-config>
+      <http-only>true</http-only>
+      <secure>true</secure>
+    </cookie-config>
+    <tracking-mode>COOKIE</tracking-mode>
+  </session-config>
+
+</web-app>

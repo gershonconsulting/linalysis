@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — AI Insights</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .ai-hero { background: linear-gradient(135deg, #1d1d1f 0%, #2d1f2f 60%, #3a1a2a 100%); color: #fff; border-radius: 18px; padding: 32px 36px; margin-bottom: 20px; position: relative; overflow: hidden; }
+  .ai-hero::before { content: ''; position: absolute; right: -60px; top: -60px; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(254,27,4,0.35), transparent 70%); }
+  .ai-hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(212,175,55,0.15); border: 1px solid rgba(212,175,55,0.4); border-radius: 999px; color: #D4AF37; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 14px; position: relative; z-index: 1; }
+  .ai-hero h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; position: relative; z-index: 1; }
+  .ai-hero p { font-size: 15px; opacity: 0.85; line-height: 1.6; margin: 0 0 12px 0; position: relative; z-index: 1; }
+  .ai-hero .meta { font-size: 11px; opacity: 0.5; margin-top: 18px; position: relative; z-index: 1; }
+
+  .rec-grid { display: grid; gap: 14px; }
+  .rec { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; display: grid; grid-template-columns: 48px 1fr auto; gap: 16px; align-items: start; }
+  .rec-prio { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; }
+  .rec-prio.p9, .rec-prio.p8 { background: var(--error-light); color: var(--error); }
+  .rec-prio.p7, .rec-prio.p6 { background: var(--warn-light); color: var(--warn); }
+  .rec-prio.p5, .rec-prio.p4, .rec-prio.p3 { background: var(--info-light); color: var(--info); }
+  .rec-prio.p2, .rec-prio.p1 { background: var(--success-light); color: var(--success); }
+  .rec-title { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .rec-body { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+  .rec-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .rec-tag { padding: 3px 9px; background: var(--bg); border-radius: 999px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .rec-actions { display: flex; gap: 4px; }
+  .rec-btn { padding: 6px 10px; background: #fff; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .rec-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+  .anomaly { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 12px; }
+  .anomaly-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .anomaly-icon.up   { background: var(--success-light); color: var(--success); }
+  .anomaly-icon.down { background: var(--error-light); color: var(--error); }
+  .anomaly-title { font-weight: 700; font-size: 13px; }
+  .anomaly-body  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .anomaly-date  { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="insights"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>AI Insights</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+
+<div class="content">
+  <div id="locked-wall" style="display:none"></div>
+  <div id="insights-ui">
+
+    <!-- AI Weekly Recap -->
+    <div class="ai-hero">
+      <div class="ai-hero-badge">
+        <span>✦</span> AI WEEKLY RECAP
+      </div>
+      <h2 id="ai-headline">Generating your weekly recap…</h2>
+      <p id="ai-para-1"></p>
+      <p id="ai-para-2"></p>
+      <p id="ai-para-3"></p>
+      <div class="meta" id="ai-meta"></div>
+    </div>
+
+    <!-- Top recommendations -->
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Personalized recommendations</span>
+      <span class="muted" id="rec-count">—</span>
+    </div>
+    <div class="rec-grid" id="rec-grid"></div>
+
+    <!-- Anomaly alerts -->
+    <div class="section-title" style="margin-top:30px">Anomaly alerts (60-day window)</div>
+    <div id="anomaly-grid" style="display:grid;gap:10px"></div>
+
+    <!-- Daily tip -->
+    <div class="section-title" style="margin-top:30px">Today's one-liner</div>
+    <div class="card" style="padding:20px 24px;background:linear-gradient(180deg,#fff,#fff9f9);border-left:4px solid var(--brand)">
+      <div style="font-weight:800;font-size:15px;margin-bottom:6px" id="tip-title">—</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.6" id="tip-body">—</div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+</div>
+
+<div id="toast"></div>
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
+<script src="/ai-insights.js"></script>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+(function() {
+  // Gate check — Gold only
+  function renderLocked() {
+    document.getElementById('insights-ui').style.display = 'none';
+    const wall = document.getElementById('locked-wall');
+    wall.style.display = 'block';
+    wall.innerHTML = `
+      <div style="background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:18px;padding:60px 40px;text-align:center;margin-top:20px">
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);border-radius:999px;color:#D4AF37;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:20px">
+          ✦ Gold feature
+        </div>
+        <h2 style="font-size:32px;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px">AI insights + weekly recap</h2>
+        <p style="font-size:16px;opacity:0.75;max-width:520px;margin:0 auto 24px;line-height:1.6">
+          Upgrade to Gold to get AI-generated weekly narratives, personalized recommendations ranked by urgency, and anomaly alerts across every metric.
+        </p>
+        <a href="/pricing.html" style="display:inline-block;padding:14px 32px;background:#FE1B04;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Upgrade to Gold — $19.95/mo</a>
+        <div style="margin-top:36px;opacity:0.4;font-size:11px">Or click the plan switcher in the bottom-left to preview.</div>
+      </div>`;
+  }
+
+  if (!Plan.allows('ai_insights')) { renderLocked(); return; }
+
+  // Render AI recap
+  try {
+    const r = AI.recap();
+    document.getElementById('ai-headline').textContent = r.headline;
+    document.getElementById('ai-para-1').textContent = r.paragraphs[0];
+    document.getElementById('ai-para-2').textContent = r.paragraphs[1];
+    document.getElementById('ai-para-3').textContent = r.paragraphs[2];
+    document.getElementById('ai-meta').textContent = 'Generated ' + new Date(r.generated_at).toLocaleString() + ' · Current connection streak: ' + r.streak.days + ' days (since ' + new Date(r.streak.from + 'T00:00:00Z').toLocaleDateString() + ')';
+  } catch (e) { console.error(e); }
+
+  // Render recommendations
+  try {
+    const recs = AI.recommendations(8);
+    document.getElementById('rec-count').textContent = recs.length + ' active';
+    const grid = document.getElementById('rec-grid');
+    grid.innerHTML = recs.map((r, i) => `
+      <div class="rec">
+        <div class="rec-prio p${r.priority}">${i + 1}</div>
+        <div>
+          <div class="rec-title">${r.title}</div>
+          <div class="rec-body">${r.body}</div>
+          <div class="rec-tags">${r.tags.map(t => `<span class="rec-tag">${t}</span>`).join('')}</div>
+        </div>
+        <div class="rec-actions">
+          <button class="rec-btn" onclick="alert('Marking applied. (In v1.1: this dismisses + tracks effectiveness.)')">Applied</button>
+          <button class="rec-btn" onclick="alert('Snoozed for 7 days.')">Snooze</button>
+        </div>
+      </div>
+    `).join('') || '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted)">No active recommendations — you\'re running smoothly.</div>';
+  } catch (e) { console.error(e); }
+
+  // Anomalies
+  try {
+    const anoms = AI.anomalyAlerts(60);
+    const grid = document.getElementById('anomaly-grid');
+    if (!anoms.length) {
+      grid.innerHTML = '<div class="card" style="padding:20px 24px;color:var(--text-muted);font-size:13px">✓ No anomalies in the last 60 days. Your metrics are moving within normal bounds.</div>';
+    } else {
+      grid.innerHTML = anoms.map(a => `
+        <div class="anomaly">
+          <div class="anomaly-icon ${a.direction}">${a.direction === 'up' ? '▲' : '▼'}</div>
+          <div>
+            <div class="anomaly-title">${a.label}</div>
+            <div class="anomaly-body">${a.message}</div>
+          </div>
+          <div class="anomaly-date">${new Date(a.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}</div>
+        </div>
+      `).join('');
+    }
+  } catch (e) { console.error(e); }
+
+  // Daily tip
+  try {
+    const t = AI.dailyTip();
+    document.getElementById('tip-title').textContent = t.title;
+    document.getElementById('tip-body').textContent = t.body;
+  } catch (e) { console.error(e); }
+})();
+</script>
+</body>
+</html>

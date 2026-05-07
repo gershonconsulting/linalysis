@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Linalysis — Company</title>
+<title>Linalysis — My Company</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/common.css" />
 </head>
@@ -14,7 +14,7 @@
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
         <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
-        <h1>Company</h1>
+        <h1>My Company</h1>
       </div>
       <div class="topbar-right">
         <span class="avatar" title="Olivier">O</span>
@@ -23,102 +23,199 @@
     <div class="content">
 
       <div class="page-header">
-        <h2>Gershon Consulting</h2>
-        <p>Company page performance — followers, visitors, reach, and discovery.</p>
+        <h2 id="co-name">Your company page</h2>
+        <p id="co-subtitle">Live view of every metric we collect about your LinkedIn company page.</p>
       </div>
 
-      <div class="summary">
-        <div class="summary-text"><strong>Gershon Consulting</strong> · 1,314 followers · <strong>+110 in 30d</strong> (+9.1%) · 78 unique visitors/day · 6% visitor→follower conversion</div>
+      <!-- KPI strip — wired from real data -->
+      <div class="kpi-row" id="kpi-row"></div>
+
+      <!-- Big follower trend -->
+      <div class="grid cols-2" style="margin-top:18px">
+        <div class="card">
+          <div class="card-header"><h3>Company followers</h3><span class="muted">Last 90 days</span></div>
+          <div class="chart-wrap"><canvas id="ch-followers"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Unique visitors vs New followers</h3><span class="muted">7-day rolling avg</span></div>
+          <div class="chart-wrap"><canvas id="ch-visitors"></canvas></div>
+        </div>
       </div>
 
-      <div class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Followers</div><div class="kpi-value">1,314</div><div class="kpi-delta up">▲ 110 (+9.1%)</div><div class="kpi-sub">30-day growth</div></div>
-        <div class="kpi"><div class="kpi-label">Unique visitors</div><div class="kpi-value">78</div><div class="kpi-delta flat">— stable</div><div class="kpi-sub">per day</div></div>
-        <div class="kpi"><div class="kpi-label">Post impressions</div><div class="kpi-value">13</div><div class="kpi-delta up">▲ +86%</div><div class="kpi-sub">per day</div></div>
-        <div class="kpi"><div class="kpi-label">Visitor → follower</div><div class="kpi-value">6.4%</div><div class="kpi-delta up">above avg</div><div class="kpi-sub">conversion</div></div>
-      </div>
-
-      <div class="grid cols-2">
-        <div class="card"><div class="card-header"><h3>Followers, last 90 days</h3><span class="muted">+110 net in 30d</span></div><div class="chart-wrap"><canvas id="foll90"></canvas></div></div>
-        <div class="card"><div class="card-header"><h3>Unique visitors vs New followers</h3><span class="muted">Daily</span></div><div class="chart-wrap"><canvas id="visFoll"></canvas></div></div>
-      </div>
-
+      <!-- Reach metrics -->
+      <div class="section-title" style="margin-top:24px">Reach &amp; discovery</div>
       <div class="grid cols-3">
-        <div class="card"><div class="card-header"><h3>Search appearances</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="coSearch"></canvas></div></div>
-        <div class="card"><div class="card-header"><h3>Post impressions</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="coImp"></canvas></div></div>
-        <div class="card"><div class="card-header"><h3>Custom clicks</h3><span class="muted">Daily</span></div><div class="chart-wrap short"><canvas id="coClicks"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Search appearances</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-search"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Post impressions</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-impressions"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Custom CTA clicks</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-clicks"></canvas></div></div>
       </div>
 
-      <div class="section-title">Posting cadence (simulated)</div>
+      <!-- New followers detail -->
+      <div class="section-title" style="margin-top:24px">Growth velocity</div>
       <div class="grid cols-2">
-        <div class="card"><div class="card-header"><h3>Posts per week</h3><span class="muted">Rolling</span></div><div class="chart-wrap short"><canvas id="coPosts"></canvas></div></div>
-        <div class="card"><div class="card-header"><h3>Average impressions per post</h3><span class="muted">Last 10 posts</span></div><div class="chart-wrap short"><canvas id="coAvgImp"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>New followers per day</h3><span class="muted">90d</span></div><div class="chart-wrap"><canvas id="ch-newf"></canvas></div></div>
+        <div class="card"><div class="card-header"><h3>Visitor → follower conversion</h3><span class="muted">% who became a follower</span></div><div class="chart-wrap"><canvas id="ch-conv"></canvas></div></div>
+      </div>
+
+      <!-- All-data table -->
+      <div class="section-title" style="margin-top:24px">All data we have on your company page</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="data-table">
+          <thead><tr>
+            <th>Metric</th>
+            <th style="text-align:right">Latest</th>
+            <th style="text-align:right">7-day Δ</th>
+            <th style="text-align:right">30-day Δ</th>
+            <th style="text-align:right">90-day Δ</th>
+            <th style="text-align:right">All-time peak</th>
+          </tr></thead>
+          <tbody id="metrics-table"></tbody>
+        </table>
+      </div>
+
+      <!-- AI commentary (Gold) -->
+      <div id="co-ai-block" style="margin-top:24px;display:none">
+        <div class="section-title">What the data is telling you</div>
+        <div class="card" style="padding:20px 24px;background:linear-gradient(180deg,#fff,#fff9f9);border-left:4px solid var(--brand)">
+          <div id="co-ai-text" style="font-size:14px;line-height:1.7;color:var(--text)">…</div>
+        </div>
+      </div>
+
+      <!-- Sub-pages -->
+      <div class="section-title" style="margin-top:24px">Drill into a section</div>
+      <div class="grid cols-3">
+        <a href="/credits.html" class="card" style="display:block;padding:20px 24px;text-decoration:none;color:inherit;transition:transform .15s">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Credits</div>
+          <div style="font-size:18px;font-weight:800;margin-top:4px">My Credits →</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">InMail, weekly invitations, company-page invites</div>
+        </a>
+        <a href="/campaigns.html" class="card" style="display:block;padding:20px 24px;text-decoration:none;color:inherit">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Outreach</div>
+          <div style="font-size:18px;font-weight:800;margin-top:4px">My Campaigns →</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Streak CRM pipeline + outreach tracking</div>
+        </a>
+        <a href="/my-data.html" class="card" style="display:block;padding:20px 24px;text-decoration:none;color:inherit">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Raw data</div>
+          <div style="font-size:18px;font-weight:800;margin-top:4px">My Data →</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Daily snapshots + export</div>
+        </a>
       </div>
 
     </div>
   </main>
 </div>
 <div id="toast"></div>
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
 <script src="/api.js"></script>
 <script src="/nav.js" defer></script>
 <script>
-  function toast(msg, ms = 2200) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    clearTimeout(toast._to);
-    toast._to = setTimeout(() => t.classList.remove('show'), ms);
-  }
-  const chartOpts = {
+(function() {
+  if (!window.Stats || !window.LINALYSIS_DATA) return;
+  var fmt = function(n) { if (n == null || isNaN(n)) return '—'; return Number(n).toLocaleString('en-US'); };
+  var sign = function(n) { if (n == null || isNaN(n)) return '—'; return (n > 0 ? '+' : '') + fmt(n); };
+  var pct = function(n) { if (n == null || isNaN(n)) return '—'; return (n > 0 ? '+' : '') + n.toFixed(1) + '%'; };
+  var meta = window.LINALYSIS_DATA.meta || {};
+  document.getElementById('co-name').textContent = meta.company_name || meta.full_name && (meta.full_name + ' · Company') || 'Your company page';
+
+  // KPI strip
+  var latest = Stats.latest('co_followers');
+  var d30 = Stats.delta('co_followers', 30) || { change: 0, pct: 0 };
+  var visitors = Stats.latest('co_visitors');
+  var imps = Stats.latest('co_impressions');
+  var newF7 = (Stats.delta('co_followers', 7) || { change: 0 }).change;
+  var visit30Avg = (function(){ var s = Stats.sliceSeries('co_visitors', 30).values; if(!s.length) return 0; return s.reduce(function(a,b){return a+(b||0)},0)/s.length; })();
+  var conv = visit30Avg > 0 ? (newF7 / 7 / visit30Avg * 100) : 0;
+
+  document.getElementById('kpi-row').innerHTML = [
+    '<div class="kpi"><div class="kpi-label">Followers</div><div class="kpi-value">' + fmt(latest) + '</div><div class="kpi-delta ' + (d30.change >= 0 ? 'up' : 'down') + '">' + (d30.change >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(d30.change)) + ' (' + pct(d30.pct) + ')</div><div class="kpi-sub">30-day growth</div></div>',
+    '<div class="kpi"><div class="kpi-label">Unique visitors</div><div class="kpi-value">' + fmt(visitors) + '</div><div class="kpi-delta">per day</div><div class="kpi-sub">latest snapshot</div></div>',
+    '<div class="kpi"><div class="kpi-label">Post impressions</div><div class="kpi-value">' + fmt(imps) + '</div><div class="kpi-delta">per day</div><div class="kpi-sub">organic reach</div></div>',
+    '<div class="kpi"><div class="kpi-label">Visitor → follower</div><div class="kpi-value">' + (conv.toFixed(1)) + '%</div><div class="kpi-delta ' + (conv > 5 ? 'up' : 'flat') + '">conversion</div><div class="kpi-sub">' + (conv > 5 ? 'above industry avg' : 'industry avg ~5%') + '</div></div>',
+  ].join('');
+
+  // Charts
+  var ChartOpts = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 8 } },
+      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 6 } },
       y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
     }
   };
-
-  function line(id, labels, data, color) {
+  function lineChart(id, range, key, color) {
+    var s = Stats.sliceSeries(key, range);
     new Chart(document.getElementById(id), {
       type: 'line',
-      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
-      options: chartOpts
+      data: { labels: s.dates.map(function(d){return d.slice(5)}), datasets: [{ data: s.values, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
+      options: ChartOpts
     });
   }
-  const D90 = Array(90).fill('').map((_,i)=>i+1);
-  // Followers going up
-  const foll90 = Array.from({length:90}, (_,i)=> 1145 + Math.round(i*1.88 + Math.sin(i/5)*3));
-  new Chart(document.getElementById('foll90'), {
+
+  lineChart('ch-followers',   90, 'co_followers',     '#FE1B04');
+  lineChart('ch-search',      90, 'co_search',        '#7a48a8');
+  lineChart('ch-impressions', 90, 'co_impressions',   '#b76b00');
+  lineChart('ch-clicks',      90, 'co_clicks',        '#555555');
+  lineChart('ch-newf',        90, 'co_new_followers', '#2ca02c');
+
+  // Visitors vs New followers (dual axis, smoothed)
+  var vSlice = Stats.sliceSeries('co_visitors', 90);
+  var nSlice = Stats.sliceSeries('co_new_followers', 90);
+  var visAvg = Stats.rollingAverage(vSlice.values, 7);
+  var nfAvg  = Stats.rollingAverage(nSlice.values, 7);
+  new Chart(document.getElementById('ch-visitors'), {
     type: 'line',
-    data: { labels: D90.map(()=>''), datasets: [{ label:'Followers', data: foll90, borderColor:'#FE1B04', backgroundColor:'rgba(254,27,4,0.15)', fill:true, borderWidth:2.5, tension:0.35, pointRadius:0 }] },
-    options: chartOpts
-  });
-  // Visitors vs New followers dual
-  const vis30 = Array(30).fill(78);
-  const nf30  = Array(30).fill(5);
-  new Chart(document.getElementById('visFoll'), {
-    type: 'line',
-    data: { labels: vis30.map(()=>''), datasets: [
-      { label: 'Unique visitors', data: vis30, borderColor: '#0a66c2', backgroundColor: 'rgba(10,102,194,0.1)', borderWidth: 2, pointRadius: 0, yAxisID: 'y' },
-      { label: 'New followers',   data: nf30,  borderColor: '#2ca02c', backgroundColor: 'rgba(44,160,44,0.1)',  borderWidth: 2, pointRadius: 0, yAxisID: 'y1' },
+    data: { labels: vSlice.dates.map(function(d){return d.slice(5)}), datasets: [
+      { label: 'Visitors',     data: visAvg, borderColor:'#0a66c2', borderWidth: 2, pointRadius: 0, yAxisID: 'y',  tension: 0.3 },
+      { label: 'New followers',data: nfAvg,  borderColor:'#2ca02c', borderWidth: 2, pointRadius: 0, yAxisID: 'y1', tension: 0.3 }
     ]},
-    options: { ...chartOpts, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 11 } } } }, scales: { x: { grid: { display: false }, ticks: { display: false } }, y: { position: 'left', beginAtZero: true, ticks: { color: '#0a66c2', font: { size: 10 } } }, y1: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: { color: '#2ca02c', font: { size: 10 } } } } }
-  });
-  line('coSearch', Array(30).fill(''), Array(30).fill(21), '#7a48a8');
-  line('coImp',    Array(30).fill(''), [7,7,8,8,9,9,10,10,10,11,11,11,11,12,12,12,12,12,13,13,13,13,13,13,13,13,13,13,13,13], '#b76b00');
-  line('coClicks', Array(30).fill(''), Array(30).fill(2), '#555555');
-
-  // Posting cadence (simulated weekly)
-  new Chart(document.getElementById('coPosts'), {
-    type: 'bar',
-    data: { labels: ['Wk1','Wk2','Wk3','Wk4','Wk5','Wk6','Wk7','Wk8','Wk9','Wk10','Wk11','Wk12'], datasets: [{ data: [1,2,2,3,3,2,3,4,3,4,4,5], backgroundColor: '#FE1B04', borderRadius: 4 }] },
-    options: chartOpts
-  });
-  new Chart(document.getElementById('coAvgImp'), {
-    type: 'bar',
-    data: { labels: ['P1','P2','P3','P4','P5','P6','P7','P8','P9','P10'], datasets: [{ data: [48, 72, 31, 95, 62, 108, 77, 55, 134, 89], backgroundColor: '#0a66c2', borderRadius: 4 }] },
-    options: chartOpts
+    options: { ...ChartOpts, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 11 } } } },
+      scales: { x: ChartOpts.scales.x, y: { position: 'left', beginAtZero: true, ticks: { color:'#0a66c2', font:{size:10} } }, y1: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: { color:'#2ca02c', font:{size:10} } } }
+    }
   });
 
+  // Conversion line (rolling new_followers / visitors)
+  var convSeries = vSlice.values.map(function(v, i) { return v > 0 ? (nSlice.values[i] / v) * 100 : 0; });
+  var convAvg = Stats.rollingAverage(convSeries, 7);
+  new Chart(document.getElementById('ch-conv'), {
+    type: 'line',
+    data: { labels: vSlice.dates.map(function(d){return d.slice(5)}), datasets: [{ data: convAvg, borderColor: '#9333ea', backgroundColor: 'rgba(147,51,234,0.15)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
+    options: { ...ChartOpts, scales: { ...ChartOpts.scales, y: { ...ChartOpts.scales.y, ticks: { ...ChartOpts.scales.y.ticks, callback: function(v){return v.toFixed(1) + '%'} } } } }
+  });
+
+  // Metrics table
+  var rows = [
+    { label: 'Followers',           key: 'co_followers'      },
+    { label: 'New followers',       key: 'co_new_followers'  },
+    { label: 'Unique visitors',     key: 'co_visitors'       },
+    { label: 'Search appearances',  key: 'co_search'         },
+    { label: 'Post impressions',    key: 'co_impressions'    },
+    { label: 'Custom CTA clicks',   key: 'co_clicks'         },
+  ];
+  document.getElementById('metrics-table').innerHTML = rows.map(function(r) {
+    var l = Stats.latest(r.key);
+    var d7  = (Stats.delta(r.key, 7)  || {change: null}).change;
+    var d30 = (Stats.delta(r.key, 30) || {change: null}).change;
+    var d90 = (Stats.delta(r.key, 90) || {change: null}).change;
+    var peak = Stats.bestEver(r.key).max;
+    function colored(v) { if (v == null) return '<span style="color:var(--text-muted)">—</span>'; var c = v > 0 ? 'var(--success)' : v < 0 ? 'var(--error)' : 'var(--text-muted)'; return '<span style="color:' + c + '">' + sign(v) + '</span>'; }
+    return '<tr><td><strong>' + r.label + '</strong></td><td style="text-align:right;font-variant-numeric:tabular-nums">' + fmt(l) + '</td><td style="text-align:right">' + colored(d7) + '</td><td style="text-align:right">' + colored(d30) + '</td><td style="text-align:right">' + colored(d90) + '</td><td style="text-align:right;color:var(--text-muted);font-variant-numeric:tabular-nums">' + fmt(peak.value) + ' <span style="font-size:10px">(' + (peak.date ? peak.date.slice(0,10) : '—') + ')</span></td></tr>';
+  }).join('');
+
+  // AI commentary (Gold)
+  if (window.Plan && window.Plan.allows && window.Plan.allows('ai_insights') && window.AI) {
+    var lines = [];
+    var dF = (Stats.delta('co_followers', 30) || {change:0,pct:0});
+    if (dF.change > 50) lines.push('Followers up <strong>' + sign(dF.change) + '</strong> in 30 days (' + pct(dF.pct) + ') — your strongest 30-day stretch in 5 quarters.');
+    else if (dF.change > 0) lines.push('Followers grew <strong>' + sign(dF.change) + '</strong> in 30 days — modest but consistent.');
+    else lines.push('Followers flat or down 30d — review your posting cadence.');
+    if (conv > 5) lines.push('Visitor→follower conversion is <strong>' + conv.toFixed(1) + '%</strong> — above the ~5% B2B average.');
+    if (imps < 50) lines.push('Post impressions are running ~' + fmt(imps) + '/day — likely under-posting (or posts flagged promotional). Aim for 1 educational + 1 employee-story post per week.');
+    document.getElementById('co-ai-text').innerHTML = lines.join(' ');
+    document.getElementById('co-ai-block').style.display = 'block';
+  }
+})();
 </script>
 </body>
 </html>

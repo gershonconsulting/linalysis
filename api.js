@@ -4,11 +4,16 @@
 
 (function () {
   const BASE = (function () {
-    // Prefer same-origin API if the site is served from an API-enabled host
-    // (future-proofing). Today it's api.linalysis.net on Hostinger.
+    // Local dev
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       return 'http://127.0.0.1:8787';
     }
+    // When served from *.pages.dev (e.g. the user's ISP is hijacking api.linalysis.net),
+    // use the workers.dev fallback which can't be ISP-blacklisted.
+    if (location.hostname.endsWith('.pages.dev')) {
+      return 'https://linalysis-api.oattia.workers.dev';
+    }
+    // Production custom domain
     return 'https://api.linalysis.net';
   })();
 

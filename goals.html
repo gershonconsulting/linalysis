@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — My Goals</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .goal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .goal-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; position: relative; }
+  .goal-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .goal-metric { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .goal-title { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; margin-top: 4px; }
+  .goal-emoji { font-size: 28px; line-height: 1; }
+
+  .progress-wrap { margin: 14px 0; }
+  .progress-bar { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; position: relative; }
+  .progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FE1B04, #ff6b47); transition: width .5s ease-out; }
+  .progress-fill.success { background: linear-gradient(90deg, #057642, #0a9756); }
+  .progress-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .goal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .goal-stat { text-align: center; }
+  .goal-stat .v { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+  .goal-stat .v.pos { color: var(--success); }
+  .goal-stat .v.neg { color: var(--error); }
+  .goal-stat .l { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+  .goal-eta { margin-top: 12px; padding: 10px 12px; background: var(--bg); border-radius: 8px; font-size: 12px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
+  .goal-eta strong { color: var(--text); }
+  .goal-eta.done { background: var(--success-light); color: var(--success); }
+
+  .goal-status { position: absolute; top: 16px; right: 16px; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .goal-status.on-track { background: var(--success-light); color: var(--success); }
+  .goal-status.behind   { background: var(--warn-light);    color: var(--warn);    }
+  .goal-status.done     { background: var(--success); color: #fff; }
+
+  .add-goal-card { background: #fff; border: 2px dashed var(--border); border-radius: 14px; padding: 40px 20px; text-align: center; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+  .add-goal-card:hover { border-color: var(--brand); color: var(--brand); }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="goals"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>My Goals</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+
+<div class="content">
+  <div class="page-header">
+    <h2>Where are you headed?</h2>
+    <p>Track progress toward the numbers that matter. ETAs are calculated from your last 30-day growth rate.</p>
+  </div>
+
+  <div class="goal-grid" id="goal-grid"></div>
+
+</div>
+</main></div>
+
+<div id="toast"></div>
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+const PRESET_GOALS = [
+  { metric: 'connections', target: 30000, emoji: '🔗', title: '30,000 connections', label: 'Connections' },
+  { metric: 'connections', target: 50000, emoji: '🌐', title: '50,000 connections',  label: 'Connections' },
+  { metric: 'ssi',         target: 80,    emoji: '📊', title: 'SSI score of 80',     label: 'SSI overall'  },
+  { metric: 'ssi',         target: 90,    emoji: '🏆', title: 'SSI score of 90',     label: 'SSI overall'  },
+  { metric: 'co_followers',target: 2000,  emoji: '🏢', title: '2,000 company followers', label: 'Company followers' },
+  { metric: 'views',       target: 2000,  emoji: '👁️', title: '2,000 profile views',     label: 'Profile views (7d peak)' },
+];
+
+function fmt(n) { return n.toLocaleString('en-US'); }
+function fmtDays(d) {
+  if (d === null) return 'Not on pace';
+  if (d === 0) return 'Achieved';
+  if (d < 30) return `~${d} days`;
+  if (d < 365) return `~${Math.round(d/30)} months`;
+  return `~${(d/365).toFixed(1)} years`;
+}
+
+function renderGoal(g) {
+  const cur = Stats.latest(g.metric);
+  const pct = Math.min(100, (cur / g.target) * 100);
+  const done = cur >= g.target;
+  const eta = Stats.etaTo(g.metric, g.target);
+  const vel = Stats.growthVelocity(g.metric, 30);
+  const d30 = Stats.delta(g.metric, 30) || { change: 0, pct: 0 };
+  const status = done ? 'done' : (eta !== null && eta <= 180 ? 'on-track' : 'behind');
+  const statusLabel = done ? 'Achieved' : status === 'on-track' ? 'On track' : 'Behind';
+  return `
+    <div class="goal-card">
+      <div class="goal-status ${status}">${statusLabel}</div>
+      <div class="goal-head">
+        <div>
+          <div class="goal-metric">${g.label}</div>
+          <div class="goal-title">${g.title}</div>
+        </div>
+        <div class="goal-emoji">${g.emoji}</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill ${done ? 'success' : ''}" style="width:${pct}%"></div></div>
+        <div class="progress-row">
+          <span>${fmt(cur)}</span>
+          <span>${pct.toFixed(1)}%</span>
+          <span>${fmt(g.target)}</span>
+        </div>
+      </div>
+      <div class="goal-eta ${done ? 'done' : ''}">
+        ${done ? '✓' : '⏱'} <strong>ETA:</strong> ${fmtDays(eta)}
+      </div>
+      <div class="goal-stats">
+        <div class="goal-stat">
+          <div class="v">${vel.toFixed(1)}</div>
+          <div class="l">per day</div>
+        </div>
+        <div class="goal-stat">
+          <div class="v ${d30.change >= 0 ? 'pos' : 'neg'}">${d30.change >= 0 ? '+' : ''}${fmt(d30.change)}</div>
+          <div class="l">last 30d</div>
+        </div>
+        <div class="goal-stat">
+          <div class="v">${fmt(Math.max(0, g.target - cur))}</div>
+          <div class="l">remaining</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+(function() {
+  const grid = document.getElementById('goal-grid');
+  grid.innerHTML = PRESET_GOALS.map(renderGoal).join('');
+  // Add-goal card — gated to Gold+
+  if (Plan.allows('goals_custom')) {
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="add-goal-card" onclick="alert('Custom goal builder coming in v1.1 — will let you set any metric + target + deadline.')">
+        <div style="font-size:32px;margin-bottom:8px">+</div>
+        <div style="font-weight:700;font-size:14px">Add custom goal</div>
+        <div style="font-size:11px;margin-top:4px">Pick any metric, target, and deadline</div>
+      </div>`);
+  } else {
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="add-goal-card" style="background:#fafafa" onclick="location.href='/pricing.html'">
+        <div style="font-size:20px;margin-bottom:8px">🔒</div>
+        <div style="font-weight:700;font-size:14px">Custom goals — Gold feature</div>
+        <div style="font-size:11px;margin-top:4px">Upgrade to set your own targets</div>
+      </div>`);
+  }
+})();
+</script>
+</body>
+</html>

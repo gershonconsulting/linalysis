@@ -39,6 +39,27 @@
         <a class="btn" href="/reports.html">View reports →</a>
       </div>
 
+      <!-- ── AI Quick Take (Gold) ─────────────────────────────── -->
+      <div id="ai-quick-take" style="display:none;background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:18px;position:relative;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;position:relative;z-index:1">
+          <div style="flex:1">
+            <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.35);border-radius:999px;font-size:10px;font-weight:700;color:#D4AF37;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px">✦ AI QUICK TAKE</div>
+            <div id="qt-headline" style="font-size:18px;font-weight:800;letter-spacing:-0.01em;margin-bottom:6px">—</div>
+            <div id="qt-body" style="font-size:13px;opacity:0.85;line-height:1.55;max-width:720px">—</div>
+          </div>
+          <a href="/insights.html" style="font-size:12px;padding:8px 14px;background:rgba(255,255,255,0.1);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;white-space:nowrap">Full recap →</a>
+        </div>
+      </div>
+      <!-- Teaser for Silver users -->
+      <div id="ai-teaser" style="display:none;background:var(--card);border:1px dashed var(--border);border-radius:14px;padding:20px 24px;margin-bottom:18px;text-align:center">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">🔒 <strong style="color:var(--text)">AI insights</strong> is a Gold feature</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Get weekly AI-written summaries + personalized recommendations.</div>
+        <a href="/pricing.html" style="display:inline-block;padding:8px 16px;background:var(--brand);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:12px">Upgrade to Gold →</a>
+      </div>
+
+      <!-- ── Streak + Best-of strip ─────────────────────────── -->
+      <div id="record-strip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px"></div>
+
       <div class="page-header">
         <h2>Analytics overview</h2>
         <div class="date-tools">
@@ -165,81 +186,36 @@
 
 <div id="toast"></div>
 
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
+<script src="/ai-insights.js"></script>
 <script src="/api.js"></script>
+<script src="/onboarding.js" defer></script>
 <script src="/nav.js" defer></script>
 <script>
-  function toast(msg, ms = 2200) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(toast._to);
-    toast._to = setTimeout(() => t.classList.remove('show'), ms);
-  }
-  function setMode(btn, mode) {
-    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    toast(`Mode: ${mode}`);
-  }
-  function setRange(btn, range) {
-    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    toast(range === 'custom' ? 'Custom range — picker coming soon' : `Range: last ${range} days`);
-  }
+  // AI quick take + record strip (runs once data.js loaded)
+  (function() {
+    try {
+      // AI quick take
+      if (Plan.allows('ai_recap') && window.AI && AI.recap) {
+        const r = AI.recap();
+        document.getElementById('qt-headline').textContent = r.headline;
+        document.getElementById('qt-body').textContent = r.paragraphs[0];
+        document.getElementById('ai-quick-take').style.display = 'block';
+      } else {
+        document.getElementById('ai-teaser').style.display = 'block';
+      }
+    } catch(e) { console.error('quick take', e); }
 
-  const commonOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
-      y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 11 } } }
-    }
-  };
-
-  // Connections over time — real Olivier data
-  new Chart(document.getElementById('connChart'), {
-    type: 'line',
-    data: {
-      labels: ["12-30","12-31","01-01","01-02","01-03","01-04","01-05","01-06","01-07","01-08","01-09","01-10","01-11","03-09","03-10","03-13","03-14","03-15","03-16","03-17","03-18","03-19","03-20","03-21","03-22","03-23","03-24","03-25","03-26","03-27"],
-      datasets: [{
-        data: [29990,29994,29991,29990,29979,29938,29900,29902,29900,29896,29897,29894,29858,29566,29560,29515,29517,29518,29519,29527,29519,29516,29500,29480,29432,29394,29389,29382,29374,29355],
-        borderColor: '#FE1B04',
-        backgroundColor: (ctx) => {
-          const c = ctx.chart.ctx, a = ctx.chart.chartArea;
-          if (!a) return 'rgba(254,27,4,0.1)';
-          const g = c.createLinearGradient(0, a.top, 0, a.bottom);
-          g.addColorStop(0, 'rgba(254,27,4,0.25)');
-          g.addColorStop(1, 'rgba(254,27,4,0.01)');
-          return g;
-        },
-        fill: true, borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: '#FE1B04'
-      }]
-    },
-    options: commonOpts
-  });
-
-  // SSI over time — real data, last 90 daily entries
-  new Chart(document.getElementById('ssiChart'), {
-    type: 'line',
-    data: {
-      labels: Array(90).fill(''),
-      datasets: [{
-        data: [72,75,75,75,74,74,74,75,75,75,75,75,74,74,74,74,74,74,75,74,74,72,70,70,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,70,70,70,70,70,70,70,70,71,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,74,74,74,74,74,73,73,73,72,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,70],
-        borderColor: '#FE1B04', backgroundColor: 'rgba(254,27,4,0.08)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#FE1B04'
-      }]
-    },
-    options: { ...commonOpts, scales: { x: { grid: { display: false }, ticks: { display: false } }, y: { min: 65, max: 80, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 11 } } } } }
-  });
-
-  // Industry / network percentile — top 1% for both
-  new Chart(document.getElementById('indChart'), {
-    type: 'bar',
-    data: {
-      labels: ['You', 'Industry avg', 'Network avg'],
-      datasets: [{ data: [99, 50, 50], backgroundColor: ['#FE1B04', '#d1d5db', '#9ca3af'], borderRadius: 6, maxBarThickness: 50 }]
-    },
-    options: { ...commonOpts, scales: { x: { grid: { display: false }, ticks: { color: '#6e6e73', font: { size: 12 } } }, y: { max: 100, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 11 }, callback: v => v + 'th' } } } }
-  });
-</script>
-</body>
-</html>
+    // Record strip (all tiers)
+    try {
+      if (!window.Stats) return;
+      const fmt = n => typeof n === 'number' ? n.toLocaleString('en-US') : n;
+      const streak = Stats.currentStreak('connections');
+      const best = Stats.biggestJump('connections');
+      const bestWk = Stats.bestWeek('connections');
+      const ssiBest = Stats.bestEver('ssi').max;
+      const strip = [
+        { label: 'Current streak', value: `${streak.days} days`, sub: `no decline since ${new Date(streak.from+'T00:00:00Z').toLocaleDateString()}`, emoji: '🔥' },
+        { label: 'Best single day', value: `+${fmt(best.delta)}`, sub: `on ${new 

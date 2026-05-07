@@ -112,7 +112,7 @@
 
   <div class="page-header">
     <h2>Setup &amp; diagnostics</h2>
-    <p>26 automated checks across 8 categories. If something's broken, we'll tell you what and how to fix it.</p>
+    <p>30 automated checks across 9 categories. If something's broken, we'll tell you what and how to fix it.</p>
   </div>
 
   <!-- Info strip -->
@@ -141,7 +141,7 @@
     </div>
     <div>
       <div class="health-title" id="health-title">Running diagnostics…</div>
-      <div class="health-subtitle" id="health-subtitle">We're testing 26 aspects of your setup — environment, extension, LinkedIn session, network, and more.</div>
+      <div class="health-subtitle" id="health-subtitle">We're testing 30 aspects of your setup — environment, extension, LinkedIn session, network, and more.</div>
       <div class="health-actions">
         <button class="btn primary" onclick="runAll()">Re-run all checks</button>
         <button class="btn" onclick="expandAll(true)">Expand all</button>
@@ -152,7 +152,7 @@
         <div class="health-stat"><div class="n ok" id="stat-ok">0</div><div class="l">Passing</div></div>
         <div class="health-stat"><div class="n warn" id="stat-warn">0</div><div class="l">Warnings</div></div>
         <div class="health-stat"><div class="n fail" id="stat-fail">0</div><div class="l">Failing</div></div>
-        <div class="health-stat"><div class="n" id="stat-total">26</div><div class="l">Total checks</div></div>
+        <div class="health-stat"><div class="n" id="stat-total">30</div><div class="l">Total checks</div></div>
       </div>
     </div>
   </div>
@@ -164,35 +164,35 @@
   <div class="self-help">
     <h3>Self-service help (21 topics)</h3>
     <div class="help-cat"><h4>Getting started</h4><div class="help-grid">
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🚀</span><span><div class="help-label">How to set up Linalysis</div><div class="help-desc">Install, connect LinkedIn, first import</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧩</span><span><div class="help-label">Install the Chrome extension</div><div class="help-desc">Step-by-step from the Web Store</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🔗</span><span><div class="help-label">Connect my LinkedIn</div><div class="help-desc">Paste li_at or use the extension</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧭</span><span><div class="help-label">Tour the dashboard</div><div class="help-desc">What each KPI and chart means</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=setup'"><span class="help-emoji">🚀</span><span><div class="help-label">How to set up Linalysis</div><div class="help-desc">Install, connect LinkedIn, first import</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=extension'"><span class="help-emoji">🧩</span><span><div class="help-label">Install the Chrome extension</div><div class="help-desc">Step-by-step from the Web Store</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=connect-linkedin'"><span class="help-emoji">🔗</span><span><div class="help-label">Connect my LinkedIn</div><div class="help-desc">Paste li_at or use the extension</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=tour-dashboard'"><span class="help-emoji">🧭</span><span><div class="help-label">Tour the dashboard</div><div class="help-desc">What each KPI and chart means</div></span></button>
     </div></div>
     <div class="help-cat"><h4>Data &amp; imports</h4><div class="help-grid">
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">📁</span><span><div class="help-label">Import a LinkedIn CSV</div><div class="help-desc">Supported columns and formats</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">⏱️</span><span><div class="help-label">Schedule automatic imports</div><div class="help-desc">Daily or weekly, browser-side</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">📤</span><span><div class="help-label">Export my data</div><div class="help-desc">CSV, JSON, XLSX, Parquet</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🗑️</span><span><div class="help-label">Delete my data</div><div class="help-desc">GDPR-compliant erase</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🔌</span><span><div class="help-label">What data we collect</div><div class="help-desc">Transparent list</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=csv-import'"><span class="help-emoji">📁</span><span><div class="help-label">Import a LinkedIn CSV</div><div class="help-desc">Supported columns and formats</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=auto-imports'"><span class="help-emoji">⏱️</span><span><div class="help-label">Schedule automatic imports</div><div class="help-desc">Daily or weekly, browser-side</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=export-data'"><span class="help-emoji">📤</span><span><div class="help-label">Export my data</div><div class="help-desc">CSV, JSON, XLSX, Parquet</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=delete-data'"><span class="help-emoji">🗑️</span><span><div class="help-label">Delete my data</div><div class="help-desc">GDPR-compliant erase</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=data-collected'"><span class="help-emoji">🔌</span><span><div class="help-label">What data we collect</div><div class="help-desc">Transparent list</div></span></button>
     </div></div>
     <div class="help-cat"><h4>Troubleshooting</h4><div class="help-grid">
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🍪</span><span><div class="help-label">li_at cookie won't validate</div><div class="help-desc">Top causes + fixes</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧯</span><span><div class="help-label">Extension isn't detected</div><div class="help-desc">Reinstall, pin, enable</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">📉</span><span><div class="help-label">My charts are empty</div><div class="help-desc">Usually waiting for first import</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🔒</span><span><div class="help-label">Site won't load (SSL error)</div><div class="help-desc">Clear HSTS, check extensions</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🛡️</span><span><div class="help-label">LinkedIn asked me to verify</div><div class="help-desc">Security challenges</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=cookie-validate'"><span class="help-emoji">🍪</span><span><div class="help-label">li_at cookie won't validate</div><div class="help-desc">Top causes + fixes</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=ext-not-detected'"><span class="help-emoji">🧯</span><span><div class="help-label">Extension isn't detected</div><div class="help-desc">Reinstall, pin, enable</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=charts-empty'"><span class="help-emoji">📉</span><span><div class="help-label">My charts are empty</div><div class="help-desc">Usually waiting for first import</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=ssl-error'"><span class="help-emoji">🔒</span><span><div class="help-label">Site won't load (SSL error)</div><div class="help-desc">Clear HSTS, check extensions</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=verify-challenge'"><span class="help-emoji">🛡️</span><span><div class="help-label">LinkedIn asked me to verify</div><div class="help-desc">Security challenges</div></span></button>
     </div></div>
     <div class="help-cat"><h4>Account &amp; billing</h4><div class="help-grid">
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">💳</span><span><div class="help-label">Upgrade or change plan</div><div class="help-desc">See pricing and switch tiers</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🚪</span><span><div class="help-label">Cancel subscription</div><div class="help-desc">Keep your data for 30 days</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">🧾</span><span><div class="help-label">Get a VAT invoice</div><div class="help-desc">Download PDF</div></span></button>
-      <button class="help-btn" onclick="toast('Guide opening…')"><span class="help-emoji">👥</span><span><div class="help-label">Add team members</div><div class="help-desc">Seats and roles (Platinum)</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=upgrade-plan'"><span class="help-emoji">💳</span><span><div class="help-label">Upgrade or change plan</div><div class="help-desc">See pricing and switch tiers</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=cancel-subscription'"><span class="help-emoji">🚪</span><span><div class="help-label">Cancel subscription</div><div class="help-desc">Keep your data for 30 days</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=vat-invoice'"><span class="help-emoji">🧾</span><span><div class="help-label">Get a VAT invoice</div><div class="help-desc">Download PDF</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=team-members'"><span class="help-emoji">👥</span><span><div class="help-label">Add team members</div><div class="help-desc">Seats and roles (Platinum)</div></span></button>
     </div></div>
     <div class="help-cat"><h4>Contact</h4><div class="help-grid">
       <button class="help-btn" onclick="location.href='mailto:support@linalysis.net'"><span class="help-emoji">✉️</span><span><div class="help-label">Email support</div><div class="help-desc">support@linalysis.net</div></span></button>
-      <button class="help-btn" onclick="toast('Request sent')"><span class="help-emoji">💡</span><span><div class="help-label">Request a feature</div><div class="help-desc">Tell us what's missing</div></span></button>
-      <button class="help-btn" onclick="toast('Bug report form opening…')"><span class="help-emoji">🐛</span><span><div class="help-label">Report a bug</div><div class="help-desc">Attach a screenshot</div></span></button>
+      <button class="help-btn" onclick="location.href='mailto:feedback@linalysis.net?subject=Feature%20request'"><span class="help-emoji">💡</span><span><div class="help-label">Request a feature</div><div class="help-desc">Tell us what's missing</div></span></button>
+      <button class="help-btn" onclick="location.href='mailto:bugs@linalysis.net?subject=Bug%20report'"><span class="help-emoji">🐛</span><span><div class="help-label">Report a bug</div><div class="help-desc">Attach a screenshot</div></span></button>
     </div></div>
   </div>
 
@@ -209,6 +209,7 @@ const LINALYSIS_EXT_ID='hgmhmanijnjhaffoampdlllchpolkdnj';
 
 // --- 26 checks across 8 categories ---
 const CATS = [
+  { key:'core', icon:'⚡', title:'Critical — does Linalysis actually work?', desc:'The 4 things that matter for analytics to flow' },
   { key:'env',  icon:'💻', title:'Environment', desc:'Browser, OS, and runtime basics' },
   { key:'ext',  icon:'🧩', title:'Chrome Extension', desc:'Installed, enabled, and able to reach LinkedIn' },
   { key:'li',   icon:'🔗', title:'LinkedIn Session', desc:'Your li_at cookie and profile access' },
@@ -221,6 +222,106 @@ const CATS = [
 
 // Each check: id, cat, title, detail, run:async()=>{status,detail,action?}
 const CHECKS = [
+  // ─── CORE (the 4 things that matter most) ────────────────────────
+  { id:'core.extension', cat:'core', title:'Chrome extension is installed', run: async()=>{
+    // Try sentinel attribute first
+    var v = document.documentElement.dataset.linalysisExt;
+    if (v) return { status:'ok', detail:'Extension v'+v+' is active and injecting on this page.' };
+    // Try chrome-extension:// resource probe (works in some Chrome configs)
+    var probes = ['icon-128.png','icons/icon-128.png','manifest.json','icon.png'];
+    for (var i = 0; i < probes.length; i++) {
+      var path = probes[i];
+      var found = await new Promise(function(res){
+        var img = new Image(); var t = setTimeout(function(){res(false)}, 500);
+        img.onload = function(){ clearTimeout(t); res(true); };
+        img.onerror = function(){ clearTimeout(t); res(false); };
+        img.src = 'chrome-extension://'+LINALYSIS_EXT_ID+'/'+path;
+      });
+      if (found) return { status:'ok', detail:'Detected via chrome-extension://'+LINALYSIS_EXT_ID+'/'+path };
+    }
+    // Manual confirm via localStorage
+    var manual = false;
+    try { manual = localStorage.getItem('linalysis_ext_confirmed') === 'yes'; } catch(e){}
+    if (manual) return { status:'warn', detail:'Manually confirmed installed (Chrome blocks auto-detection). <a href="#" onclick="localStorage.removeItem(\'linalysis_ext_confirmed\');location.reload();return false" style="color:var(--brand)">Reset</a>' };
+    return {
+      status:'fail',
+      detail:'Extension not detected. Chrome blocks programmatic detection of extensions for privacy — install from the Web Store and click the manual-confirm button below.',
+      action: { label:'Install from Web Store', fn:'openExtStore' }
+    };
+  }},
+  { id:'core.cookie', cat:'core', title:'LinkedIn cookie (li_at) is live & valid', run: async()=>{
+    // Try to read cached validation result first (from extension or previous paste)
+    var cached = null;
+    try {
+      var raw = localStorage.getItem('linalysis_cookie_check');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if ((Date.now() - parsed.checked_at) < 24 * 3600 * 1000) cached = parsed;
+      }
+    } catch(e){}
+    if (cached && cached.valid) {
+      return { status:'ok', detail:'Validated <strong>'+cached.fullName+'</strong>'+(cached.title ? ' · '+cached.title : '')+' — last checked '+new Date(cached.checked_at).toLocaleString()+'. Re-check to refresh.', action:{label:'Re-check now', fn:'showPaste'} };
+    }
+    // Try fetch from extension via custom event
+    var fromExt = await new Promise(function(res){
+      var listener = function(e){ window.removeEventListener('linalysis-li_at', listener); res(e.detail && e.detail.li_at); };
+      window.addEventListener('linalysis-li_at', listener);
+      window.dispatchEvent(new CustomEvent('linalysis-request-li_at'));
+      setTimeout(function(){ window.removeEventListener('linalysis-li_at', listener); res(null); }, 1000);
+    });
+    if (fromExt) {
+      try {
+        var r = await fetch('https://api.cookieverify.com/api/validate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cookie: fromExt}) });
+        var d = await r.json();
+        if (d.isValid) {
+          try { localStorage.setItem('linalysis_cookie_check', JSON.stringify({ valid:true, fullName:d.fullName, title:d.title, company:d.company, checked_at:Date.now() })); } catch(e){}
+          return { status:'ok', detail:'Auto-validated via extension: <strong>'+d.fullName+'</strong>'+(d.title?' · '+d.title:'')+(d.company?' @ '+d.company:'') };
+        }
+        return { status:'fail', detail:'Cookie pulled from extension but rejected by LinkedIn. <strong>Sign in to LinkedIn again</strong> in this browser to refresh it.', action:{label:'Open LinkedIn', fn:'openLinkedin'} };
+      } catch(e) { /* fallthrough */ }
+    }
+    return { status:'pending', detail:'Click "Paste cookie" below to validate manually. The extension can also push it automatically — make sure it\'s installed and enabled on linkedin.com.', action:{label:'Paste cookie', fn:'showPaste'} };
+  }},
+  { id:'core.fresh', cat:'core', title:'Data captured in the last 24 hours', run: async()=>{
+    var d = window.LINALYSIS_DATA && LINALYSIS_DATA.meta && LINALYSIS_DATA.meta.last_date;
+    if (!d) return { status:'fail', detail:'No data found. Run the extension on linkedin.com to capture your first snapshot.' };
+    var lastMs = new Date(d + 'T00:00:00Z').getTime();
+    var now = Date.now();
+    var hoursOld = Math.round((now - lastMs) / 3600000);
+    var prettyAgo = hoursOld < 24 ? hoursOld + 'h ago' : Math.round(hoursOld/24) + 'd ago';
+    if (hoursOld <= 24) return { status:'ok', detail:'Latest capture is from <strong>'+d+'</strong> ('+prettyAgo+'). Daily sync is healthy.' };
+    if (hoursOld <= 72) return { status:'warn', detail:'Latest capture is from <strong>'+d+'</strong> ('+prettyAgo+'). Charts will be slightly stale — capture today to refresh.', action:{label:'Run sync', fn:'openLinkedin'} };
+    return { status:'fail', detail:'Latest capture is from <strong>'+d+'</strong> ('+prettyAgo+'). The extension hasn\'t synced in over 3 days — check it\'s still enabled.', action:{label:'Run sync', fn:'openLinkedin'} };
+  }},
+  { id:'core.sanity', cat:'core', title:'Captured data passes sanity checks', run: async()=>{
+    var D = window.LINALYSIS_DATA;
+    if (!D || !D.metrics) return { status:'fail', detail:'No data structure found.' };
+    var issues = [];
+    var conn = (D.metrics.connections || []);
+    var ssi  = (D.metrics.ssi         || []);
+    var inv  = (D.metrics.invitations || []);
+    if (conn.length < 2) issues.push('Less than 2 days of data — keep the extension running');
+    // Latest values are non-null + plausible
+    var lastConn = conn[conn.length-1], lastSsi = ssi[ssi.length-1], lastInv = inv[inv.length-1];
+    if (lastConn == null || lastConn === 0) issues.push('Latest connection count is empty');
+    if (lastSsi != null && (lastSsi < 0 || lastSsi > 100)) issues.push('SSI '+lastSsi+' is out of range (0-100)');
+    // Connections shouldn\'t crash 50%+ in one capture (would imply a bug)
+    if (conn.length >= 2 && conn[conn.length-2] > 0) {
+      var drop = (conn[conn.length-2] - lastConn) / conn[conn.length-2];
+      if (drop > 0.5) issues.push('Connections dropped >50% on last capture — likely a parsing error');
+    }
+    // Invitations should be non-negative
+    if (lastInv != null && lastInv < 0) issues.push('Pending invitations is negative');
+    // Date range should be reasonable
+    var first = D.meta && D.meta.first_date;
+    var last  = D.meta && D.meta.last_date;
+    if (first && last && first > last) issues.push('Date range inverted (first_date > last_date)');
+    if (issues.length === 0) {
+      return { status:'ok', detail:'All ' + conn.length + ' captures pass sanity checks. Connections=' + lastConn.toLocaleString() + ', SSI=' + lastSsi + ', pending=' + lastInv + '.' };
+    }
+    return { status: issues.length >= 2 ? 'fail' : 'warn', detail: issues.length + ' issue' + (issues.length>1?'s':'') + ' detected: <ul style="margin:6px 0 0 14px;padding:0">' + issues.map(function(i){return '<li>'+i+'</li>'}).join('') + '</ul>' };
+  }},
+
   // ENV
   { id:'env.browser',  cat:'env',  title:'Chromium-based browser (Chrome/Edge)', run: async()=>{
     const ua=navigator.userAgent; let name='Unknown'; let v='';
@@ -458,6 +559,7 @@ function renderCats() {
             <div id="action-${c.id}"></div>
           </div>`).join('')}
         ${cat.key==='li' ? `<div class="cookie-paste" id="cookie-paste" style="display:none">
+        <div class="cookie-paste" id="cookie-paste" style="display:none">
           <textarea id="cookie-input" placeholder="Paste your li_at value (starts with AQED…)"></textarea>
           <div class="cookie-paste-row">
             <button class="btn primary" onclick="validateCookie()">Validate</button>
@@ -475,14 +577,15 @@ async function runCheck(c) {
   const badge=document.getElementById(`badge-${c.id}`);
   const detail=document.getElementById(`detail-${c.id}`);
   const action=document.getElementById(`action-${c.id}`);
+  if (!badge || !detail) return;
   badge.className='check-badge running'; badge.textContent='…';
-  detail.textContent='Running…'; action.innerHTML='';
+  detail.textContent='Running…'; if(action) action.innerHTML='';
   try {
     const r = await c.run();
     const icon={ok:'✓',warn:'!',fail:'✕',pending:'•'}[r.status]||'?';
     badge.className='check-badge '+r.status; badge.textContent=icon;
     detail.innerHTML=r.detail||'';
-    if(r.action) action.innerHTML=`<button class="check-action" onclick="${r.action.fn}()">${r.action.label}</button>`;
+    if(r.action && action) action.innerHTML=`<button class="check-action" onclick="${r.action.fn}()">${r.action.label}</button>`;
     state.results[c.id]=r;
   } catch(e) {
     badge.className='check-badge fail'; badge.textContent='✕';
@@ -510,13 +613,13 @@ function updateHealth() {
   ring.classList.remove('ok','warn','fail');
   ring.classList.add(fail>0?'fail':(warn>2?'warn':'ok'));
   document.getElementById('health-pct').textContent=`${score}%`;
-  // per-category counts
   CATS.forEach(cat=>{
     const here=CHECKS.filter(c=>c.cat===cat.key);
     const hereOk=here.filter(c=>state.results[c.id]?.status==='ok').length;
     const hereWarn=here.filter(c=>state.results[c.id]?.status==='warn').length;
     const hereFail=here.filter(c=>state.results[c.id]?.status==='fail').length;
     const el=document.getElementById(`count-${cat.key}`);
+    if (!el) return;
     el.innerHTML=(hereOk?`<span class="pill ok">${hereOk} OK</span>`:'')+
                  (hereWarn?`<span class="pill warn">${hereWarn} !</span>`:'')+
                  (hereFail?`<span class="pill fail">${hereFail} ✕</span>`:'');
@@ -527,14 +630,12 @@ function updateHealth() {
     const lbl=document.getElementById('health-label');
     if(fail>0){title.textContent=`${fail} issue${fail>1?'s':''} need attention.`;sub.textContent='Expand the red categories below to see what to fix.';lbl.textContent='Issues';}
     else if(warn>0){title.textContent='All core systems OK — some warnings.';sub.textContent='Nothing blocking, but review warnings below.';lbl.textContent='Healthy';}
-    else {title.textContent='Everything\'s working perfectly. 🎉';sub.textContent='All 26 checks passed. You\'re set.';lbl.textContent='Perfect';}
+    else {title.textContent='Everything\'s working perfectly. 🎉';sub.textContent=`All ${total} checks passed. You're set.`;lbl.textContent='Perfect';}
   }
 }
 
-// ---------- Run all ----------
 async function runAll() {
   state.results={};
-  // run in parallel per category, sequential within a category
   await Promise.all(CATS.map(async cat=>{
     const here=CHECKS.filter(c=>c.cat===cat.key);
     for(const c of here) await runCheck(c);
@@ -547,6 +648,90 @@ function expandAll(open) {
 
 function confirmExt() {
   const c=CHECKS.find(x=>x.id==='ext.installed');
-  state.results[c.id]={status:'ok',detail:'Confirmed manually by user.'};
+  if (c) state.results[c.id]={status:'ok',detail:'Confirmed manually by user.'};
+  try { localStorage.setItem('linalysis_ext_confirmed', 'yes'); } catch(e) {}
   const badge=document.getElementById('badge-ext.installed');
-  badge.c
+  if (badge) { badge.className='check-badge ok'; badge.textContent='✓'; }
+  const det=document.getElementById('detail-ext.installed');
+  if (det) det.innerHTML='Confirmed manually. Extension ID <code>'+LINALYSIS_EXT_ID+'</code>.';
+  const act=document.getElementById('action-ext.installed');
+  if (act) act.innerHTML='';
+  // Re-run core too
+  const core=CHECKS.find(x=>x.id==='core.extension');
+  if (core) runCheck(core);
+  updateHealth();
+}
+
+function showPaste() { document.getElementById('cookie-paste').style.display='block'; document.getElementById('cookie-input').focus(); }
+
+function openExtStore() {
+  window.open('https://chromewebstore.google.com/detail/' + LINALYSIS_EXT_ID, '_blank', 'noopener');
+  toast('Web Store opened — install, then return and click "I have it"');
+  setTimeout(function(){
+    if (confirm('Have you installed the extension? Click OK to mark it confirmed.')) {
+      try { localStorage.setItem('linalysis_ext_confirmed', 'yes'); } catch(e) {}
+      const core = CHECKS.find(c => c.id==='core.extension'); if (core) runCheck(core);
+      const ext  = CHECKS.find(c => c.id==='ext.installed');  if (ext)  runCheck(ext);
+    }
+  }, 4000);
+}
+
+function openLinkedin() {
+  window.open('https://www.linkedin.com/feed/', '_blank', 'noopener');
+  toast('LinkedIn opened — let it load fully so the extension can sync');
+}
+
+async function validateCookie() {
+  const v=document.getElementById('cookie-input').value.trim();
+  if(!v){toast('Paste your li_at first'); return;}
+  const badge=document.getElementById('badge-li.cookie');
+  const detail=document.getElementById('detail-li.cookie');
+  if (badge) { badge.className='check-badge running'; badge.textContent='…'; }
+  if (detail) detail.textContent='Validating…';
+  try {
+    const r=await fetch('https://api.cookieverify.com/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookie:v})});
+    const d=await r.json();
+    if(d.isValid){
+      if (badge) { badge.className='check-badge ok'; badge.textContent='✓'; }
+      if (detail) detail.innerHTML=`Valid · <strong>${d.fullName||'LinkedIn user'}</strong>${d.title?` · ${d.title}`:''}${d.company?` @ ${d.company}`:''}${d.profileUrl?` · <a href="${d.profileUrl}" target="_blank" style="color:var(--brand)">profile</a>`:''}`;
+      state.results['li.cookie']={status:'ok',detail:'Cookie valid.'};
+      try { localStorage.setItem('linalysis_cookie_check', JSON.stringify({ valid:true, fullName:d.fullName, title:d.title, company:d.company, profileUrl:d.profileUrl, checked_at:Date.now() })); } catch(e) {}
+      const core = CHECKS.find(c => c.id==='core.cookie'); if (core) runCheck(core);
+    } else {
+      if (badge) { badge.className='check-badge fail'; badge.textContent='✕'; }
+      if (detail) detail.textContent=d.error||'Rejected by LinkedIn — get a fresh li_at.';
+      state.results['li.cookie']={status:'fail',detail:d.error||'Rejected'};
+    }
+  } catch(e) {
+    if (badge) { badge.className='check-badge fail'; badge.textContent='✕'; }
+    if (detail) detail.textContent=`Network error: ${e.message}`;
+    state.results['li.cookie']={status:'fail',detail:e.message};
+  }
+  updateHealth();
+}
+
+function copyReport() {
+  const lines=[`Linalysis diagnostic report · ${new Date().toISOString()}`, `Browser: ${navigator.userAgent}`, ''];
+  CATS.forEach(cat=>{
+    lines.push(`=== ${cat.title} ===`);
+    CHECKS.filter(c=>c.cat===cat.key).forEach(c=>{
+      const r=state.results[c.id];
+      const status=r?r.status.toUpperCase():'NOT RUN';
+      lines.push(`  [${status}] ${c.title}`);
+      if (r && r.detail) lines.push(`         ${r.detail.replace(/<[^>]+>/g,'')}`);
+    });
+    lines.push('');
+  });
+  const txt=lines.join('\n');
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Report copied — paste into support email'));}
+  else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Report copied');}
+}
+
+// ---------- Init ----------
+window.addEventListener('error', e => console.error('Script error:', e));
+try { fillInfoStrip(); } catch(e){ console.error('fillInfoStrip',e); }
+try { renderCats(); } catch(e){ console.error('renderCats',e); }
+try { runAll(); } catch(e){ console.error('runAll',e); }
+</script>
+</body>
+</html>

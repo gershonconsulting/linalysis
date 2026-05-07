@@ -31,6 +31,31 @@
         <div class="summary-text">You've grown from <strong>18,353</strong> to <strong>29,355</strong> connections (<strong>+60%</strong>) over 5 years — your SSI is <strong>70</strong>, top 1% industry &amp; network, and your company <strong>Gershon Consulting</strong> grew <strong>+110 followers</strong> in the last 30 days.</div>
       </div>
 
+      <!-- ── YoY + DoW + Projection widgets (Gold) ─────────── -->
+      <div id="advanced-widgets" style="display:none;margin-bottom:22px">
+        <div class="grid cols-3" style="gap:14px">
+          <div class="card" style="padding:20px 22px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Year over year</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px" id="yoy-value">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="yoy-sub">—</div>
+          </div>
+          <div class="card" style="padding:20px 22px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Best day of week</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px" id="dow-value">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="dow-sub">—</div>
+          </div>
+          <div class="card" style="padding:20px 22px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">12-month projection</div>
+            <div style="font-size:22px;font-weight:800;margin-top:4px" id="proj-value">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="proj-sub">—</div>
+          </div>
+        </div>
+      </div>
+      <div id="advanced-teaser" style="display:none;padding:16px 22px;background:var(--card);border:1px dashed var(--border);border-radius:12px;margin-bottom:22px;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <span>🔒 <strong style="color:var(--text)">Year-over-year, day-of-week, and projection analysis</strong> are Gold features.</span>
+        <a href="/pricing.html" style="padding:7px 14px;background:var(--brand);color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:12px;white-space:nowrap">Upgrade to Gold</a>
+      </div>
+
       <div class="section-title">Headline KPIs (latest · 30-day delta)</div>
       <div class="kpi-row">
         <div class="kpi"><div class="kpi-label">Connections</div><div class="kpi-value">29,355</div><div class="kpi-delta down">▼ 211 (-0.7%)</div><div class="kpi-sub">5-year growth +60%</div></div>
@@ -65,6 +90,32 @@
   </main>
 </div>
 <div id="toast"></div>
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
+<script>
+  (function() {
+    if (!window.Stats) return;
+    const fmt = n => typeof n === 'number' ? n.toLocaleString('en-US') : n;
+    if (Plan.allows('yoy_comparison')) {
+      document.getElementById('advanced-widgets').style.display = 'block';
+      const y = Stats.yoy('connections');
+      if (y) {
+        document.getElementById('yoy-value').innerHTML = `${y.pct >= 0 ? '+' : ''}${y.pct.toFixed(1)}% <span style="font-size:14px;color:var(--text-muted);font-weight:500">(${y.delta >= 0 ? '+' : ''}${fmt(y.delta)})</span>`;
+        document.getElementById('yoy-sub').textContent = `${fmt(y.year_ago.value)} on ${new Date(y.year_ago.date+'T00:00:00Z').toLocaleDateString()} → ${fmt(y.today.value)} today`;
+      }
+      const dow = Stats.dayOfWeekBreakdown('connections').sort((a,b) => b.avg_delta - a.avg_delta);
+      document.getElementById('dow-value').textContent = `${dow[0].day} · +${dow[0].avg_delta.toFixed(1)}`;
+      document.getElementById('dow-sub').textContent = `vs ${dow[dow.length-1].day} at ${dow[dow.length-1].avg_delta.toFixed(1)}/day`;
+      const p = Stats.projection('connections', [365])[0];
+      document.getElementById('proj-value').innerHTML = `${fmt(p.value)} <span style="font-size:14px;color:var(--text-muted);font-weight:500">in 12mo</span>`;
+      const cur = Stats.latest('connections');
+      document.getElementById('proj-sub').textContent = `at current 30-day pace (${(Stats.growthVelocity('connections',30)).toFixed(1)}/day) · +${fmt(p.value - cur)} from today`;
+    } else {
+      document.getElementById('advanced-teaser').style.display = 'flex';
+    }
+  })();
+</script>
 <script src="/api.js"></script>
 <script src="/nav.js" defer></script>
 <script>

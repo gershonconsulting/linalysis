@@ -1,0 +1,41 @@
+# Cloudflare Pages _headers — force text/html on clean (extensionless) paths
+# so browsers render them as pages instead of downloading.
+
+/login
+  Content-Type: text/html; charset=utf-8
+/signup
+  Content-Type: text/html; charset=utf-8
+/dashboard
+  Content-Type: text/html; charset=utf-8
+/summary
+  Content-Type: text/html; charset=utf-8
+/company
+  Content-Type: text/html; charset=utf-8
+/campaigns
+  Content-Type: text/html; charset=utf-8
+/my-data
+  Content-Type: text/html; charset=utf-8
+/account
+  Content-Type: text/html; charset=utf-8
+/pricing
+  Content-Type: text/html; charset=utf-8
+/reports
+  Content-Type: text/html; charset=utf-8
+/troubleshooting
+  Content-Type: text/html; charset=utf-8
+/messaging
+  Content-Type: text/html; charset=utf-8
+/emailing
+  Content-Type: text/html; charset=utf-8
+/import-export
+  Content-Type: text/html; charset=utf-8
+/guests
+  Content-Type: text/html; charset=utf-8
+/terms
+  Content-Type: text/html; charset=utf-8
+/privacy
+  Content-Type: text/html; charset=utf-8
+/cookies
+  Content-Type: text/html; charset=utf-8
+/forgot-password
+  Content-Type: text/html; charset=utf-8

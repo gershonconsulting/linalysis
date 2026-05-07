@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Help</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .help-layout { display: grid; grid-template-columns: 260px 1fr; gap: 30px; max-width: 1100px; margin: 0 auto; }
+  @media (max-width: 800px) { .help-layout { grid-template-columns: 1fr; } }
+
+  .help-sidebar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 14px; height: fit-content; position: sticky; top: 90px; }
+  .help-section-title { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 12px 6px; }
+  .help-link { display: block; padding: 7px 12px; font-size: 13px; color: var(--text); text-decoration: none; border-radius: 6px; }
+  .help-link:hover { background: var(--bg); color: var(--brand); }
+  .help-link.active { background: var(--brand-light); color: var(--brand); font-weight: 700; }
+
+  .help-article { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 30px 36px; }
+  .help-article h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .help-article .lead { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 22px; }
+  .help-article h2 { font-size: 15px; font-weight: 800; color: var(--brand); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 30px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--brand); }
+  .help-article p { font-size: 14px; line-height: 1.7; margin: 0 0 14px; }
+  .help-article ol, .help-article ul { margin: 0 0 16px; padding-left: 22px; font-size: 14px; line-height: 1.75; }
+  .help-article li { margin-bottom: 6px; }
+  .help-article code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-family: SFMono-Regular, Consolas, monospace; font-size: 12px; color: #d61505; }
+  .help-article a { color: var(--brand); }
+  .help-article kbd { background: #f5f5f7; border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; font-family: SFMono-Regular, Consolas, monospace; font-size: 11px; box-shadow: 0 1px 0 rgba(0,0,0,0.08); }
+  .help-callout { padding: 14px 18px; background: linear-gradient(180deg,#fff,#fff8f5); border-left: 4px solid var(--brand); border-radius: 8px; font-size: 13px; line-height: 1.6; margin: 14px 0; }
+  .help-callout.warn { border-color: var(--warn); background: linear-gradient(180deg,#fff,#fff9ed); }
+  .help-callout.success { border-color: var(--success); background: linear-gradient(180deg,#fff,#f5fff7); }
+  .help-related { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .help-related h3 { font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .help-related a { display: inline-block; padding: 6px 12px; margin: 0 6px 6px 0; background: var(--bg); border-radius: 999px; font-size: 12px; color: var(--text); text-decoration: none; }
+  .help-related a:hover { background: var(--brand-light); color: var(--brand); }
+  .help-step { display: grid; grid-template-columns: 32px 1fr; gap: 14px; padding: 12px 0; }
+  .help-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .help-step .help-step-body { font-size: 14px; line-height: 1.7; }
+  .help-step .help-step-body strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="troubleshooting"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Help center</h1>
+  </div>
+  <div class="topbar-right">
+    <a href="/troubleshooting.html" class="btn">← Back to diagnostics</a>
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+
+<div class="content">
+  <div class="help-layout">
+    <aside class="help-sidebar" id="help-nav"></aside>
+    <article class="help-article" id="help-article">Loading…</article>
+  </div>
+</div>
+</main>
+</div>
+
+<div id="toast"></div>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+const TOPICS = {
+  // GETTING STARTED
+  'setup': {
+    cat: 'Getting started', emoji: '🚀',
+    title: 'How to set up Linalysis',
+    lead: '5 minutes to first numbers. Install the extension, sign in, let it capture once, and your dashboard is live.',
+    sections: [
+      { h: 'What you need', body: '<ul><li>Google Chrome or Microsoft Edge (Chromium-based — Firefox + Safari aren\'t supported yet)</li><li>An active LinkedIn account you\'re logged into</li><li>2–3 minutes</li></ul>' },
+      { h: 'Step-by-step', steps: [
+        'Open the <a href="https://chromewebstore.google.com/detail/hgmhmanijnjhaffoampdlllchpolkdnj" target="_blank">Linalysis Chrome extension</a> page on the Web Store and click <strong>Add to Chrome</strong>. Pin it to the toolbar so you can find it again.',
+        'Click <strong>Sign in with LinkedIn</strong> on <a href="/signup.html">linalysis.net/signup</a>. We use LinkedIn\'s official OAuth — we never see your password.',
+        'Open <a href="https://www.linkedin.com/feed/" target="_blank">linkedin.com</a> in any tab. The extension will detect you\'re signed in and capture your first metrics in the background.',
+        'Come back to <a href="/dashboard.html">/dashboard</a>. The 4 KPI tiles (Connections, Views, SSI, Company Followers) populate immediately. Charts need 2+ days of data to start drawing trend lines.',
+        'Open <a href="/troubleshooting.html">/troubleshooting</a> and confirm all 4 critical checks are green: extension installed, cookie valid, captured today, data sane.'
+      ]},
+      { h: 'What happens next', body: '<p>The extension syncs once a day automatically while you have LinkedIn open. After 7 days you\'ll get your first weekly report by email; after 30 days the full monthly deep-dive becomes available on <a href="/reports.html">/reports</a>.</p>' }
+    ],
+    related: ['extension', 'connect-linkedin', 'tour-dashboard']
+  },
+  'extension': {
+    cat: 'Getting started', emoji: '🧩',
+    title: 'Install the Chrome extension',
+    lead: 'The Chrome extension is what reads your LinkedIn metrics into Linalysis. Without it, your charts stay empty.',
+    sections: [
+      { h: 'Install in 30 seconds', steps: [
+        'Open <a href="https://chromewebstore.google.com/detail/hgmhmanijnjhaffoampdlllchpolkdnj" target="_blank">the extension page on the Chrome Web Store</a>.',
+        'Click <strong>Add to Chrome</strong> → <strong>Add extension</strong>.',
+        'Click the puzzle-piece icon in your browser toolbar, find <strong>Linalysis</strong>, and click the pin icon to keep it visible.',
+        'Open <a href="https://www.linkedin.com/feed/" target="_blank">linkedin.com</a>. The extension activates automatically — no settings, no clicks.'
+      ]},
+      { h: 'Microsoft Edge', body: '<p>Edge supports Chrome extensions. Same install link, click <strong>Allow extensions from other stores</strong> when Edge prompts.</p>' },
+      { h: 'Confirm it\'s working', body: '<p>Open <a href="/troubleshooting.html">/troubleshooting</a> and look at <strong>Chrome extension is installed</strong> at the top — it should show a green ✓. If it shows red, click <strong>I have it</strong> to confirm manually (Chrome blocks programmatic detection of extensions for privacy reasons).</p>' }
+    ],
+    related: ['ext-not-detected', 'connect-linkedin', 'cookie-validate']
+  },
+  'connect-linkedin': {
+    cat: 'Getting started', emoji: '🔗',
+    title: 'Connect your LinkedIn account',
+    lead: 'Two ways: the extension (preferred — fully automatic) or pasting your `li_at` cookie (works as a one-time fallback).',
+    sections: [
+      { h: 'Option A: extension (recommended)', body: '<p>Just install the extension and visit linkedin.com. The extension reads your authenticated session and pushes the metrics to Linalysis. No cookies to copy, no passwords shared.</p>' },
+      { h: 'Option B: paste your li_at cookie', body: '<p>If the extension isn\'t available (e.g. you\'re on a locked-down corporate browser), you can paste your session cookie manually:</p>', steps: [
+        'Open <a href="https://www.linkedin.com" target="_blank">linkedin.com</a> and make sure you\'re signed in.',
+        'Open Chrome DevTools (<kbd>F12</kbd> or <kbd>Cmd+Option+I</kbd> on Mac).',
+        'Go to <strong>Application</strong> tab → <strong>Cookies</strong> → <strong>https://www.linkedin.com</strong>.',
+        'Find the row named <code>li_at</code> and copy the <strong>Value</strong> column.',
+        'On <a href="/troubleshooting.html">/troubleshooting</a>, click the cookie check\'s <strong>Paste cookie</strong> button, paste, and click Validate.'
+      ]},
+      { h: 'How we use it', body: '<p>We use the cookie strictly to call LinkedIn\'s own analytics endpoints — same as the LinkedIn website does. We don\'t scrape your messages, posts, or DMs. The cookie is encrypted at rest and never logged.</p>' }
+    ],
+    related: ['cookie-validate', 'data-collected', 'extension']
+  },
+  'tour-dashboard': {
+    cat: 'Getting started', emoji: '🧭',
+    title: 'Tour the dashboard',
+    lead: 'A 60-second walk-through of every chart and KPI you see when you log in.',
+    sections: [
+      { h: 'The 4 KPI tiles (top row)', body: '<ul><li><strong>Connections</strong> — total accepted 1st-degree connections. Up = good.</li><li><strong>Profile views</strong> — distinct people who looked at your profile in the last 90 days (LinkedIn rolling window).</li><li><strong>SSI</strong> — your <a href="https://www.linkedin.com/sales/ssi" target="_blank">Social Selling Index</a> 0–100. Roughly: how seriously LinkedIn\'s algorithm takes you.</li><li><strong>Company followers</strong> — followers of <em>your</em> Company Page (if you\'re an admin).</li></ul>' },
+      { h: 'AI Quick Take (Gold)', body: '<p>The dark banner at the top of the dashboard is auto-written. It picks the 1–2 most interesting things in your last 7 days of data and explains them in plain English. Click <strong>Full recap</strong> to open the longer Insights page.</p>' },
+      { h: 'Record strip', body: '<p>Below AI: <strong>Current streak</strong> (consecutive days connections didn\'t drop), <strong>Best single day</strong> (your biggest one-day jump ever), <strong>Best week</strong> (best 7-day rolling delta), and <strong>SSI high</strong> (your all-time peak). All computed from your full history.</p>' },
+      { h: 'Charts row', body: '<p><strong>Connections over time</strong> shows your 30-day curve — flat means saturation, steep means active outreach. <strong>SSI</strong> shows your 90-day SSI ladder. <strong>Industry vs network</strong> shows percentile rank. <strong>Recent activity</strong> on the right is your text-form digest.</p>' }
+    ],
+    related: ['setup', 'charts-empty']
+  },
+
+  // DATA & IMPORTS
+  'csv-import': {
+    cat: 'Data & imports', emoji: '📁',
+    title: 'Import a LinkedIn CSV',
+    lead: 'Paste an existing analytics CSV from LinkedIn or another tool to backfill your history before starting daily collection.',
+    sections: [
+      { h: 'Supported columns', body: '<p>We auto-detect these column headers (case-sensitive):</p><ul><li><code>Date</code> (required, format <code>YYYY-MM-DD</code>)</li><li><code>Connections</code></li><li><code>Search Appearance</code> / <code>Search Appearances</code></li><li><code>Views</code> / <code>Profile Views</code></li><li><code>Invitations</code> (pending count)</li><li><code>SSI</code>, <code>SSI Industry</code>, <code>SSI Network</code></li><li><code>Company Followers</code>, <code>Company Search Appearances</code>, <code>Company Unique Visitors</code>, <code>Company New Followers</code>, <code>Company Post Impressions</code>, <code>Company Custom Clicks</code>, <code>Company Credits Available</code>, <code>Company Credits Total</code></li></ul>' },
+      { h: 'Step-by-step', steps: [
+        'Go to <a href="/import-export.html">/import-export</a>.',
+        'Click <strong>Browse</strong> or drag your <code>.csv</code> onto the drop zone.',
+        'We preview the first 5 rows so you can confirm columns mapped correctly.',
+        'Click <strong>Import</strong>. Existing dates are upserted — same-day rows replace, new dates append.'
+      ]},
+      { h: 'Don\'t have a CSV?', body: '<p>The Linalysis extension exports one automatically each week. If you\'re moving from <a href="https://shieldapp.ai" target="_blank">Shield</a> or <a href="https://taplio.com" target="_blank">Taplio</a>, both let you export your historical data — paste that file in here.</p>' }
+    ],
+    related: ['data-collected', 'export-data', 'auto-imports']
+  },
+  'auto-imports': {
+    cat: 'Data & imports', emoji: '⏱️',
+    title: 'Schedule automatic imports',
+    lead: 'How often the Linalysis Chrome extension syncs your LinkedIn data.',
+    sections: [
+      { h: 'Default cadence', body: '<p>Once per day, automatically, while you have <a href="https://www.linkedin.com" target="_blank">linkedin.com</a> open in any tab. The extension only syncs when LinkedIn is loaded — it never makes API calls in the background or while LinkedIn is closed.</p>' },
+      { h: 'Plan limits', body: '<ul><li><strong>Silver</strong> — 1 sync per day</li><li><strong>Gold</strong> — 1 sync per day with hourly recapture if metrics change</li><li><strong>Platinum</strong> — up to 3 syncs per day across multiple LinkedIn accounts</li></ul>' },
+      { h: 'Force a sync', body: '<p>Open the extension popup (puzzle icon → Linalysis), click <strong>Sync now</strong>. Or just visit linkedin.com — captures happen on page load.</p>' },
+      { h: 'If syncs are missing', body: '<p>The most common cause is <strong>not visiting linkedin.com that day</strong>. The extension can\'t pull data while LinkedIn is closed. Bookmark linkedin.com and visit once a day to keep your charts complete.</p>' }
+    ],
+    related: ['extension', 'charts-empty', 'data-collected']
+  },
+  'export-data': {
+    cat: 'Data & imports', emoji: '📤',
+    title: 'Export my data',
+    lead: 'Download every captured metric as CSV, JSON, or XLSX. Available on every plan.',
+    sections: [
+      { h: 'Where', body: '<p>Go to <a href="/import-export.html">/import-export</a> → click the format you want. The download starts immediately; no email, no waiting.</p>' },
+      { h: 'Formats', body: '<ul><li><strong>CSV</strong> — opens in Excel, Numbers, Google Sheets. One row per (account, date).</li><li><strong>JSON</strong> — exact structure of our API response. Best for piping into your own scripts.</li><li><strong>XLSX</strong> — Excel format with styled headers + a chart preview sheet. Gold+ only.</li><li><strong>Parquet</strong> — for data engineers. Platinum only.</li></ul>' },
+      { h: 'What\'s included', body: '<p>Every capture, every metric, since day one of your account. No truncation. The CSV is identical in shape to the format the extension produces — round-trips back into Linalysis without any conversion.</p>' },
+      { h: 'GDPR + privacy', body: '<p>You own your data. Export anytime with one click. We never lock data behind a paywall or block exports during cancellation.</p>' }
+    ],
+    related: ['delete-data', 'data-collected', 'csv-import']
+  },
+  'delete-data': {
+    cat: 'Data & imports', emoji: '🗑️',
+    title: 'Delete my data',
+    lead: 'GDPR-compliant data erasure. One click, permanent.',
+    sections: [
+      { h: 'How', body: '<p>Go to <a href="/account.html">/account</a> → scroll to the <strong>Danger zone</strong> at the bottom → click <strong>Delete all my data</strong>. We require typing your email address as confirmation — no accidental clicks.</p>' },
+      { h: 'What gets deleted', body: '<ul><li>Every captured metric (all daily snapshots since day one)</li><li>Your user profile (email, name, timezone, all preferences)</li><li>Active sessions on every browser (you\'ll be signed out everywhere)</li><li>API tokens (the Chrome extension stops sending data)</li><li>Subscription state (your active plan is canceled at period end)</li><li>Audit logs after 30 days (we keep them briefly for fraud / abuse review)</li></ul>' },
+      { h: 'What\'s kept (legally required)', body: '<p>Per EU + US regulations, we keep <strong>billing records</strong> (invoices, payment receipts) for 7 years. We keep <strong>anti-fraud audit logs</strong> for 90 days after deletion. Both are scoped to a hashed identifier; your name and email are scrubbed.</p>' },
+      { h: 'Want to export first?', body: '<p>Use <a href="/help.html?topic=export-data">Export my data</a> before deleting. Once you confirm deletion, we cannot recover it.</p>' }
+    ],
+    related: ['export-data', 'data-collected', 'cancel-subscription']
+  },
+  'data-collected': {
+    cat: 'Data & imports', emoji: '🔌',
+    title: 'What data we collect',
+    lead: 'Transparent list of every field we read, when, and why.',
+    sections: [
+      { h: 'From your LinkedIn profile (via extension)', body: '<ul><li>Total connections count</li><li>Profile views (90-day rolling, what LinkedIn shows in your "Who viewed your profile" widget)</li><li>Search appearances</li><li>Pending invitation count</li><li>SSI score (Social Selling Index, 0–100)</li><li>SSI Industry + Network percentile rank</li></ul><p class="help-callout">We read these from LinkedIn\'s own analytics endpoints — exactly what your dashboard at linkedin.com/analytics shows you. We don\'t scrape your feed, messages, posts, or 1st-degree contact list.</p>' },
+      { h: 'From your Company Page (if you\'re an admin)', body: '<ul><li>Page followers</li><li>Search appearances</li><li>Unique visitors</li><li>New followers (per day)</li><li>Post impressions (aggregate, not per post)</li><li>Custom CTA clicks (from your "Visit website" button)</li><li>Available + total Invite-to-follow credits</li></ul>' },
+      { h: 'From your account', body: '<ul><li>Email + name (from LinkedIn OAuth or signup form)</li><li>Profile picture URL (LinkedIn-hosted, we don\'t copy it)</li><li>Timezone (from your browser)</li><li>Last login timestamp + IP (audit only — never shared)</li></ul>' },
+      { h: 'What we never touch', body: '<ul><li>Your messages, DMs, or InMail content</li><li>Your post content or comments</li><li>Your contact list, email addresses of your connections</li><li>Your password (we use OAuth — your password never reaches us)</li><li>Browsing history outside linkedin.com</li></ul>' }
+    ],
+    related: ['delete-data', 'export-data', 'connect-linkedin']
+  },
+
+  // TROUBLESHOOTING
+  'cookie-validate': {
+    cat: 'Troubleshooting', emoji: '🍪',
+    title: "li_at cookie won't validate",
+    lead: 'Top causes and fixes when CookieVerify rejects your LinkedIn session cookie.',
+    sections: [
+      { h: 'Cause #1: Your LinkedIn session expired', body: '<p>LinkedIn cookies expire after ~1 year of activity, sooner if you sign out anywhere. <strong>Fix:</strong> open <a href="https://www.linkedin.com" target="_blank">linkedin.com</a>, sign out, sign back in, then re-paste the new <code>li_at</code>. Or just install the extension and let it grab the fresh cookie automatically.</p>' },
+      { h: 'Cause #2: You copied a different cookie', body: '<p>LinkedIn sets ~12 cookies on its domain. The one we need is named exactly <code>li_at</code> and starts with <code>AQED</code>. <strong>Fix:</strong> in DevTools → Application → Cookies → <em>https://www.linkedin.com</em>, look for the row whose Name column says <code>li_at</code> exactly, and copy the Value column.</p>' },
+      { h: 'Cause #3: LinkedIn flagged your account', body: '<p>If LinkedIn detected unusual activity (e.g. you signed in from a new country, you got rate-limited), it can invalidate the cookie even if it hasn\'t expired. <strong>Fix:</strong> visit linkedin.com and complete any verification challenge they show, then re-grab the cookie.</p>' },
+      { h: 'Cause #4: You pasted with extra whitespace', body: '<p>Browsers sometimes copy a trailing newline or leading space. <strong>Fix:</strong> the input strips whitespace automatically. If it still fails, paste into a text editor first to verify there are no hidden characters.</p>' }
+    ],
+    related: ['ext-not-detected', 'connect-linkedin', 'verify-challenge']
+  },
+  'ext-not-detected': {
+    cat: 'Troubleshooting', emoji: '🧯',
+    title: "Extension isn't detected",
+    lead: 'Chrome blocks programmatic extension detection for privacy. Here\'s how to confirm yours is installed and active.',
+    sections: [
+      { h: 'Why detection sometimes fails', body: '<p>Modern Chrome blocks third-party websites from probing for installed extensions — that used to be a fingerprinting attack vector. So even when the extension IS installed, our auto-detection check may show "couldn\'t verify" with a yellow warning. That\'s expected.</p>' },
+      { h: 'Confirm it\'s really installed', steps: [
+        'Open a new tab and type <code>chrome://extensions</code> in the address bar.',
+        'Find <strong>Linalysis</strong> in the list. The toggle on the right should be <strong>blue / on</strong>.',
+        'Below it, check that <strong>Site access</strong> is set to <strong>On all sites</strong> or includes <strong>linkedin.com</strong>.',
+        'Click the puzzle icon in the toolbar, find Linalysis, click the pin icon to keep it visible.'
+      ]},
+      { h: 'Force re-install', body: '<p>If the extension is broken: open <code>chrome://extensions</code>, click <strong>Remove</strong> on Linalysis, then re-install from the <a href="https://chromewebstore.google.com/detail/hgmhmanijnjhaffoampdlllchpolkdnj" target="_blank">Web Store</a>. Reload linkedin.com in any open tabs.</p>' },
+      { h: 'Manually confirm in our diagnostics', body: '<p>On <a href="/troubleshooting.html">/troubleshooting</a>, the <strong>Chrome extension is installed</strong> check has a button that lets you confirm manually. We\'ll trust your word and turn the badge green — the in-page detection limitation doesn\'t affect actual data flow.</p>' }
+    ],
+    related: ['extension', 'cookie-validate', 'charts-empty']
+  },
+  'charts-empty': {
+    cat: 'Troubleshooting', emoji: '📉',
+    title: 'My charts are empty',
+    lead: 'Most often: data hasn\'t arrived yet, or the extension hasn\'t synced this week.',
+    sections: [
+      { h: 'Cause #1: Less than 2 days of data', body: '<p>Charts need at least 2 captures to draw a line. Just-installed accounts see KPI tiles populated but charts show "Not enough data yet." <strong>Fix:</strong> visit linkedin.com today, then again tomorrow — the extension captures on each visit.</p>' },
+      { h: 'Cause #2: The extension hasn\'t synced recently', body: '<p>Open <a href="/troubleshooting.html">/troubleshooting</a> and check the <strong>Data captured in last 24 hours</strong> row. If it\'s yellow or red, the extension hasn\'t pushed data lately. <strong>Fix:</strong> open linkedin.com in a fresh tab, let it fully load, wait 30s — the capture will fire automatically.</p>' },
+      { h: 'Cause #3: You\'re viewing as a different user', body: '<p>If you\'re an admin and impersonating someone else (red banner at the top), you\'re seeing <em>their</em> charts, which may legitimately be empty if they haven\'t collected data yet.</p>' },
+      { h: 'Cause #4: Browser blocked our scripts', body: '<p>Some ad blockers (uBlock Origin, AdGuard) block analytics-shaped requests. <strong>Fix:</strong> whitelist <code>linalysis.net</code> in your ad blocker, or temporarily disable it on this domain. Linalysis itself shows no ads — we just look like analytics to a blocker.</p>' }
+    ],
+    related: ['ext-not-detected', 'auto-imports', 'cookie-validate']
+  },
+  'ssl-error': {
+    cat: 'Troubleshooting', emoji: '🔒',
+    title: "Site won't load (SSL error)",
+    lead: 'If linalysis.net or api.linalysis.net throws SSL/security warnings, here\'s the fix.',
+    sections: [
+      { h: 'Cause #1: Your ISP is hijacking DNS', body: '<p>Some ISPs (notably Optimum/Altice in the US) intercept DNS for new domains and route them to a "warning" page. The site is fine — your network is rewriting the address. <strong>Fix:</strong> change your DNS to <code>1.1.1.1</code> (Cloudflare):</p><ul><li><strong>Mac:</strong> System Settings → Network → Wi-Fi → Details → DNS → add <code>1.1.1.1</code> and <code>1.0.0.1</code>.</li><li><strong>Windows:</strong> Settings → Network → Edit DNS → Manual → IPv4 Preferred <code>1.1.1.1</code>, Alternate <code>1.0.0.1</code>.</li><li><strong>iPhone/Android:</strong> install the free <strong>1.1.1.1</strong> app from your app store.</li></ul>' },
+      { h: 'Cause #2: HSTS cache from a previous broken cert', body: '<p>If you ever saw a real cert error and Chrome remembers it, it\'ll refuse to connect.</p>', steps: [
+        'Open <code>chrome://net-internals/#hsts</code>.',
+        'Under <strong>Delete domain security policies</strong>, type <code>linalysis.net</code>, click Delete.',
+        'Repeat for <code>api.linalysis.net</code>.',
+        'Restart Chrome.'
+      ]},
+      { h: 'Cause #3: Chrome flagged us as "Dangerous"', body: '<p>Google Safe Browsing sometimes false-positives brand-new domains receiving OAuth callbacks. <strong>Fix:</strong> click <strong>Details</strong> → <strong>Visit this unsafe site</strong>. The flag is being challenged — submit a false-positive report at <a href="https://safebrowsing.google.com/safebrowsing/report_error/" target="_blank">safebrowsing.google.com</a> if you want to help speed up the appeal.</p>' }
+    ],
+    related: ['cookie-validate', 'ext-not-detected']
+  },
+  'verify-challenge': {
+    cat: 'Troubleshooting', emoji: '🛡️',
+    title: 'LinkedIn asked me to verify',
+    lead: 'LinkedIn occasionally challenges accounts with security checks. Here\'s what triggers them and how to clear them safely.',
+    sections: [
+      { h: 'Common triggers', body: '<ul><li>Signing in from a new country / IP</li><li>High volume of connection requests in a short window</li><li>Automated-looking activity (e.g. clicking through profiles too quickly)</li><li>Reports from people you tried to connect with</li></ul>' },
+      { h: 'Pass the challenge', body: '<ol><li>Visit <a href="https://www.linkedin.com" target="_blank">linkedin.com</a> directly (not through a tool).</li><li>Complete the verification (usually a CAPTCHA or SMS code to your registered number).</li><li>Wait 10 minutes for the new session to propagate.</li><li>Re-grab your <code>li_at</code> cookie or just open linkedin.com so the extension catches the new session automatically.</li></ol>' },
+      { h: 'Will Linalysis trigger it?', body: '<p>Unlikely. Our extension only reads what\'s already on your loaded LinkedIn pages — no scraping, no API hammering, no automated clicks. If LinkedIn is challenging you, it\'s almost always something else (often "Send invite" tools or browser extensions that auto-click profiles).</p>' },
+      { h: 'If you\'re repeatedly challenged', body: '<p>Pause any other LinkedIn-touching tools for 48 hours, complete the verification, and only re-enable Linalysis. Your weekly cap of 100 connection invites is the threshold — don\'t exceed it.</p>' }
+    ],
+    related: ['cookie-validate', 'data-collected']
+  },
+
+  // ACCOUNT & BILLING
+  'upgrade-plan': {
+    cat: 'Account & billing', emoji: '💳',
+    title: 'Upgrade or change your plan',
+    lead: 'Switch tiers any time. Upgrades take effect immediately; downgrades take effect at the end of your billing period.',
+    sections: [
+      { h: 'How to upgrade', steps: [
+        'Visit <a href="/pricing.html">/pricing</a>.',
+        'Click <strong>Upgrade</strong> on the tier you want (Silver / Gold / Platinum).',
+        'Stripe Checkout opens. Pay with card; we never see your card number.',
+        'Within 30 seconds your account flips to the new plan and the new features unlock — no re-login needed.'
+      ]},
+      { h: 'How to downgrade or switch', body: '<p>Same flow: visit <a href="/pricing.html">/pricing</a>, click the tier you want. Stripe handles proration — you\'re credited for the unused portion of your current plan against the next one.</p>' },
+      { h: 'Annual vs monthly', body: '<p>Annual is ~17% cheaper than monthly. Switch the billing-cycle toggle at the top of the pricing page. Switching from monthly to annual takes effect on your next renewal.</p>' },
+      { h: 'Trial period', body: '<p>Gold + Platinum come with a <strong>14-day free trial</strong>. No credit card required to start. We email you a reminder 3 days before the trial ends.</p>' }
+    ],
+    related: ['cancel-subscription', 'vat-invoice', 'team-members']
+  },
+  'cancel-subscription': {
+    cat: 'Account & billing', emoji: '🚪',
+    title: 'Cancel your subscription',
+    lead: 'Cancel any time. Access continues until the end of your billing period. Your data is kept for 30 days.',
+    sections: [
+      { h: 'How to cancel', steps: [
+        'Go to <a href="/account.html">/account</a> → <strong>Subscription</strong> section.',
+        'Click <strong>Manage in Stripe</strong>. Stripe\'s billing portal opens.',
+        'Click <strong>Cancel plan</strong>. Confirm.',
+        'You\'ll get an email confirmation. Your account stays active until the end of your current period.'
+      ]},
+      { h: 'What happens after cancellation', body: '<ul><li>Until end of period: full access to your current tier</li><li>End of period: account drops to <strong>Free</strong> tier (basic dashboard, last-30-days only)</li><li>+30 days: your data stays on file in case you come back</li><li>+30 days, no return: data is permanently deleted (GDPR-compliant)</li></ul>' },
+      { h: 'Re-subscribe within 30 days', body: '<p>Visit <a href="/pricing.html">/pricing</a> and pick your plan. We restore your full history with one click — no re-import needed.</p>' }
+    ],
+    related: ['delete-data', 'export-data', 'upgrade-plan']
+  },
+  'vat-invoice': {
+    cat: 'Account & billing', emoji: '🧾',
+    title: 'Get a VAT invoice',
+    lead: 'PDF invoices for every payment, with your business name + VAT number for tax filing.',
+    sections: [
+      { h: 'Where to find them', steps: [
+        'Go to <a href="/account.html">/account</a> → <strong>Billing</strong>.',
+        'Click <strong>Manage in Stripe</strong>.',
+        'In the Stripe billing portal, click <strong>Invoices</strong> in the sidebar.',
+        'Click any invoice to view in browser, or click <strong>Download</strong> for the PDF.'
+      ]},
+      { h: 'Add a VAT number / business name', body: '<p>In the Stripe billing portal, click <strong>Update information</strong> at the top. Add your company name, billing address, and VAT/Tax ID. Future invoices will include them; we can re-issue past invoices on request — email <a href="mailto:billing@linalysis.net">billing@linalysis.net</a>.</p>' },
+      { h: 'EU reverse charge', body: '<p>If you\'re a VAT-registered EU business outside the country we\'re registered in (currently Spain), VAT is reverse-charged — your invoice shows €0 VAT and notes <em>"Reverse charge — Article 196 VAT Directive"</em>. You account for VAT in your own return.</p>' }
+    ],
+    related: ['upgrade-plan', 'cancel-subscription']
+  },
+  'team-members': {
+    cat: 'Account & billing', emoji: '👥',
+    title: 'Add team members (Platinum)',
+    lead: 'Platinum lets you invite up to 5 team members at $15/seat-month. Each gets their own login but shares the company data view.',
+    sections: [
+      { h: 'How to invite', steps: [
+        'Upgrade to Platinum if you\'re not already (<a href="/pricing.html">/pricing</a>).',
+        'Go to <a href="/account.html">/account</a> → <strong>Team</strong> section.',
+        'Click <strong>Invite member</strong>. Enter their email.',
+        'They get an email with a 1-click sign-up link that pre-binds them to your team.'
+      ]},
+      { h: 'Roles', body: '<ul><li><strong>Owner</strong> — billing, plan, can remove members. (You.)</li><li><strong>Admin</strong> — full access to data, can invite/remove members but not change billing.</li><li><strong>Viewer</strong> — read-only access to dashboards + reports.</li></ul>' },
+      { h: 'Pricing', body: '<p>First seat is included with Platinum. Each additional seat is <strong>$15/month</strong> (annual discount available — billed pro-rata for partial months).</p>' },
+      { h: 'SSO (Google / Microsoft)', body: '<p>Platinum accounts get SSO. Set it up at <a href="/account.html">/account</a> → <strong>Authentication</strong>. Members sign in with one click; no passwords for them to manage.</p>' }
+    ],
+    related: ['upgrade-plan', 'vat-invoice']
+  }
+};
+
+// Group by category for sidebar
+const CATEGORIES = ['Getting started', 'Data & imports', 'Troubleshooting', 'Account & billing'];
+
+function renderNav(active) {
+  const groups = {};
+  for (const [slug, t] of Object.entries(TOPICS)) {
+    (groups[t.cat] = groups[t.cat] || []).push({ slug, ...t });
+  }
+  let html = '';
+  for (const cat of CATEGORIES) {
+    if (!groups[cat]) continue;
+    html += '<div class="help-section-title">' + cat + '</div>';
+    for (const t of groups[cat]) {
+      html += '<a class="help-link' + (t.slug === active ? ' active' : '') + '" href="?topic=' + t.slug + '">' + t.emoji + ' ' + t.title + '</a>';
+    }
+  }
+  html += '<div class="help-section-title">Contact</div>' +
+    '<a class="help-link" href="mailto:support@linalysis.net">✉️ Email support</a>' +
+    '<a class="help-link" href="mailto:feedback@linalysis.net?subject=Feature%20request">💡 Request a feature</a>' +
+    '<a class="help-link" href="mailto:bugs@linalysis.net?subject=Bug%20report">🐛 Report a bug</a>';
+  document.getElementById('help-nav').innerHTML = html;
+}
+
+function renderArticle(slug) {
+  const t = TOPICS[slug];
+  if (!t) {
+    document.getElementById('help-article').innerHTML =
+      '<h1>Help center</h1><p class="lead">Pick a topic from the menu to get started.</p>' +
+      '<div class="help-callout">Looking for something not listed? Email <a href="mailto:support@linalysis.net">support@linalysis.net</a> — we usually reply within 4 hours during weekdays.</div>';
+    return;
+  }
+  let html = '<h1>' + t.emoji + ' ' + t.title + '</h1>' +
+    '<p class="lead">' + t.lead + '</p>';
+  for (const s of (t.sections || [])) {
+    html += '<h2>' + s.h + '</h2>';
+    if (s.body) html += s.body;
+    if (s.steps) {
+      for (let i = 0; i < s.steps.length; i++) {
+        html += '<div class="help-step"><div class="help-step-num">' + (i + 1) + '</div><div class="help-step-body">' + s.steps[i] + '</div></div>';
+      }
+    }
+  }
+  if (t.related && t.related.length) {
+    html += '<div class="help-related"><h3>Related</h3>';
+    for (const r of t.related) {
+      const rt = TOPICS[r];
+      if (rt) html += '<a href="?topic=' + r + '">' + rt.emoji + ' ' + rt.title + '</a>';
+    }
+    html += '</div>';
+  }
+  document.getElementById('help-article').innerHTML = html;
+  document.title = 'Linalysis Help — ' + t.title;
+}
+
+const params = new URLSearchParams(location.search);
+const active = params.get('topic') || '';
+renderNav(active);
+renderArticle(active);
+</script>
+</body>
+</html>

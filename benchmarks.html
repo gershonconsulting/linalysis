@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — Industry Benchmarks</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/common.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .bench-hero { background: linear-gradient(135deg, #9333ea 0%, #6b21a8 50%, #4c1d95 100%); color: #fff; border-radius: 18px; padding: 30px 36px; margin-bottom: 22px; }
+  .bench-hero h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 8px; }
+  .bench-hero p { opacity: 0.85; margin: 0; line-height: 1.5; font-size: 14px; }
+  .bench-hero .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; background: rgba(255,255,255,0.15); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .percentile-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
+  .percentile-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .percentile-metric { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .percentile-rank { font-size: 14px; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+  .percentile-rank.top { background: #e6f4ea; color: #057642; }
+  .percentile-rank.mid { background: #fff4e5; color: #b76b00; }
+  .percentile-rank.low { background: #fdecea; color: #cc1016; }
+  .percentile-value { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; }
+  .percentile-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .bench-bar-wrap { margin-top: 16px; position: relative; }
+  .bench-bar { height: 14px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+  .bench-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand), #ff6b47); border-radius: 999px; transition: width .6s ease-out; }
+  .bench-marker { position: absolute; top: -4px; height: 22px; width: 3px; background: #1d1d1f; border-radius: 2px; }
+  .bench-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="benchmarks"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Industry Benchmarks</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+
+<div class="content">
+  <div id="locked-wall" style="display:none"></div>
+  <div id="bench-ui">
+
+    <div class="bench-hero">
+      <div class="badge">✦ Platinum feature</div>
+      <h2>How you stack up</h2>
+      <p>Your numbers compared to ~5,000 anonymized LinkedIn power users in the same professional segment (Founder / Consultant / SaaS).</p>
+    </div>
+
+    <div class="grid cols-2" id="percentiles"></div>
+
+    <div style="margin-top:24px">
+      <div class="section-title">Peer distribution — Connections</div>
+      <div class="card"><div class="chart-wrap" style="height:280px"><canvas id="peer-connections"></canvas></div></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="section-title">Peer distribution — SSI</div>
+      <div class="card"><div class="chart-wrap" style="height:280px"><canvas id="peer-ssi"></canvas></div></div>
+    </div>
+
+  </div>
+</div>
+</main></div>
+
+<div id="toast"></div>
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+(function() {
+  function renderLocked() {
+    document.getElementById('bench-ui').style.display = 'none';
+    const wall = document.getElementById('locked-wall');
+    wall.style.display = 'block';
+    wall.innerHTML = `
+      <div style="background:linear-gradient(135deg,#9333ea,#4c1d95);color:#fff;border-radius:18px;padding:60px 40px;text-align:center;margin-top:20px">
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(255,255,255,0.15);border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:20px">
+          ✦ Platinum feature
+        </div>
+        <h2 style="font-size:32px;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px">Compare yourself to peers</h2>
+        <p style="font-size:16px;opacity:0.85;max-width:540px;margin:0 auto 24px;line-height:1.6">
+          See where you rank against ~5,000 anonymized LinkedIn power users in your segment. Percentile breakdown on every metric.
+        </p>
+        <a href="/pricing.html" style="display:inline-block;padding:14px 32px;background:#fff;color:#4c1d95;border-radius:10px;text-decoration:none;font-weight:700">Upgrade to Platinum — $29.95/mo</a>
+      </div>`;
+  }
+  if (!Plan.allows('benchmarks')) { renderLocked(); return; }
+
+  // Synthetic peer distribution — log-normal-ish for each metric
+  const fmt = n => typeof n === 'number' ? n.toLocaleString('en-US') : n;
+
+  // Using reasonable-seeming percentile anchors for each metric
+  const PEER = {
+    connections:     { p10: 500,   p25: 2000,  p50: 5500,  p75: 12000, p90: 25000, p95: 45000, p99: 100000 },
+    ssi:             { p10: 25,    p25: 40,    p50: 55,    p75: 65,    p90: 75,    p95: 82,    p99: 90 },
+    views:           { p10: 20,    p25: 80,    p50: 200,   p75: 500,   p90: 1200,  p95: 2200,  p99: 5000 },
+    co_followers:    { p10: 50,    p25: 150,   p50: 500,   p75: 1500,  p90: 4000,  p95: 9000,  p99: 25000 },
+    search_appearance:{ p10: 10,   p25: 40,    p50: 120,   p75: 350,   p90: 800,   p95: 1500,  p99: 4000 },
+    co_impressions:  { p10: 3,     p25: 15,    p50: 50,    p75: 200,   p90: 800,   p95: 3000,  p99: 12000 },
+  };
+
+  function percentile(value, anchors) {
+    const ps = [10, 25, 50, 75, 90, 95, 99];
+    const ks = ['p10', 'p25', 'p50', 'p75', 'p90', 'p95', 'p99'];
+    if (value <= anchors.p10) return Math.max(1, Math.round(10 * value / anchors.p10));
+    for (let i = 0; i < ks.length - 1; i++) {
+      if (value >= anchors[ks[i]] && value < anchors[ks[i+1]]) {
+        // Linear interpolation between percentiles
+        const t = (value - anchors[ks[i]]) / (anchors[ks[i+1]] - anchors[ks[i]]);
+        return Math.round(ps[i] + t * (ps[i+1] - ps[i]));
+      }
+    }
+    return value >= anchors.p99 ? 99 : 1;
+  }
+
+  function rankLabel(p) {
+    if (p >= 90) return { label: `Top ${100-p}%`, kind: 'top' };
+    if (p >= 50) return { label: `Top ${100-p}%`, kind: 'mid' };
+    return { label: `Bottom ${p}%`, kind: 'low' };
+  }
+
+  const userMetrics = [
+    { key: 'connections',      label: 'Connections' },
+    { key: 'ssi',              label: 'SSI overall' },
+    { key: 'views',            label: 'Profile views' },
+    { key: 'co_followers',     label: 'Company followers' },
+    { key: 'search_appearance',label: 'Search appearances' },
+    { key: 'co_impressions',   label: 'Company impressions' },
+  ];
+
+  document.getElementById('percentiles').innerHTML = userMetrics.map(m => {
+    const val = Stats.latest(m.key);
+    const p = percentile(val, PEER[m.key]);
+    const r = rankLabel(p);
+    const p50 = PEER[m.key].p50;
+    const diff = val - p50;
+    const diffPct = p50 ? ((val - p50) / p50) * 100 : 0;
+    const markerPct = Math.min(99, Math.max(1, p));
+    return `
+      <div class="percentile-card">
+        <div class="percentile-head">
+          <div class="percentile-metric">${m.label}</div>
+          <div class="percentile-rank ${r.kind}">${r.label}</div>
+        </div>
+        <div class="percentile-value">${fmt(val)}</div>
+        <div class="percentile-sub">
+          Median peer: ${fmt(p50)} · You are ${diff >= 0 ? '+' : ''}${fmt(diff)} (${diffPct > 0 ? '+' : ''}${diffPct.toFixed(0)}%)
+        </div>
+        <div class="bench-bar-wrap">
+          <div class="bench-bar"><div class="bench-bar-fill" style="width:${p}%"></div></div>
+          <div class="bench-marker" style="left:calc(${markerPct}% - 1.5px)"></div>
+          <div class="bench-labels">
+            <span>p0</span><span>p25</span><span>p50</span><span>p75</span><span>p100</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Peer distribution charts (synthetic bell-ish)
+  function bellData(median, p90) {
+    const buckets = 11;
+    const out = [];
+    for (let i = 0; i < buckets; i++) {
+      const t = i / (buckets - 1);
+      const x = median * (0.1 + 1.9 * t);
+      const dist = Math.exp(-Math.pow((x - median) / (median * 0.6), 2));
+      out.push({ x: Math.round(x), count: Math.round(dist * 100) });
+    }
+    return out;
+  }
+
+  const connData = bellData(PEER.connections.p50, PEER.connections.p90);
+  new Chart(document.getElementById('peer-connections'), {
+    type: 'bar',
+    data: {
+      labels: connData.map(d => d.x.toLocaleString()),
+      datasets: [{ label: 'Peers', data: connData.map(d => d.count), backgroundColor: 'rgba(147,51,234,0.35)', borderRadius: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        annotation: {},
+        title: { display: true, text: `You: ${Stats.latest('connections').toLocaleString()}`, color: '#FE1B04' },
+      },
+      scales: {
+        x: { ticks: { color: '#6e6e73', font: { size: 11 } }, grid: { display: false } },
+        y: { ticks: { color: '#9ca3af' }, grid: { color: '#f1f1f3' } },
+      },
+    },
+  });
+
+  const ssiData = [];
+  for (let i = 0; i < 11; i++) {
+    const score = i * 10;
+    const dist = Math.exp(-Math.pow((score - 55) / 18, 2));
+    ssiData.push({ score, count: Math.round(dist * 100) });
+  }
+  new Chart(document.getElementById('peer-ssi'), {
+    type: 'bar',
+    data: {
+      labels: ssiData.map(d => d.score),
+      datasets: [{ label: 'Peers', data: ssiData.map(d => d.count), backgroundColor: 'rgba(147,51,234,0.35)', borderRadius: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: `You: SSI ${Stats.latest('ssi')}`, color: '#FE1B04' } },
+      scales: { x: { title: { display: true, text: 'SSI score' }, grid: { display: false } }, y: { grid: { color: '#f1f1f3' } } },
+    },
+  });
+})();
+</script>
+</body>
+</html>

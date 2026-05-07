@@ -4,184 +4,82 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Linalysis — Reports</title>
-<meta name="description" content="Weekly and monthly LinkedIn analytics reports, delivered automatically." />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --brand: #FE1B04;
-    --brand-dark: #d11200;
-    --brand-light: #fff5f5;
-    --text: #1d1d1f;
-    --text-muted: #6e6e73;
-    --border: #e5e7eb;
-    --bg: #fafafa;
-    --card: #ffffff;
-    --radius: 12px;
-    --sidebar-w: 240px;
-    --topbar-h: 64px;
-    --success: #057642;
-    --warn: #b76b00;
-    --info: #0a66c2;
-  }
-  html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
-  a { color: inherit; text-decoration: none; }
-  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  .gen-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+  @media (max-width: 760px) { .gen-row { grid-template-columns: 1fr; } }
+  .gen-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 26px 28px; position: relative; overflow: hidden; }
+  .gen-card::before { content: ''; position: absolute; right: -40px; top: -40px; width: 140px; height: 140px; border-radius: 50%; opacity: 0.08; }
+  .gen-card.weekly::before  { background: var(--brand); }
+  .gen-card.monthly::before { background: #9333ea; }
+  .gen-cat   { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .gen-title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 6px; }
+  .gen-desc  { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.5; }
+  .gen-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .gen-btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; }
+  .gen-btn.primary { background: var(--brand); color: #fff; }
+  .gen-btn.primary:hover { background: #d61505; }
+  .gen-btn.primary.purple { background: #9333ea; }
+  .gen-btn.primary.purple:hover { background: #7e22ce; }
+  .gen-btn.ghost   { background: #fff; color: var(--text); border: 1px solid var(--border); }
+  .gen-btn.ghost:hover { border-color: var(--brand); color: var(--brand); }
 
-  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
-  .sidebar { background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; font-weight: 800; font-size: 20px; color: var(--brand); letter-spacing: -0.02em; }
-  .brand svg { width: 28px; height: 28px; }
-  .nav-group { margin-top: 10px; }
-  .nav-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 8px 12px 4px; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-weight: 500; color: var(--text); transition: background .15s ease, color .15s ease; }
-  .nav-item:hover { background: var(--brand-light); color: var(--brand); }
-  .nav-item.active { background: var(--brand); color: #fff; }
-  .nav-item .icon { width: 18px; height: 18px; flex-shrink: 0; }
-  .nav-spacer { flex: 1; }
-  .sidebar-footer { padding: 12px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 10px; }
+  .history-row { display: grid; grid-template-columns: 26px 100px 1fr auto auto auto; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background .15s; }
+  .history-row:hover { background: var(--bg); }
+  .history-row:last-child { border-bottom: none; }
+  .history-pill { padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+  .history-pill.weekly  { background: #fff5f5; color: var(--brand); }
+  .history-pill.monthly { background: #f5f0ff; color: #9333ea; }
+  .history-status { font-size: 11px; color: var(--text-muted); }
+  .history-status.sent { color: var(--success); }
+  .history-action { padding: 4px 10px; background: #fff; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .history-action:hover { border-color: var(--brand); color: var(--brand); }
+  .history-action.danger:hover { border-color: var(--error); color: var(--error); }
 
-  .topbar { position: sticky; top: 0; z-index: 10; height: var(--topbar-h); background: rgba(255,255,255,0.85); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; gap: 16px; }
-  .topbar h1 { font-size: 18px; font-weight: 700; }
-  .topbar-right { display: flex; align-items: center; gap: 10px; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--card); color: var(--text); transition: all .15s ease; }
-  .btn:hover { border-color: var(--brand); color: var(--brand); }
-  .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
-  .btn.primary:hover { background: var(--brand-dark); color: #fff; }
-  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--brand); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  #report-overlay { position: fixed; inset: 0; background: rgba(20,20,30,0.85); z-index: 1000; display: none; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px 0; }
+  #report-overlay.show { display: flex; }
+  #report-shell { background: #fff; max-width: 820px; width: calc(100% - 40px); border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,0.4); position: relative; }
+  #report-toolbar { position: sticky; top: 0; padding: 14px 20px; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e5e7eb; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center; z-index: 1; }
+  .toolbar-actions { display: flex; gap: 8px; }
+  .toolbar-actions .gen-btn { padding: 8px 14px; font-size: 12px; }
+  #report-body { padding: 0; }
 
-  .content { padding: 28px; max-width: 1400px; margin: 0 auto; width: 100%; }
-  .page-header { margin-bottom: 22px; }
-  .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-  .page-header p { color: var(--text-muted); }
-
-  /* Hero cards (weekly + monthly status) */
-  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
-  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
-  .hero-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 22px 24px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--brand-light) 0%, transparent 60%); pointer-events: none; }
-  .hero-card > * { position: relative; }
-  .hero-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brand); }
-  .hero-title { font-size: 18px; font-weight: 800; margin-top: 6px; }
-  .hero-schedule { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
-
-  .countdown { display: flex; gap: 10px; margin: 16px 0 14px; }
-  .cd-cell { flex: 1; background: rgba(255,255,255,0.7); border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
-  .cd-num { font-size: 24px; font-weight: 800; color: var(--brand); line-height: 1; font-variant-numeric: tabular-nums; }
-  .cd-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
-
-  .sub-toggle { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--bg); border-radius: 8px; font-size: 13px; }
-  .switch { position: relative; width: 40px; height: 22px; background: var(--border); border-radius: 999px; cursor: pointer; transition: background .2s; flex-shrink: 0; }
-  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: all .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
-  .switch.on { background: var(--brand); }
-  .switch.on::after { left: 20px; }
-
-  /* Report preview cards */
-  .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin: 28px 0 12px; }
-
-  .report-preview {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 22px;
-    overflow: hidden;
-  }
-  .report-band {
-    padding: 16px 24px;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .report-band.weekly { background: linear-gradient(135deg, var(--brand) 0%, #ff5a3d 100%); }
-  .report-band.monthly { background: linear-gradient(135deg, #1d1d1f 0%, #3d3d42 100%); }
-  .report-band .label { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
-  .report-band h3 { font-size: 20px; font-weight: 800; margin-top: 2px; }
-  .report-band .range { font-size: 13px; opacity: 0.9; margin-top: 2px; }
-  .report-band .meta { text-align: right; font-size: 11px; opacity: 0.9; }
-
-  .report-body { padding: 24px; }
-  .report-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
-  .r-kpi { padding: 14px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
-  .r-kpi .n { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
-  .r-kpi .l { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
-  .r-kpi .d { font-size: 11px; font-weight: 700; margin-top: 4px; }
-  .r-kpi .d.up { color: var(--success); }
-  .r-kpi .d.down { color: var(--brand); }
-  .r-kpi .d.flat { color: var(--text-muted); }
-
-  .report-columns {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 24px;
-  }
-  @media (max-width: 1000px) { .report-columns { grid-template-columns: 1fr; } }
-
-  .report-chart-wrap { height: 220px; position: relative; }
-  .r-block { margin-top: 18px; }
-  .r-block h4 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
-  .r-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 8px 0;
-    border-bottom: 1px dashed var(--border);
-    gap: 12px;
-  }
-  .r-row:last-child { border-bottom: none; }
-  .r-row .lhs { color: var(--text); }
-  .r-row .rhs { font-weight: 700; color: var(--text); white-space: nowrap; }
-  .r-rec {
-    padding: 10px 12px;
-    border-left: 3px solid var(--info);
-    background: var(--bg);
-    border-radius: 6px;
-    margin-bottom: 8px;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-  .r-rec strong { color: var(--info); }
-
-  /* Tab toggle */
-  .view-toggle { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; margin-bottom: 16px; }
-  .view-toggle button { padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
-  .view-toggle button.active { background: var(--brand); color: #fff; }
-
-  .history-item { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
-  .history-item:last-child { border-bottom: none; }
-  .history-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--brand-light); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; }
-  .history-date { font-weight: 600; }
-  .history-sub { font-size: 12px; color: var(--text-muted); }
-
-  #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; background: var(--text); color: #fff; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transform: translateY(8px); transition: all .3s; pointer-events: none; max-width: 360px; }
-  #toast.show { opacity: 1; transform: translateY(0); }
-
-  @media (max-width: 900px) {
-    .app { grid-template-columns: 1fr; }
-    .sidebar { position: fixed; top: 0; left: -100%; width: 240px; z-index: 50; transition: left .2s; }
-    .sidebar.open { left: 0; }
-    .topbar { padding: 0 14px; }
-    .content { padding: 16px; }
-    .menu-toggle { display: inline-flex !important; }
-  }
-  .menu-toggle { display: none; }
+  .rpt { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1d1d1f; padding: 40px 50px; }
+  .rpt-hero { background: linear-gradient(135deg, #FE1B04 0%, #d61505 100%); color: #fff; margin: -40px -50px 30px; padding: 36px 50px; border-radius: 16px 16px 0 0; }
+  .rpt-hero h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .rpt-hero p  { font-size: 14px; opacity: 0.9; margin: 0; }
+  .rpt-section { margin-top: 28px; }
+  .rpt-section h2 { font-size: 16px; font-weight: 800; color: #FE1B04; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 2px solid #FE1B04; }
+  .rpt-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .rpt-kpi { padding: 16px 18px; background: #fafafa; border-radius: 10px; border-left: 4px solid #FE1B04; }
+  .rpt-kpi-label { font-size: 11px; font-weight: 700; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.06em; }
+  .rpt-kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .rpt-kpi-delta { font-size: 12px; color: #6e6e73; margin-top: 2px; }
+  .rpt-kpi-delta.up   { color: #057642; }
+  .rpt-kpi-delta.down { color: #cc1016; }
+  .rpt-narrative { padding: 18px 22px; background: #fff5f5; border-radius: 10px; border-left: 4px solid #FE1B04; margin-bottom: 14px; }
+  .rpt-narrative p { font-size: 13px; line-height: 1.7; margin: 0 0 10px; }
+  .rpt-narrative p:last-child { margin-bottom: 0; }
+  .rpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .rpt-table th, .rpt-table td { padding: 8px 10px; text-align: left; }
+  .rpt-table th { background: #f5f5f7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6e6e73; font-weight: 700; }
+  .rpt-table td { border-bottom: 1px solid #e5e7eb; }
+  .rpt-table tr:last-child td { border-bottom: none; }
+  .rpt-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .rpt-table .pos { color: #057642; font-weight: 700; }
+  .rpt-table .neg { color: #cc1016; font-weight: 700; }
+  .rpt-tip { display: grid; grid-template-columns: 32px 1fr; gap: 14px; padding: 14px 16px; margin-bottom: 10px; background: #fafafa; border-radius: 10px; }
+  .rpt-tip .num-circle { width: 28px; height: 28px; border-radius: 50%; background: #FE1B04; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+  .rpt-tip .tip-title { font-size: 13px; font-weight: 800; margin-bottom: 3px; }
+  .rpt-tip .tip-body  { font-size: 12px; color: #4a4a4f; line-height: 1.55; }
+  .rpt-foot { margin-top: 36px; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6e6e73; text-align: center; }
 </style>
 </head>
 <body>
-
 <div class="app">
-
   <aside class="sidebar" id="sidebar" data-active="reports"></aside>
-
   <main>
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
@@ -194,329 +92,275 @@
     </div>
 
     <div class="content">
-
       <div class="page-header">
-        <h2>Automated reports</h2>
-        <p>Weekly and monthly one-pagers delivered to your inbox. Previews below are generated from your actual LinkedIn data (latest export 2026-03-27).</p>
+        <h2>Generate, view, and download your LinkedIn reports</h2>
+        <p>Two report types — weekly recap and monthly deep-dive. Each one builds on the latest data, opens for review, can be emailed to you, and downloads as a PDF you can keep.</p>
       </div>
 
-      <!-- Hero cards with delivery countdowns -->
-      <div class="hero-grid">
-        <div class="hero-card">
-          <div class="hero-label">Weekly report</div>
-          <div class="hero-title">Every Monday, 8:00 AM EST</div>
-          <div class="hero-schedule">Covers the last 7 days. Next delivery in:</div>
-          <div class="countdown" id="cd-weekly">
-            <div class="cd-cell"><div class="cd-num" data-cd="d">—</div><div class="cd-lbl">Days</div></div>
-            <div class="cd-cell"><div class="cd-num" data-cd="h">—</div><div class="cd-lbl">Hrs</div></div>
-            <div class="cd-cell"><div class="cd-num" data-cd="m">—</div><div class="cd-lbl">Min</div></div>
-            <div class="cd-cell"><div class="cd-num" data-cd="s">—</div><div class="cd-lbl">Sec</div></div>
-          </div>
-          <div class="sub-toggle">
-            <div class="switch on" id="sub-weekly" onclick="toggleSub(this, 'weekly')"></div>
-            <span><strong>Subscribed</strong> · delivered to oattia@gmail.com</span>
+      <div class="gen-row">
+        <div class="gen-card weekly">
+          <div class="gen-cat">📨 Weekly recap</div>
+          <div class="gen-title">Last 7 days</div>
+          <div class="gen-desc">Short narrative recap covering connection growth, profile views, SSI movement, and 1-3 quick action tips. Designed to read in 60 seconds.</div>
+          <div class="gen-actions">
+            <button class="gen-btn primary" onclick="generateReport('weekly')">Generate weekly</button>
+            <button class="gen-btn ghost" onclick="emailReport('weekly')">Email it to me</button>
           </div>
         </div>
 
-        <div class="hero-card">
-          <div class="hero-label">Monthly report</div>
-          <div class="hero-title">1st of each month, 8:00 AM EST</div>
-          <div class="hero-schedule">Covers the previous calendar month. Next delivery in:</div>
-          <div class="countdown" id="cd-monthly">
-            <div class="cd-cell"><div class="cd-num" data-cd="d">—</div><div class="cd-lbl">Days</div></div>
-            <div class="cd-cell"><div class="cd-num" data-cd="h">—</div><div class="cd-lbl">Hrs</div></div>
-            <div class="cd-cell"><div class="cd-num" data-cd="m">—</div><div class="cd-lbl">Min</div></div>
-            <div class="cd-cell"><div class="cd-num" data-cd="s">—</div><div class="cd-lbl">Sec</div></div>
-          </div>
-          <div class="sub-toggle">
-            <div class="switch on" id="sub-monthly" onclick="toggleSub(this, 'monthly')"></div>
-            <span><strong>Subscribed</strong> · delivered to oattia@gmail.com</span>
+        <div class="gen-card monthly">
+          <div class="gen-cat">📊 Monthly deep-dive</div>
+          <div class="gen-title">Last 30 days</div>
+          <div class="gen-desc">Full monthly report with all metrics, year-over-year context, anomaly flags, and a prioritized 5-tip action plan. Perfect for client / stakeholder share.</div>
+          <div class="gen-actions">
+            <button class="gen-btn primary purple" onclick="generateReport('monthly')">Generate monthly</button>
+            <button class="gen-btn ghost" onclick="emailReport('monthly')">Email it to me</button>
           </div>
         </div>
       </div>
 
-      <!-- View toggle -->
-      <div class="section-title">Report previews — with your real data</div>
-      <div class="view-toggle" role="tablist">
-        <button class="active" onclick="showView(this, 'both')">Show both</button>
-        <button onclick="showView(this, 'weekly')">Weekly only</button>
-        <button onclick="showView(this, 'monthly')">Monthly only</button>
+      <div class="section-title" style="margin-top:30px;display:flex;justify-content:space-between;align-items:center">
+        <span>Report history</span>
+        <button class="gen-btn ghost" onclick="clearHistory()">Clear all</button>
       </div>
-
-      <!-- ============ WEEKLY ============ -->
-      <div class="report-preview" id="view-weekly">
-        <div class="report-band weekly">
-          <div>
-            <div class="label">Weekly report</div>
-            <h3>Olivier Attia — LinkedIn</h3>
-            <div class="range">Mar 21 – Mar 27, 2026 · 7 days</div>
-          </div>
-          <div class="meta">Delivered<br>Mon Mar 30, 8:00 AM EST</div>
-        </div>
-        <div class="report-body">
-          <div class="report-kpis">
-            <div class="r-kpi"><div class="n">29,355</div><div class="l">Connections</div><div class="d down">▼ 125 this week</div></div>
-            <div class="r-kpi"><div class="n">9,364</div><div class="l">Profile views (7d)</div><div class="d up">▲ 1,338 avg/day</div></div>
-            <div class="r-kpi"><div class="n">70</div><div class="l">SSI score</div><div class="d up">▲ 1 pt</div></div>
-            <div class="r-kpi"><div class="n">531</div><div class="l">Invitations</div><div class="d flat">— no change</div></div>
-            <div class="r-kpi"><div class="n">1,314</div><div class="l">Company followers</div><div class="d up">▲ 25 this week</div></div>
-          </div>
-
-          <div class="report-columns">
-            <div>
-              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Connections, 7-day trend</h4>
-              <div class="report-chart-wrap"><canvas id="chart-w"></canvas></div>
-
-              <div class="r-block">
-                <h4>AI recommendations for next week</h4>
-                <div class="r-rec"><strong>1.</strong> Triage the <strong>531-invitation backlog</strong> — it's been flat 30+ days. 15 minutes this week clears ~100.</div>
-                <div class="r-rec"><strong>2.</strong> You're <strong>645 connections from the 30K cap</strong>. Pruning continues (-125 this week) — keep quality-over-quantity going.</div>
-                <div class="r-rec"><strong>3.</strong> Schedule 2 posts for Gershon Consulting — company follower growth is accelerating (+25 this week).</div>
-              </div>
-            </div>
-
-            <div>
-              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Highlights</h4>
-              <div class="r-row"><span class="lhs">Connection count</span><span class="rhs">29,355 (near 30K cap)</span></div>
-              <div class="r-row"><span class="lhs">SSI climb</span><span class="rhs">69 → 70</span></div>
-              <div class="r-row"><span class="lhs">Industry percentile</span><span class="rhs">Top 1%</span></div>
-              <div class="r-row"><span class="lhs">Network percentile</span><span class="rhs">Top 1%</span></div>
-              <div class="r-row"><span class="lhs">Peak daily views</span><span class="rhs">1,418 (Mar 27)</span></div>
-              <div class="r-row"><span class="lhs">Invitations in backlog</span><span class="rhs">531 (unchanged)</span></div>
-              <div class="r-row"><span class="lhs">Gershon Consulting growth</span><span class="rhs">+25 followers</span></div>
-            </div>
-          </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="history-list">
+          <div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px">No reports generated yet — click <strong>Generate weekly</strong> or <strong>Generate monthly</strong> above.</div>
         </div>
       </div>
 
-      <!-- ============ MONTHLY ============ -->
-      <div class="report-preview" id="view-monthly">
-        <div class="report-band monthly">
-          <div>
-            <div class="label">Monthly report</div>
-            <h3>Olivier Attia — LinkedIn</h3>
-            <div class="range">Feb 26 – Mar 27, 2026 · 30 days</div>
-          </div>
-          <div class="meta">Delivered<br>Wed Apr 1, 8:00 AM EST</div>
-        </div>
-        <div class="report-body">
-          <div class="report-kpis">
-            <div class="r-kpi"><div class="n">29,355</div><div class="l">Connections</div><div class="d down">▼ 211 (-0.7%)</div></div>
-            <div class="r-kpi"><div class="n">1,418</div><div class="l">Views (latest)</div><div class="d up">▲ 196 (+16.0%)</div></div>
-            <div class="r-kpi"><div class="n">70</div><div class="l">SSI score</div><div class="d up">▲ 1 pt</div></div>
-            <div class="r-kpi"><div class="n">531</div><div class="l">Invitations</div><div class="d flat">— stable</div></div>
-            <div class="r-kpi"><div class="n">1,314</div><div class="l">Company followers</div><div class="d up">▲ 110 (+9.1%)</div></div>
-            <div class="r-kpi"><div class="n">1 / 1</div><div class="l">Industry / Network %ile</div><div class="d up">Top 1%</div></div>
-          </div>
-
-          <div class="report-columns">
-            <div>
-              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">SSI, last 90 days</h4>
-              <div class="report-chart-wrap"><canvas id="chart-m"></canvas></div>
-
-              <div class="r-block">
-                <h4>AI observations for this month</h4>
-                <div class="r-rec"><strong>Most important trend:</strong> Gershon Consulting follower growth hit a <strong>5-year high</strong> at +110/mo (≈3.7/day). Posting cadence is working — keep it.</div>
-                <div class="r-rec"><strong>Watch:</strong> Post impressions (~13/day vs 1,314 followers) are below LinkedIn baseline. Reach-per-follower under 1% means format or frequency needs adjustment.</div>
-                <div class="r-rec"><strong>Steady state:</strong> Invitations queue has been flat at 531 for 30+ days. If you're not triaging, turn off incoming invites for a reset.</div>
-                <div class="r-rec"><strong>Ceiling:</strong> You're 645 away from LinkedIn's 30K cap. Deliberate pruning (-211 this month) is the right strategy at your scale.</div>
-              </div>
-            </div>
-
-            <div>
-              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Month-over-month</h4>
-              <div class="r-row"><span class="lhs">Connections</span><span class="rhs">29,566 → 29,355 (-211)</span></div>
-              <div class="r-row"><span class="lhs">Profile views</span><span class="rhs">1,222 → 1,418 (+196)</span></div>
-              <div class="r-row"><span class="lhs">Search appearances</span><span class="rhs">354 → 921 (+567)</span></div>
-              <div class="r-row"><span class="lhs">SSI</span><span class="rhs">69 → 70 (+1)</span></div>
-              <div class="r-row"><span class="lhs">Company followers</span><span class="rhs">1,204 → 1,314 (+110)</span></div>
-              <div class="r-row"><span class="lhs">Company visitors/day</span><span class="rhs">~78 (stable)</span></div>
-              <div class="r-row"><span class="lhs">Company post impressions</span><span class="rhs">7 → 13 (+85%)</span></div>
-
-              <h4 style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin:18px 0 8px">Best / worst</h4>
-              <div class="r-row"><span class="lhs">✅ Best metric</span><span class="rhs">Company followers +9.1%</span></div>
-              <div class="r-row"><span class="lhs">⚠️ Worst metric</span><span class="rhs">Connections -0.7%</span></div>
-              <div class="r-row"><span class="lhs">🎯 Most surprising</span><span class="rhs">Search appearances +160%</span></div>
-            </div>
+      <div class="section-title" style="margin-top:30px">Schedule (auto-send)</div>
+      <div class="card" style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+        <div style="font-size:13px;line-height:1.5;color:var(--text-muted)">
+          We can send these to your inbox automatically. Currently scheduled:
+          <div style="margin-top:8px">
+            <strong style="color:var(--text)">📨 Weekly</strong> — Mondays at 8:00 AM in your timezone
+            <span style="margin:0 8px;color:var(--border)">•</span>
+            <strong style="color:var(--text)">📊 Monthly</strong> — 1st of the month, 8:00 AM
           </div>
         </div>
-      </div>
-
-      <!-- History -->
-      <div class="section-title">Report history</div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
-        <div class="history-item">
-          <div class="history-icon">W</div>
-          <div><div class="history-date">Weekly · Apr 13 – Apr 19</div><div class="history-sub">Delivered Apr 13, 8:00 AM EST · opened 2h later</div></div>
-          <button class="btn" onclick="toast('Opening report…')">View</button>
-        </div>
-        <div class="history-item">
-          <div class="history-icon">W</div>
-          <div><div class="history-date">Weekly · Apr 6 – Apr 12</div><div class="history-sub">Delivered Apr 6, 8:00 AM EST</div></div>
-          <button class="btn" onclick="toast('Opening report…')">View</button>
-        </div>
-        <div class="history-item">
-          <div class="history-icon">M</div>
-          <div><div class="history-date">Monthly · March 2026</div><div class="history-sub">Delivered Apr 1, 8:00 AM EST</div></div>
-          <button class="btn" onclick="toast('Opening report…')">View</button>
-        </div>
-        <div class="history-item">
-          <div class="history-icon">W</div>
-          <div><div class="history-date">Weekly · Mar 30 – Apr 5</div><div class="history-sub">Delivered Mar 30, 8:00 AM EST</div></div>
-          <button class="btn" onclick="toast('Opening report…')">View</button>
-        </div>
-        <div class="history-item">
-          <div class="history-icon">M</div>
-          <div><div class="history-date">Monthly · February 2026</div><div class="history-sub">Delivered Mar 1, 8:00 AM EST</div></div>
-          <button class="btn" onclick="toast('Opening report…')">View</button>
-        </div>
+        <a href="/account.html" class="gen-btn ghost">Edit schedule →</a>
       </div>
 
     </div>
   </main>
+</div>
 
+<div id="report-overlay">
+  <div id="report-shell">
+    <div id="report-toolbar">
+      <strong style="font-size:13px" id="report-toolbar-title">Report</strong>
+      <div class="toolbar-actions">
+        <button class="gen-btn primary" onclick="downloadPdf()">Download PDF</button>
+        <button class="gen-btn ghost" onclick="closeReport()">Close</button>
+      </div>
+    </div>
+    <div id="report-body"></div>
+  </div>
 </div>
 
 <div id="toast"></div>
-
-<script>
-  function toast(msg, ms = 2200) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(toast._to);
-    toast._to = setTimeout(() => t.classList.remove('show'), ms);
-  }
-  function toggleSub(el, kind) {
-    el.classList.toggle('on');
-    const on = el.classList.contains('on');
-    el.nextElementSibling.innerHTML = on
-      ? `<strong>Subscribed</strong> · delivered to oattia@gmail.com`
-      : `<strong>Unsubscribed</strong> · you won't receive ${kind} reports`;
-    toast(`${kind.charAt(0).toUpperCase() + kind.slice(1)} report ${on ? 'enabled' : 'paused'}`);
-  }
-  function showView(btn, view) {
-    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('view-weekly').style.display = (view === 'both' || view === 'weekly') ? '' : 'none';
-    document.getElementById('view-monthly').style.display = (view === 'both' || view === 'monthly') ? '' : 'none';
-  }
-
-  // ---------- Countdowns ----------
-  function etDate(isoNaive) {
-    const asUtc = new Date(isoNaive + 'Z');
-    const ny = new Date(asUtc.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const offsetMs = asUtc.getTime() - ny.getTime();
-    return new Date(asUtc.getTime() + offsetMs);
-  }
-  function isMondayET(d) {
-    const dow = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' })).getDay();
-    return dow === 1;
-  }
-  function nextMondayAt8ET() {
-    const now = new Date();
-    for (let i = 0; i < 14; i++) {
-      const c = new Date(now);
-      c.setDate(now.getDate() + i);
-      const year = c.getFullYear();
-      const month = String(c.getMonth() + 1).padStart(2, '0');
-      const day = String(c.getDate()).padStart(2, '0');
-      const et = etDate(`${year}-${month}-${day}T08:00:00`);
-      if (isMondayET(et) && et > now) return et;
-    }
-    return null;
-  }
-  function nextFirstOfMonthAt8ET() {
-    const now = new Date();
-    let y = now.getFullYear();
-    let m = now.getMonth() + 1;
-    if (m > 11) { m = 0; y++; }
-    return etDate(`${y}-${String(m + 1).padStart(2, '0')}-01T08:00:00`);
-  }
-  function renderCountdown(containerId, target) {
-    const el = document.getElementById(containerId);
-    const ms = target - new Date();
-    if (ms <= 0) { el.querySelectorAll('[data-cd]').forEach(n => n.textContent = '0'); return; }
-    const d = Math.floor(ms / 86400000);
-    const h = Math.floor(ms / 3600000) % 24;
-    const m = Math.floor(ms / 60000) % 60;
-    const s = Math.floor(ms / 1000) % 60;
-    el.querySelectorAll('[data-cd]').forEach(n => {
-      n.textContent = String({d,h,m,s}[n.dataset.cd]).padStart(2, '0');
-    });
-  }
-  const wTarget = nextMondayAt8ET();
-  const mTarget = nextFirstOfMonthAt8ET();
-  function tick() {
-    if (wTarget) renderCountdown('cd-weekly', wTarget);
-    if (mTarget) renderCountdown('cd-monthly', mTarget);
-  }
-  tick();
-  setInterval(tick, 1000);
-
-  // ---------- Charts ----------
-  // 7-day connections trend (weekly report)
-  const weekLabels = ['Mar 21','Mar 22','Mar 23','Mar 24','Mar 25','Mar 26','Mar 27'];
-  const weekConn   = [29480, 29432, 29394, 29389, 29382, 29374, 29355];
-
-  new Chart(document.getElementById('chart-w'), {
-    type: 'line',
-    data: {
-      labels: weekLabels,
-      datasets: [{
-        label: 'Connections',
-        data: weekConn,
-        borderColor: '#FE1B04',
-        backgroundColor: 'rgba(254,27,4,0.12)',
-        fill: true,
-        borderWidth: 2.5,
-        tension: 0.3,
-        pointRadius: 4,
-        pointBackgroundColor: '#FE1B04'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } },
-        y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
-      }
-    }
-  });
-
-  // 90-day SSI (monthly report). Use real Olivier data — last 90 SSI values
-  const monthSsiData = [72, 75, 75, 75, 74, 74, 74, 75, 75, 75, 75, 75, 74, 74, 74, 74, 74, 74, 75, 74, 74, 72, 70, 70, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 70, 70, 70, 70, 70, 70, 70, 70, 71, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 70, 74, 74, 74, 74, 74, 73, 73, 73, 72, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 69, 70];
-
-  new Chart(document.getElementById('chart-m'), {
-    type: 'line',
-    data: {
-      labels: monthSsiData.map((_, i) => ''),
-      datasets: [{
-        label: 'SSI',
-        data: monthSsiData,
-        borderColor: '#1d1d1f',
-        backgroundColor: 'rgba(29,29,31,0.08)',
-        fill: true,
-        borderWidth: 2,
-        tension: 0.25,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { display: false } },
-        y: { min: 65, max: 80, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
-      }
-    }
-  });
-</script>
+<script src="/data.js"></script>
+<script src="/plan.js"></script>
+<script src="/stats-helpers.js"></script>
+<script src="/ai-insights.js"></script>
 <script src="/api.js"></script>
 <script src="/nav.js" defer></script>
+<script>
+function toast(m, ms){ms=ms||2500; var t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._to); toast._to=setTimeout(function(){t.classList.remove('show')},ms);}
+var STORAGE_KEY = 'linalysis_report_history';
+var fmt  = function(n){ if(n==null||isNaN(n)) return '—'; return Number(n).toLocaleString('en-US'); };
+var sign = function(n){ if(n==null||isNaN(n)) return '—'; return (n>0?'+':'')+fmt(n); };
+var fdate= function(d){ return new Date(d+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+
+function loadHistory(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e){ return []; } }
+function saveHistory(list){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0,50))); } catch(e){} }
+
+function renderHistory(){
+  var list = loadHistory();
+  var el = document.getElementById('history-list');
+  if(!list.length){ el.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px">No reports generated yet — click <strong>Generate weekly</strong> or <strong>Generate monthly</strong> above.</div>'; return; }
+  el.innerHTML = list.map(function(r, idx){
+    var icon = r.type==='weekly' ? '📨' : '📊';
+    var statusLabel = r.emailed ? '✓ emailed ' + new Date(r.emailedAt).toLocaleDateString() : 'generated ' + new Date(r.generatedAt).toLocaleDateString();
+    return '<div class="history-row">' +
+      '<span style="font-size:18px">'+icon+'</span>' +
+      '<span class="history-pill '+r.type+'">'+r.type+'</span>' +
+      '<div><div style="font-weight:700;font-size:13px">'+r.title+'</div><div class="history-status '+(r.emailed?'sent':'')+'">'+statusLabel+'</div></div>' +
+      '<button class="history-action" onclick="viewReport('+idx+')">View</button>' +
+      '<button class="history-action" onclick="downloadHistoricPdf('+idx+')">Download PDF</button>' +
+      '<button class="history-action danger" onclick="removeReport('+idx+')">Delete</button>' +
+    '</div>';
+  }).join('');
+}
+
+function buildReport(type){
+  if (!window.Stats) return null;
+  var latest = Stats.lastDate();
+  var range = type === 'weekly' ? 7 : 30;
+  var label = type === 'weekly' ? 'Weekly recap' : 'Monthly deep-dive';
+  var d = Stats.delta('connections', range) || {change:0, pct:0, end:0};
+  var dViews = Stats.delta('views', range) || {change:0};
+  var dSSI = Stats.delta('ssi', range) || {change:0};
+  var dInv = Stats.delta('invitations', range) || {change:0};
+  var dCo  = Stats.delta('co_followers', range) || {change:0, pct:0};
+  var dImp = Stats.delta('co_impressions', range) || {change:0};
+  var recap = window.AI && AI.recap ? AI.recap() : null;
+  var recs  = window.AI && AI.recommendations ? AI.recommendations(type === 'weekly' ? 3 : 5) : [];
+  var anomalies = window.AI && AI.anomalyAlerts ? AI.anomalyAlerts(range * 2) : [];
+
+  var kpis = [
+    { label: 'Connections',                value: fmt(d.end), delta: d.change, dir: d.change >= 0 ? 'up' : 'down', sub: (d.pct||0).toFixed(1) + '%' },
+    { label: 'Profile views',              value: fmt(Stats.latest('views')), delta: dViews.change, dir: dViews.change >= 0 ? 'up' : 'down' },
+    { label: 'SSI overall',                value: Stats.latest('ssi'), delta: dSSI.change, dir: dSSI.change >= 0 ? 'up' : 'down', sub: 'pts' },
+    { label: 'Pending invitations',        value: fmt(Stats.latest('invitations')), delta: dInv.change, dir: dInv.change >= 0 ? 'up' : 'down' },
+    { label: 'Company followers',          value: fmt(Stats.latest('co_followers')), delta: dCo.change, dir: dCo.change >= 0 ? 'up' : 'down', sub: (dCo.pct||0).toFixed(1) + '%' },
+    { label: 'Company reach (impressions)',value: fmt(Stats.latest('co_impressions')), delta: dImp.change, dir: dImp.change >= 0 ? 'up' : 'down' }
+  ];
+
+  return {
+    type: type,
+    title: label + ' — ' + fdate(latest),
+    generatedAt: new Date().toISOString(),
+    period: { from: Stats.dates()[Math.max(0, Stats.dates().length - range - 1)], to: latest, days: range },
+    kpis: kpis,
+    narrative: recap ? recap.paragraphs : [],
+    headline: recap ? recap.headline : '',
+    tips: recs,
+    anomalies: anomalies.slice(0, type === 'weekly' ? 3 : 8),
+    streak: recap ? recap.streak : null,
+    full_name: (window.LINALYSIS_DATA && LINALYSIS_DATA.meta && LINALYSIS_DATA.meta.full_name) || 'You'
+  };
+}
+
+function reportHtml(r){
+  var kpis = r.kpis.map(function(k){
+    return '<div class="rpt-kpi"><div class="rpt-kpi-label">'+k.label+'</div><div class="rpt-kpi-value">'+k.value+'</div><div class="rpt-kpi-delta '+k.dir+'">'+(k.dir==='up'?'▲ ':'▼ ')+sign(k.delta)+(k.sub?' ('+k.sub+')':'')+'</div></div>';
+  }).join('');
+  var narrative = (r.narrative||[]).map(function(p){ return '<p>'+p+'</p>'; }).join('');
+  var tips = (r.tips||[]).map(function(t,i){
+    return '<div class="rpt-tip"><div class="num-circle">'+(i+1)+'</div><div><div class="tip-title">'+t.title+'</div><div class="tip-body">'+t.body+'</div></div></div>';
+  }).join('');
+  var anomalyRows = (r.anomalies||[]).length
+    ? '<table class="rpt-table"><thead><tr><th>Date</th><th>Metric</th><th class="num">Δ</th></tr></thead><tbody>' +
+      r.anomalies.map(function(a){
+        var dir = a.direction === 'up' ? 'pos' : 'neg';
+        return '<tr><td>'+fdate(a.date)+'</td><td>'+a.label+'</td><td class="num '+dir+'">'+(a.direction==='up'?'+':'−')+fmt(Math.abs(a.delta))+'</td></tr>';
+      }).join('') +
+      '</tbody></table>'
+    : '<p style="font-size:13px;color:#6e6e73;margin:0">No anomalies in the last '+(r.period.days*2)+' days. Numbers moving within normal ranges.</p>';
+
+  return '<div class="rpt">' +
+    '<div class="rpt-hero">' +
+      '<h1>'+r.title+'</h1>' +
+      '<p>'+fdate(r.period.from)+' → '+fdate(r.period.to)+' · For '+r.full_name+' · Generated '+new Date(r.generatedAt).toLocaleString()+'</p>' +
+    '</div>' +
+    (r.headline ? '<div class="rpt-narrative"><p style="font-size:15px;font-weight:700;margin-bottom:10px">'+r.headline+'</p>'+narrative+'</div>' : '') +
+    '<div class="rpt-section"><h2>Headline metrics</h2><div class="rpt-kpi-grid">'+kpis+'</div></div>' +
+    (tips ? '<div class="rpt-section"><h2>Top '+(r.tips.length)+' actions</h2>'+tips+'</div>' : '') +
+    '<div class="rpt-section"><h2>Anomaly flags</h2>'+anomalyRows+'</div>' +
+    (r.streak ? '<div class="rpt-section"><h2>Current streaks</h2><p style="font-size:13px;color:#4a4a4f;margin:0">Active connection streak: <strong>'+r.streak.days+' days</strong> (no decline since '+fdate(r.streak.from)+').</p></div>' : '') +
+    '<div class="rpt-foot">Linalysis · linalysis.net · This report contains data captured by the Linalysis Chrome extension and is for the recipient\'s personal use.</div>' +
+  '</div>';
+}
+
+function generateReport(type){
+  var r = buildReport(type);
+  if (!r) { toast('Report data unavailable'); return; }
+  var hist = loadHistory();
+  hist.unshift(r);
+  saveHistory(hist);
+  renderHistory();
+  showReport(r);
+  toast('Generated — click Download PDF to save');
+}
+
+function showReport(r){
+  document.getElementById('report-toolbar-title').textContent = r.title;
+  document.getElementById('report-body').innerHTML = reportHtml(r);
+  document.getElementById('report-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  window._currentReport = r;
+}
+function closeReport(){
+  document.getElementById('report-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+function viewReport(idx){
+  var hist = loadHistory();
+  if (!hist[idx]) return;
+  showReport(hist[idx]);
+}
+function downloadPdf(){
+  var r = window._currentReport;
+  if (!r) { toast('Open a report first'); return; }
+  pdfFrom(r);
+}
+function downloadHistoricPdf(idx){
+  var hist = loadHistory();
+  if (!hist[idx]) return;
+  pdfFrom(hist[idx]);
+}
+function pdfFrom(r){
+  var staging = document.createElement('div');
+  staging.innerHTML = reportHtml(r);
+  staging.style.background = '#fff';
+  staging.style.maxWidth = '820px';
+  document.body.appendChild(staging);
+  var fname = ('linalysis_' + r.type + '_' + (r.period.to||'').replace(/-/g,'') + '.pdf');
+  toast('Building PDF…');
+  var opt = {
+    margin: 0, filename: fname,
+    image: { type: 'jpeg', quality: 0.96 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+  };
+  html2pdf().set(opt).from(staging).save().then(function(){
+    document.body.removeChild(staging);
+    toast('Saved ' + fname);
+  }).catch(function(e){
+    console.error(e);
+    if (staging.parentNode) document.body.removeChild(staging);
+    toast('PDF failed: ' + e.message);
+  });
+}
+function emailReport(type){
+  var r = buildReport(type);
+  if (!r) { toast('Report data unavailable'); return; }
+  var hist = loadHistory();
+  r.emailRequested = true;
+  hist.unshift(r);
+  saveHistory(hist);
+  renderHistory();
+  if (window.LinalysisAPI && LinalysisAPI.post) {
+    LinalysisAPI.post('/api/reports/send-now', { type: type, title: r.title }).then(function(resp){
+      var idx = hist.indexOf(r);
+      r.emailed = !!resp.sent;
+      r.emailedAt = new Date().toISOString();
+      if (idx >= 0) hist[idx] = r;
+      saveHistory(hist);
+      renderHistory();
+      toast(resp.sent ? 'Emailed' : 'Queued (mailer not configured)');
+    }).catch(function(err){
+      if (err.status === 401) toast('Sign in to email reports');
+      else toast('Email failed: ' + ((err.body && err.body.message) || err.error || ''));
+    });
+  } else {
+    toast('Backend unavailable — saved locally only');
+  }
+}
+function removeReport(idx){
+  var hist = loadHistory();
+  hist.splice(idx, 1);
+  saveHistory(hist);
+  renderHistory();
+}
+function clearHistory(){
+  if (!confirm('Delete all generated reports?')) return;
+  saveHistory([]);
+  renderHistory();
+}
+renderHistory();
+</script>
 </body>
 </html>
