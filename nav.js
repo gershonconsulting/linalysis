@@ -1,6 +1,6 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-07-28.1914-live';
+const LINALYSIS_BUILD = '2026-07-28.2054-live';
 const LINALYSIS_LATEST_EXT_VERSION = '0.2.0'; // bump this whenever a new extension zip ships
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
@@ -53,6 +53,7 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
     { key: 'growth',     label: 'My Growth',    href: '/growth.html',     icon: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>' },
     { key: 'campaigns',  label: 'My Campaigns', href: '/campaigns.html',  icon: '<path d="M3 11l18-8-8 18-2-8-8-2z"/>', arrow: true },
     { key: 'my-data',    label: 'My Data',      href: '/my-data.html',    icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/>' },
+    { key: 'log',        label: 'Collection Log', href: '/log.html',      icon: '<path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/>' },
     { key: 'company',    label: 'My Company',   href: '/company.html',    icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/>', arrow: true },
     { key: 'goals',      label: 'My Goals',     href: '/goals.html',      icon: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>' },
     { key: 'credits',    label: 'My Credits',   href: '/credits.html',    icon: '<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 11h20"/><path d="M7 15h2M11 15h2"/>' },

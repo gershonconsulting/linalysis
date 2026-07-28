@@ -90,7 +90,7 @@
               <button data-credits="5"  data-plan="Career">Career (5/mo)</button>
               <button data-credits="15" data-plan="Business">Business (15/mo)</button>
               <button data-credits="25" data-plan="Recruiter Lite">Recruiter Lite (25/mo)</button>
-              <button data-credits="50" data-plan="Sales Nav">Sales Nav (50/mo)</button>
+              <button data-credits="50" data-plan="Sales Nav">Sales Navigator Core (50/mo)</button>
               <button data-credits="150" data-plan="Recruiter">Recruiter (150/mo)</button>
             </div>
           </div>
@@ -211,21 +211,20 @@
   }
 
   // ─── InMail (configurable plan) ────────────────────────
-  var inmailPlan = localStorage.getItem('linalysis_inmail_plan') || 'Career';
-  var inmailTotal = parseInt(localStorage.getItem('linalysis_inmail_total') || '5', 10);
-  // Used: we don't track personal InMails. Fake plausible number from connection growth (proxy: 30-40% of avg outreach).
-  // Better: let user enter manually in v1.1. For now, default to 60% used.
-  var inmailUsed = Math.round(inmailTotal * 0.6);
+  // Default = the user's real, verified plan: Sales Navigator Core (50 InMail credits/mo).
+  var inmailPlan = localStorage.getItem('linalysis_inmail_plan') || 'Sales Nav';
+  var inmailTotal = parseInt(localStorage.getItem('linalysis_inmail_total') || '50', 10);
+  // Personal InMail USAGE is not visible to the extension — we must NOT fabricate it. Show the
+  // plan cap (real, user-selected) and reset date only; usage stays "not tracked".
   function renderInmail() {
-    var pctNum = inmailTotal > 0 ? (inmailUsed / inmailTotal * 100) : 0;
-    document.getElementById('inmail-pct').textContent = Math.round(pctNum) + '%';
-    document.getElementById('inmail-used').textContent = inmailUsed + ' / ' + inmailTotal;
-    document.getElementById('inmail-rem').textContent = (inmailTotal - inmailUsed) + ' left';
+    document.getElementById('inmail-pct').textContent = '—';
+    document.getElementById('inmail-used').textContent = 'not tracked';
+    document.getElementById('inmail-rem').textContent = inmailTotal + ' / mo cap';
     document.getElementById('inmail-total').textContent = inmailTotal + ' (' + inmailPlan + ')';
     // Reset date — 1st of next month
     var d = new Date(); d.setMonth(d.getMonth() + 1, 1);
     document.getElementById('inmail-reset').textContent = d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-    setRing('inmail-ring', pctNum);
+    setRing('inmail-ring', 0);
   }
   renderInmail();
   // Plan picker — store choice
@@ -234,7 +233,6 @@
     b.onclick = function() {
       inmailPlan = b.dataset.plan;
       inmailTotal = parseInt(b.dataset.credits, 10);
-      inmailUsed = Math.round(inmailTotal * 0.6);
       try { localStorage.setItem('linalysis_inmail_plan', inmailPlan); localStorage.setItem('linalysis_inmail_total', String(inmailTotal)); } catch(e){}
       document.getElementById('inmail-plans').querySelectorAll('button').forEach(function(x){x.classList.remove('active')});
       b.classList.add('active');
@@ -242,78 +240,58 @@
     };
   });
 
-  // ─── Weekly connection invites — gap-aware ────────────
-  // Daily sent estimate:
-  //   if pending(today) > pending(yesterday)   → new invites went out
-  //   if connections(today) > connections(yesterday) → previous invites accepted
-  //   So: invites_sent_per_day = max(0, Δpending + Δconnections) / days_between_captures
-  //   Sum the values for the last 7 calendar days.
-  var pendingSeries = Stats.series('invitations');
-  var connSeries    = Stats.series('connections');
-  var allDates      = Stats.dates();
-  var dailySent = []; // [{date, sent, gap}]
-  function daysBetween(a, b) {
-    return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000);
-  }
-  // Walk back through the captures, collecting until we cover ~7 calendar days
-  var todayStr = allDates[allDates.length - 1];
-  var weekAgo = new Date(todayStr + 'T00:00:00Z');
-  weekAgo.setUTCDate(weekAgo.getUTCDate() - 6);
-  var weekAgoStr = weekAgo.toISOString().slice(0, 10);
-  for (var i = allDates.length - 1; i > 0; i--) {
-    if (allDates[i] < weekAgoStr) break;
-    var gap = daysBetween(allDates[i-1], allDates[i]);
-    var dPending = (pendingSeries[i] || 0) - (pendingSeries[i-1] || 0);
-    var dConn    = (connSeries[i]    || 0) - (connSeries[i-1]    || 0);
-    // Total invites attributed to this CAPTURE (covering "gap" days)
-    var totalForGap = Math.max(0, dPending + dConn);
-    // Cap per capture at 700 to avoid huge backfill spikes from long gaps polluting the week
-    if (gap > 7) totalForGap = Math.min(totalForGap, 100); // backfill cap
-    dailySent.unshift({ date: allDates[i], sent: totalForGap, gap: gap, pending: pendingSeries[i] });
-  }
-  var weeklyUsed = dailySent.reduce(function(a,b){ return a + b.sent; }, 0);
-  var weeklyCap = 100;
-  var invitePct = (weeklyUsed / weeklyCap) * 100;
-  document.getElementById('invite-pct').textContent = Math.round(invitePct) + '%';
-  document.getElementById('invite-used').textContent = fmt(weeklyUsed) + ' (last 7 days)';
-  document.getElementById('invite-rem').textContent  = fmt(Math.max(0, weeklyCap - weeklyUsed));
-  document.getElementById('invite-pending').textContent = fmt(Stats.latest('invitations'));
-  setRing('invite-ring', invitePct);
-
-  // Render the per-capture breakdown
+  // ─── Weekly connection invites ───────────────────────────────
+  // Only report "sent this week" from a RELIABLE source: the extension's daily invitations_sent_24h
+  // counter (v0.2.0). We do NOT infer sends from connection-count deltas — that produced garbage
+  // (a first-ever connections capture read as tens of thousands of "sent"). Pending is real.
+  var weeklyCap = 100; // LinkedIn rolling 7-day connection-invite limit
+  var sent7   = Stats.latest('invitations_sent_7d');
+  var sentDay = Stats.series('invitations_sent_24h');
+  var haveDaily = Array.isArray(sentDay) && sentDay.some(function(v){ return v != null; });
+  document.getElementById('invite-pending').textContent = (Stats.latest('invitations') != null) ? fmt(Stats.latest('invitations')) : '—';
   var breakdownEl = document.getElementById('invite-breakdown');
-  if (breakdownEl) {
-    if (dailySent.length === 0) {
-      breakdownEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No captures in the last 7 days — install the extension to start collecting daily.</div>';
-    } else {
-      breakdownEl.innerHTML = dailySent.map(function(d) {
-        var dt = new Date(d.date + 'T00:00:00Z');
-        var dow = dt.toLocaleDateString('en-US', { weekday: 'short' });
-        var dd = dt.getUTCDate();
-        var barWidth = Math.min(100, (d.sent / 25) * 100);
-        var color = d.sent >= 20 ? '#cc1016' : d.sent >= 10 ? '#b76b00' : '#0a66c2';
-        var gapNote = d.gap > 1 ? '<span style="font-size:9px;color:var(--text-muted);margin-left:4px;font-weight:500">+' + d.gap + 'd gap</span>' : '';
-        return '<div style="display:grid;grid-template-columns:80px 1fr 50px;align-items:center;gap:10px;padding:5px 0">' +
-          '<span style="font-size:11px;color:var(--text-muted)">' + dow + ' ' + dd + gapNote + '</span>' +
-          '<div style="height:8px;background:#f1f1f3;border-radius:4px;overflow:hidden">' +
-            '<div style="height:100%;width:' + barWidth + '%;background:' + color + '"></div>' +
-          '</div>' +
-          '<span style="font-size:12px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums">' + d.sent + '</span>' +
-        '</div>';
-      }).join('');
+  if (sent7 != null || haveDaily) {
+    var weeklyUsed = 0;
+    if (sent7 != null) { weeklyUsed = sent7; }
+    else {
+      var dts = Stats.dates();
+      var cutoff = new Date(dts[dts.length-1] + 'T00:00:00Z'); cutoff.setUTCDate(cutoff.getUTCDate() - 6);
+      for (var i = 0; i < dts.length; i++) { if (new Date(dts[i]+'T00:00:00Z') >= cutoff && sentDay[i] != null) weeklyUsed += (+sentDay[i] || 0); }
     }
+    var invitePct = Math.min(100, Math.round((weeklyUsed / weeklyCap) * 100));
+    document.getElementById('invite-pct').textContent = invitePct + '%';
+    document.getElementById('invite-used').textContent = fmt(weeklyUsed) + ' (last 7 days)';
+    document.getElementById('invite-rem').textContent  = fmt(Math.max(0, weeklyCap - weeklyUsed));
+    setRing('invite-ring', invitePct);
+    if (breakdownEl) breakdownEl.innerHTML = '';
+  } else {
+    document.getElementById('invite-pct').textContent = '—';
+    document.getElementById('invite-used').textContent = 'not tracked yet';
+    document.getElementById('invite-rem').textContent  = '—';
+    setRing('invite-ring', 0);
+    if (breakdownEl) breakdownEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Daily "invites sent" tracking begins once the v0.2.0 extension is installed and syncing. Your pending queue is shown above; the cap is 100 invites per rolling 7 days.</div>';
   }
 
   // ─── Company-page invites — fixed 250 monthly cap ──────────────────
+  // Only compute usage when the extension has actually captured the available balance
+  // (field: company_credits_available). Otherwise show "—" — never fabricate a "used" figure.
   var COMPANY_CAP = 250;
-  var avail = Stats.latest('co_credits_available') || 0;
-  var used  = Math.max(0, COMPANY_CAP - avail);
-  var coPct = (used / COMPANY_CAP) * 100;
-  document.getElementById('co-pct').textContent   = Math.round(coPct) + '%';
-  document.getElementById('co-avail').textContent = fmt(avail);
-  document.getElementById('co-used').textContent  = fmt(used);
+  // Client-side key is 'co_credits_available' (live-data.js maps API 'company_credits_available' → this).
+  var coAvail = Stats.latest('co_credits_available');
   document.getElementById('co-total').textContent = fmt(COMPANY_CAP);
-  setRing('co-ring', coPct);
+  if (coAvail != null) {
+    var coUsed = Math.max(0, COMPANY_CAP - coAvail);
+    var coPct  = Math.min(100, (coUsed / COMPANY_CAP) * 100);
+    document.getElementById('co-pct').textContent   = Math.round(coPct) + '%';
+    document.getElementById('co-avail').textContent = fmt(coAvail);
+    document.getElementById('co-used').textContent  = fmt(coUsed);
+    setRing('co-ring', coPct);
+  } else {
+    document.getElementById('co-pct').textContent   = '—';
+    document.getElementById('co-avail').textContent = '—';
+    document.getElementById('co-used').textContent  = 'not tracked yet';
+    setRing('co-ring', 0);
+  }
 
   // ─── Pending invitations chart ─────────────────────────
   var inv = Stats.sliceSeries('invitations', 90);

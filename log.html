@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — Collection Log</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .l-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  @media (max-width:760px){ .l-grid { grid-template-columns:1fr; } }
+  .l-tile { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .l-tile .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+  .l-tile .val { font-size:26px; font-weight:800; margin-top:4px; color:#1d1d1f; letter-spacing:-.02em; line-height:1.05; }
+  .l-tile .desc { font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4; }
+  .l-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:6px 4px; margin-bottom:20px; overflow-x:auto; }
+  table.log { width:100%; border-collapse:collapse; font-size:13px; }
+  table.log th { text-align:right; font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); font-weight:700; padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; position:sticky; top:0; background:var(--card); }
+  table.log th:first-child, table.log td:first-child { text-align:left; }
+  table.log td { text-align:right; padding:9px 12px; border-bottom:1px solid #f2f2f4; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  table.log tr:last-child td { border-bottom:none; }
+  table.log td.date { font-weight:700; color:#1d1d1f; }
+  table.log td.new { font-weight:700; }
+  .miss { color:#c9c9cf; }
+  .up { color:#057642; font-weight:700; } .down { color:#cc1016; font-weight:700; }
+  .badge { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; background:#f3f3f5; color:#6b6b70; }
+  .section-h { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); margin:0 0 10px; padding:0 4px; }
+  .note { font-size:12px; padding:12px 14px; border-radius:10px; background:#f7f7f9; color:#4b4b52; border:1px solid var(--border); line-height:1.55; margin-bottom:20px; }
+  .note b { color:#1d1d1f; }
+  .empty { text-align:center; padding:48px 20px; color:var(--text-muted); }
+  .empty .big { font-size:40px; margin-bottom:8px; }
+  .cov { display:flex; flex-wrap:wrap; gap:8px; }
+  .cov .chip { font-size:12px; padding:5px 10px; border-radius:8px; border:1px solid var(--border); background:#fafafb; }
+  .cov .chip.on { border-color:#bfe6cf; background:#eefaf2; color:#057642; font-weight:600; }
+  .cov .chip.off { color:#a9a9b0; }
+</style>
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="log"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>Collection Log</h1>
+  </div>
+  <div class="topbar-right"><span class="avatar" title="Olivier">O</span></div>
+</div>
+<div class="content">
+
+  <div class="page-header">
+    <h2>What was collected, and when</h2>
+    <p>Every daily capture the Linalysis extension has synced to your account, newest first. Each row is one sync; a value means that metric was read that day, a dash means it wasn't captured. Nothing here is estimated — this is the raw record.</p>
+  </div>
+
+  <div class="l-grid" id="summary"></div>
+
+  <div id="coverage-wrap" style="margin-bottom:20px;display:none">
+    <div class="section-h">What the latest sync captured</div>
+    <div class="cov" id="coverage"></div>
+  </div>
+
+  <div class="section-h">Daily captures</div>
+  <div class="l-card" id="table-wrap"></div>
+
+  <div class="note" id="views-note" style="display:none">
+    <b>Why Profile views and Search appearances are blank:</b> LinkedIn only exposes those two on the
+    <i>Analytics → Profile views</i> and <i>Search appearances</i> pages, which the currently installed
+    extension version doesn't yet read. They start filling in once the <b>v0.2.0</b> extension is installed and
+    has run at least one sync. Connections, pending invitations and SSI come from pages the current version
+    already scrapes, which is why those columns are populated.
+  </div>
+
+</div>
+</main>
+</div>
+<script src="/data.js"></script>
+<script src="/live-data.js"></script>
+<script src="/stats-helpers.js"></script>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+(function () {
+  function fmt(n){ return n == null ? '<span class="miss">—</span>' : Number(n).toLocaleString('en-US'); }
+  function plain(n){ return n == null ? '—' : Number(n).toLocaleString('en-US'); }
+
+  function build() {
+    var D = window.LINALYSIS_DATA || { dates: [], metrics: {} };
+    var dates = D.dates || [];
+    var m = D.metrics || {};
+    function series(k){ return m[k] || []; }
+    function val(k, i){ var s = series(k); return (i >= 0 && i < s.length) ? s[i] : null; }
+
+    // ── Summary tiles ──
+    var total = dates.length;
+    var last = total ? dates[total-1] : null;
+    var first = total ? dates[0] : null;
+
+    var sumEl = document.getElementById('summary');
+    if (!total) {
+      document.getElementById('table-wrap').innerHTML =
+        '<div class="empty"><div class="big">🗒️</div><div>No captures yet.</div>'
+        + '<div style="font-size:12px;margin-top:6px">Install and run the Linalysis extension — your first sync will appear here.</div></div>';
+      sumEl.innerHTML = '';
+      return;
+    }
+
+    sumEl.innerHTML = [
+      { lbl:'Last collected', val: last, desc:'most recent sync on record' },
+      { lbl:'Total captures', val: plain(total), desc:'daily syncs stored' },
+      { lbl:'Tracking since', val: first, desc: total>1 ? 'first sync on record' : 'first sync' },
+    ].map(function(t){
+      return '<div class="l-tile"><div class="lbl">'+t.lbl+'</div><div class="val">'+t.val+'</div><div class="desc">'+t.desc+'</div></div>';
+    }).join('');
+
+    // Columns shown in the log (client-side metric keys → header labels)
+    var COLS = [
+      { key:'connections',       label:'Connections' },
+      { key:'invitations',       label:'Pending inv.' },
+      { key:'views',             label:'Profile views' },
+      { key:'search_appearance', label:'Search app.' },
+      { key:'ssi',               label:'SSI' },
+      { key:'co_followers',      label:'Co. followers' },
+    ];
+
+    // ── Coverage chips for the latest sync ──
+    var li = total - 1;
+    var ALLM = (window.Stats && window.Stats.METRICS) || {};
+    var covEl = document.getElementById('coverage');
+    var order = ['connections','invitations','views','search_appearance','ssi','ssi_industry','ssi_network','co_followers','co_visitors','co_search'];
+    var chips = order.filter(function(k){ return ALLM[k]; }).map(function(k){
+      var v = val(k, li);
+      var on = v != null;
+      var lbl = ALLM[k].label;
+      return '<span class="chip '+(on?'on':'off')+'">'+(on?'✓ ':'· ')+lbl+(on?' <b style="color:#1d1d1f">'+plain(v)+'</b>':'')+'</span>';
+    }).join('');
+    covEl.innerHTML = chips;
+    document.getElementById('coverage-wrap').style.display = 'block';
+
+    // ── Table (newest first) ──
+    var head = '<tr><th>Date</th>' + COLS.map(function(c){ return '<th>'+c.label+'</th>'; }).join('') + '<th>Captured</th></tr>';
+    var rows = '';
+    for (var i = total - 1; i >= 0; i--) {
+      var captured = 0;
+      var cells = COLS.map(function(c){
+        var v = val(c.key, i);
+        // show day-over-day change on connections for readability
+        if (v != null) captured++;
+        if (c.key === 'connections' && v != null && i > 0) {
+          var prev = val('connections', i-1);
+          if (prev != null) {
+            var d = v - prev;
+            var chg = d === 0 ? '' : ' <span class="'+(d>0?'up':'down')+'">'+(d>0?'+':'')+plain(d)+'</span>';
+            return '<td class="new">'+plain(v)+chg+'</td>';
+          }
+        }
+        return '<td>'+fmt(v)+'</td>';
+      }).join('');
+      // count captured across ALL known metrics, not just shown columns
+      var totalCaptured = 0, totalTracked = 0;
+      for (var k in ALLM) { totalTracked++; if (val(k, i) != null) totalCaptured++; }
+      rows += '<tr><td class="date">'+dates[i]+'</td>'+cells+'<td><span class="badge">'+totalCaptured+' metric'+(totalCaptured===1?'':'s')+'</span></td></tr>';
+    }
+    document.getElementById('table-wrap').innerHTML = '<table class="log"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table>';
+
+    // Show the "why views are blank" note only if those columns are indeed empty
+    var viewsEmpty = series('views').every(function(v){ return v == null; });
+    var searchEmpty = series('search_appearance').every(function(v){ return v == null; });
+    if (viewsEmpty || searchEmpty) document.getElementById('views-note').style.display = 'block';
+  }
+
+  build();
+  // Re-render when live-data.js finishes its async refresh
+  window.addEventListener('linalysisDataReady', build);
+})();
+</script>
+</body>
+</html>
