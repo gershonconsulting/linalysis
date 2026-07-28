@@ -119,7 +119,7 @@
             var latest = null;
             (xml.match(/updatecheck[^>]*version="([\d.]+)"/) || [])[1] && (latest = RegExp.$1);
             if (!latest) { var mm = xml.match(/version="([\d.]+)"[^>]*\/>/); if (mm) latest = mm[1]; }
-            latest = latest || '0.1.7';
+            latest = (typeof LINALYSIS_LATEST_EXT_VERSION !== 'undefined') ? LINALYSIS_LATEST_EXT_VERSION : (latest || '0.2.0');
             latestEl.textContent = 'v' + latest;
             // Point at the version-stamped file — the filename itself carries the version, so the
             // browser can never hand back a stale zip.
@@ -163,8 +163,11 @@
             }
           })
           .catch(function () {
-            latestEl.textContent = 'v0.1.7';
-            dlBtn.setAttribute('href', '/linalysis-extension.zip?v=' + Date.now());
+            var latest = (typeof LINALYSIS_LATEST_EXT_VERSION !== 'undefined') ? LINALYSIS_LATEST_EXT_VERSION : '0.2.0';
+            latestEl.textContent = 'v' + latest;
+            dlBtn.setAttribute('href', '/linalysis-extension-' + latest + '.zip?cb=' + Date.now());
+            dlBtn.setAttribute('download', 'linalysis-extension-' + latest + '.zip');
+            dlBtn.textContent = '⬇ Download extension v' + latest;
             pill.textContent = '—';
           });
       })();
