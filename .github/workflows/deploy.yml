@@ -1,0 +1,19 @@
+name: Deploy site to Cloudflare Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write .assetsignore (keep non-site files out of the upload)
+        run: |
+          printf '%s\n' '.git' '.github' 'backend' 'backend-java' 'worker' 'linalysis-extension' '.crx-signing' '_deploy' 'node_modules' '*.pem' '*.crx' '*.md' '.env' '.env.*' '.gitignore' '.assetsignore' 'deploy_site.py' 'redeploy_worker.py' 'release.ps1' 'AGENTS.md' > .assetsignore
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=linalysis --branch=main --commit-dirty=true
