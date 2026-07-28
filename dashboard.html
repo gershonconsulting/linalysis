@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Linalysis — Dashboard</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <meta name="description" content="LinkedIn analytics dashboard — profile, campaign metrics, and Social Selling Index tracking." />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/common.css" />
@@ -33,9 +37,7 @@
     <div class="content">
 
       <div class="summary">
-        <div class="summary-text">
-          <strong>Tracking since</strong> Mar 30, 2021 → <strong>Mar 27, 2026</strong> · <strong>1,602 days</strong> · <strong>+11,002</strong> new connections (18,353 → 29,355)
-        </div>
+        <div class="summary-text">Tracking…</div>
         <a class="btn" href="/reports.html">View reports →</a>
       </div>
 
@@ -76,32 +78,60 @@
         </div>
       </div>
 
-      <div class="kpi-row">
-        <div class="kpi">
-          <div class="kpi-label">Connections</div>
-          <div class="kpi-value">29,355</div>
-          <div class="kpi-delta down">▼ 211 (-0.7%)</div>
-          <div class="kpi-sub">curated pruning this month</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Profile views</div>
-          <div class="kpi-value">1,418</div>
-          <div class="kpi-delta up">▲ 196 (+16.0%)</div>
-          <div class="kpi-sub">vs previous 30d</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">SSI score</div>
-          <div class="kpi-value">70</div>
-          <div class="kpi-delta up">▲ 1 pt</div>
-          <div class="kpi-sub">top 1% of industry &amp; network</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Company followers</div>
-          <div class="kpi-value">1,314</div>
-          <div class="kpi-delta up">▲ 110 (+9.1%)</div>
-          <div class="kpi-sub">Gershon Consulting · 30d</div>
-        </div>
+      <div class="kpi-row" id="live-kpi-row">
+        <div class="kpi"><div class="kpi-label">Connections</div><div class="kpi-value" data-metric="connections">—</div><div class="kpi-delta flat" data-delta="connections">—</div><div class="kpi-sub" data-sub="connections">last 30d</div></div>
+        <div class="kpi"><div class="kpi-label">Profile views</div><div class="kpi-value" data-metric="views">—</div><div class="kpi-delta flat" data-delta="views">—</div><div class="kpi-sub" data-sub="views">last 30d</div></div>
+        <div class="kpi"><div class="kpi-label">SSI score</div><div class="kpi-value" data-metric="ssi">—</div><div class="kpi-delta flat" data-delta="ssi">—</div><div class="kpi-sub" data-sub="ssi">out of 100</div></div>
+        <div class="kpi"><div class="kpi-label">Company followers</div><div class="kpi-value" data-metric="co_followers">—</div><div class="kpi-delta flat" data-delta="co_followers">—</div><div class="kpi-sub" data-sub="co_followers">last 30d</div></div>
       </div>
+      <script>
+      // Hydrate the KPI row from LINALYSIS_DATA. Runs immediately if data is present,
+      // and re-runs when live-data.js finishes its async fetch.
+      function hydrateKpiRow() {
+        var D = window.LINALYSIS_DATA;
+        if (!D || !D.dates || D.dates.length === 0) return;
+        function fmt(n) { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
+        function lastNonNull(a) { for (var i = a.length-1; i >= 0; i--) if (a[i] != null) return a[i]; return null; }
+        function priorAt(a, i) { return (a && a.length > i) ? a[a.length - 1 - i] : null; }
+        function delta(a, back) {
+          var last = lastNonNull(a); var prior = priorAt(a, back);
+          if (last == null || prior == null || prior === 0) return { txt: '—', cls: 'flat' };
+          var d = last - prior, p = Math.round((d / Math.abs(prior)) * 100);
+          return { txt: (d > 0 ? '▲ ' : (d < 0 ? '▼ ' : '— ')) + fmt(Math.abs(d)) + ' (' + (p>0?'+':'') + p + '%)', cls: d > 0 ? 'up' : (d < 0 ? 'down' : 'flat') };
+        }
+        var m = D.metrics || {};
+        var metrics = ['connections','views','ssi','co_followers'];
+        var backs = { connections: 30, views: 30, ssi: 30, co_followers: 30 };
+        metrics.forEach(function(k) {
+          var arr = m[k] || [];
+          var last = lastNonNull(arr);
+          var d = delta(arr, backs[k]);
+          var vEl = document.querySelector('[data-metric="' + k + '"]');
+          var dEl = document.querySelector('[data-delta="' + k + '"]');
+          if (vEl) vEl.textContent = last == null ? '—' : fmt(last);
+          if (dEl) { dEl.textContent = d.txt; dEl.className = 'kpi-delta ' + d.cls; }
+        });
+        // Hero banner
+        var banner = document.querySelector('.summary .summary-text');
+        if (banner) {
+          var first = D.dates[0], last = D.dates[D.dates.length - 1];
+          var conn = m.connections || [];
+          var firstConn = null, lastConn = null;
+          for (var i = 0; i < conn.length; i++) if (conn[i] != null) { firstConn = conn[i]; break; }
+          for (var j = conn.length-1; j >= 0; j--) if (conn[j] != null) { lastConn = conn[j]; break; }
+          var gained = (firstConn != null && lastConn != null) ? lastConn - firstConn : null;
+          function nice(d) { return new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); }
+          banner.innerHTML = '<strong>Tracking since</strong> ' + nice(first) + ' → <strong>' + nice(last) + '</strong> · <strong>' + D.dates.length.toLocaleString('en-US') + ' days</strong>' + (gained != null ? ' · <strong>' + (gained>=0?'+':'') + gained.toLocaleString('en-US') + '</strong> new connections (' + fmt(firstConn) + ' → ' + fmt(lastConn) + ')' : '');
+        }
+      }
+      // Wait until data.js has loaded and defined LINALYSIS_DATA before first hydration.
+      // DOMContentLoaded fires after all synchronous <script src> tags have parsed.
+      // Kick off multiple times to survive script-order and DOMContentLoaded timing quirks
+      setTimeout(hydrateKpiRow, 0);
+      setTimeout(hydrateKpiRow, 100);
+      setTimeout(hydrateKpiRow, 500);
+      window.addEventListener('linalysisDataReady', hydrateKpiRow);
+      </script>
 
       <div class="grid">
         <div class="card">
@@ -112,6 +142,7 @@
           <div class="chart-wrap">
             <canvas id="connChart"></canvas>
           </div>
+          <a href="https://www.linkedin.com/mynetwork" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — My Network ↗</a>
         </div>
         <div class="card">
           <div class="card-header">
@@ -121,6 +152,7 @@
           <div class="chart-wrap">
             <canvas id="ssiChart"></canvas>
           </div>
+          <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — LinkedIn SSI ↗</a>
         </div>
       </div>
 
@@ -133,49 +165,65 @@
           <div class="chart-wrap short">
             <canvas id="indChart"></canvas>
           </div>
+          <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — LinkedIn SSI ↗</a>
         </div>
         <div class="card">
           <div class="card-header">
             <h3>Recent activity</h3>
             <a href="/summary.html" class="muted">View all</a>
           </div>
-          <div>
-            <div class="feed-item ok">
-              <div class="feed-dot"></div>
-              <div class="feed-text">
-                <strong>SSI</strong> climbed from <strong>69 → 70</strong> — still top 1% industry &amp; network
-                <div class="feed-time">Last 30 days</div>
-              </div>
-            </div>
-            <div class="feed-item info">
-              <div class="feed-dot"></div>
-              <div class="feed-text">
-                Profile views up <strong>16%</strong> — 1,418/day vs 1,222 a month ago
-                <div class="feed-time">Last 30 days</div>
-              </div>
-            </div>
-            <div class="feed-item ok">
-              <div class="feed-dot"></div>
-              <div class="feed-text">
-                <strong>Gershon Consulting</strong> gained <strong>+110 followers</strong> (1,204 → 1,314)
-                <div class="feed-time">Last 30 days</div>
-              </div>
-            </div>
-            <div class="feed-item warn">
-              <div class="feed-dot"></div>
-              <div class="feed-text">
-                <strong>531 invitations</strong> awaiting review — queue hasn't budged in 30d
-                <div class="feed-time">Pending</div>
-              </div>
-            </div>
-            <div class="feed-item">
-              <div class="feed-dot"></div>
-              <div class="feed-text">
-                Connection pruning continues — <strong>-211</strong> net over 30d (near LinkedIn's 30K cap)
-                <div class="feed-time">Last 30 days</div>
-              </div>
-            </div>
-          </div>
+          <div id="feed"></div>
+          <script>
+          // Recent activity — computed from LINALYSIS_DATA, not hardcoded
+          function hydrateFeed() {
+            var D = window.LINALYSIS_DATA;
+            if (!D || !D.dates || D.dates.length < 2) return;
+            function fmt(n) { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
+            function firstAndLast(arr, back) {
+              var last = null, prior = null;
+              for (var i = arr.length - 1; i >= 0; i--) if (arr[i] != null) { last = arr[i]; break; }
+              var idx = Math.max(0, arr.length - 1 - back);
+              for (var j = idx; j >= 0; j--) if (arr[j] != null) { prior = arr[j]; break; }
+              return { last: last, prior: prior };
+            }
+            var items = [];
+            var m = D.metrics || {};
+            var ssiFL = firstAndLast(m.ssi || [], 30);
+            if (ssiFL.last != null && ssiFL.prior != null && ssiFL.last !== ssiFL.prior) {
+              items.push({ cls: ssiFL.last > ssiFL.prior ? 'ok' : 'warn', html: '<strong>SSI</strong> ' + (ssiFL.last > ssiFL.prior ? 'climbed' : 'dropped') + ' from <strong>' + ssiFL.prior + ' → ' + ssiFL.last + '</strong>', time: 'Last 30 days' });
+            }
+            var vFL = firstAndLast(m.views || [], 30);
+            if (vFL.last != null && vFL.prior != null && vFL.prior !== 0) {
+              var pct = Math.round(((vFL.last - vFL.prior) / vFL.prior) * 100);
+              items.push({ cls: pct >= 0 ? 'ok' : 'info', html: 'Profile views <strong>' + (pct >= 0 ? 'up ' + pct + '%' : 'down ' + Math.abs(pct) + '%') + '</strong> — ' + fmt(vFL.last) + ' vs ' + fmt(vFL.prior) + ' a month ago', time: 'Last 30 days' });
+            }
+            var cFL = firstAndLast(m.co_followers || [], 30);
+            if (cFL.last != null && cFL.prior != null && cFL.prior !== 0 && cFL.last !== cFL.prior) {
+              var d = cFL.last - cFL.prior;
+              items.push({ cls: d > 0 ? 'ok' : 'warn', html: '<strong>Company page</strong> ' + (d > 0 ? 'gained' : 'lost') + ' <strong>' + (d > 0 ? '+' : '') + fmt(d) + ' followers</strong> (' + fmt(cFL.prior) + ' → ' + fmt(cFL.last) + ')', time: 'Last 30 days' });
+            }
+            var iFL = firstAndLast(m.invitations || [], 30);
+            if (iFL.last != null) {
+              var stale = iFL.prior != null && Math.abs(iFL.last - iFL.prior) < iFL.last * 0.05;
+              items.push({ cls: 'warn', html: '<strong>' + fmt(iFL.last) + ' invitations</strong> awaiting review' + (stale ? ' — queue barely moved in 30d' : ''), time: 'Pending' });
+            }
+            var connSeries = m.connections || [];
+            var connLast = connSeries.length > 0 ? connSeries[connSeries.length - 1] : null;
+            var connPrior = connSeries.length > 30 ? connSeries[connSeries.length - 31] : null;
+            if (connLast != null && connPrior != null) {
+              var net = connLast - connPrior;
+              items.push({ cls: net >= 0 ? 'ok' : 'warn', html: 'Net connections: <strong>' + (net >= 0 ? '+' : '') + fmt(net) + '</strong> over last 30 days (now at ' + fmt(connLast) + ')', time: 'Last 30 days' });
+            }
+            document.getElementById('feed').innerHTML = items.map(function(it) {
+              return '<div class="feed-item ' + it.cls + '"><div class="feed-dot"></div><div class="feed-text">' + it.html + '<div class="feed-time">' + it.time + '</div></div></div>';
+            }).join('');
+          }
+          setTimeout(hydrateFeed, 0);
+          setTimeout(hydrateFeed, 100);
+          setTimeout(hydrateFeed, 500);
+          window.addEventListener('linalysisDataReady', hydrateFeed);
+          </script>
+          <a href="https://www.linkedin.com/analytics/profile-views/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Profile analytics ↗</a>
         </div>
       </div>
 
@@ -187,6 +235,7 @@
 <div id="toast"></div>
 
 <script src="/data.js"></script>
+<script src="/live-data.js"></script>
 <script src="/plan.js"></script>
 <script src="/stats-helpers.js"></script>
 <script src="/ai-insights.js"></script>
@@ -194,8 +243,42 @@
 <script src="/onboarding.js" defer></script>
 <script src="/nav.js" defer></script>
 <script>
+  // First-time-user guard: if no data yet, replace the whole content with a welcome/setup state
+  // so we never leak the owner's baked-in KPIs to David/Charles/anyone else.
+  (function firstTimeGuard() {
+    var D = window.LINALYSIS_DATA;
+    if (D && D.dates && D.dates.length > 0) return;  // has data → keep the existing dashboard
+    var content = document.querySelector('main .content');
+    if (!content) return;
+    var name = '';
+    try { name = (localStorage.getItem('linalysis_user_name') || '').split(' ')[0]; } catch(e) {}
+    content.innerHTML =
+      '<div style="background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:18px;padding:44px 40px;margin-bottom:24px">' +
+        '<div style="max-width:640px">' +
+          '<div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#FE1B04;margin-bottom:12px">Welcome to Linalysis' + (name ? ', ' + name : '') + '</div>' +
+          '<h2 style="font-size:32px;font-weight:800;letter-spacing:-0.01em;margin-bottom:12px">Your dashboard is empty — install the extension to start tracking.</h2>' +
+          '<p style="font-size:15px;opacity:0.8;line-height:1.55;margin-bottom:24px">Linalysis captures your LinkedIn Social Selling Index, connection growth, profile views, and company metrics once a day. Nothing gets shipped from your browser until the extension is installed and paired to your account.</p>' +
+          '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+            '<a href="/troubleshooting.html" class="btn primary" style="background:#FE1B04;color:#fff;padding:12px 22px;border-radius:10px;font-weight:700;text-decoration:none">Set up the extension →</a>' +
+            '<a href="/help.html" class="btn" style="background:rgba(255,255,255,0.1);color:#fff;padding:12px 22px;border-radius:10px;font-weight:600;text-decoration:none">Help & guides</a>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px">' +
+        '<h3 style="font-size:16px;font-weight:800;margin-bottom:8px">What you\'ll see once data starts flowing</h3>' +
+        '<ul style="font-size:14px;color:var(--text-muted);line-height:1.8;padding-left:20px;margin:0">' +
+          '<li>Social Selling Index (SSI) — overall + industry + network rank, tracked daily</li>' +
+          '<li>Net-new connections, profile views, search appearances</li>' +
+          '<li>Company page followers, visitors, post impressions</li>' +
+          '<li>Streaks, best days, milestones, weekly and monthly reports</li>' +
+        '</ul>' +
+      '</div>';
+    // Skip the rest of the page scripts that depend on LINALYSIS_DATA
+    window.__linalysisFirstTime = true;
+  })();
   // AI quick take + record strip (runs once data.js loaded)
   (function() {
+    if (window.__linalysisFirstTime) return;
     try {
       // AI quick take
       if (Plan.allows('ai_recap') && window.AI && AI.recap) {
@@ -208,14 +291,136 @@
       }
     } catch(e) { console.error('quick take', e); }
 
+    // Hero interactive chart — connections + SSI, last 24 months
+    try {
+      if (!window.Stats || !window.LINALYSIS_DATA) throw new Error('no data');
+      var dates = Stats.dates(), conn = Stats.series('connections'), ssi = Stats.series('ssi');
+      var monthly = {};
+      for (var i = 0; i < dates.length; i++) {
+        var ym = dates[i].slice(0, 7);
+        monthly[ym] = { date: dates[i], conn: conn[i], ssi: ssi[i] };
+      }
+      var keys = Object.keys(monthly).sort().slice(-24);
+      var labels = keys.map(function(k){ return new Date(k+'-01T00:00:00Z').toLocaleDateString('en-US',{month:'short',year:'2-digit'}); });
+      var connData = keys.map(function(k){ return monthly[k].conn; });
+      var ssiData  = keys.map(function(k){ return monthly[k].ssi;  });
+      var fmt = function(n){ return Number(n).toLocaleString('en-US'); };
+      var host = document.getElementById('hero-chart-wrap');
+      var readout = document.getElementById('hero-readout');
+      var heroChart;
+
+      function buildHeroChart() {
+        heroChart = new Chart(document.getElementById('hero-chart'), {
+          type: 'line',
+          data: { labels: labels, datasets: [
+            { label: 'Connections', data: connData, yAxisID: 'y',  borderColor: '#FE1B04', backgroundColor: 'rgba(254,27,4,0.08)', borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: '#FE1B04', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2, fill: true },
+            { label: 'SSI',         data: ssiData,  yAxisID: 'y1', borderColor: '#0a66c2', borderDash: [6,4], borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: '#0a66c2', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2, fill: false }
+          ]},
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 1100, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false, axis: 'x' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#1d1d1f', titleColor: '#fff', bodyColor: '#fff', padding: 11, cornerRadius: 8,
+                callbacks: {
+                  title: function(items){ return items[0].label; },
+                  label: function(c) {
+                    var prev = c.dataIndex > 0 ? c.dataset.data[c.dataIndex-1] : c.parsed.y;
+                    var d = c.parsed.y - prev;
+                    var sign = d >= 0 ? '+' : '';
+                    if (c.dataset.label === 'Connections')
+                      return ' Connections: ' + fmt(c.parsed.y) + (c.dataIndex > 0 ? '  (' + sign + fmt(d) + ')' : '');
+                    return ' SSI: ' + c.parsed.y + (c.dataIndex > 0 ? '  (' + sign + d + ' pts)' : '');
+                  }
+                }
+              }
+            },
+            onHover: function(e, active) {
+              if (active && active.length) {
+                var i = active[0].index;
+                readout.textContent = labels[i] + '  ·  ' + fmt(connData[i]) + ' conn  ·  SSI ' + ssiData[i];
+              } else readout.textContent = '';
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 8, autoSkipPadding: 14 } },
+              y: { position: 'left',  grid: { color: '#f1f1f3' }, ticks: { color: '#FE1B04', font: { size: 10 }, callback: function(v){ return (v/1000).toFixed(1) + 'k'; } } },
+              y1:{ position: 'right', grid: { display: false }, ticks: { color: '#0a66c2', font: { size: 10 } } }
+            }
+          }
+        });
+      }
+
+      var io = new IntersectionObserver(function(entries, obs) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            host.style.opacity = '1';
+            host.style.transform = 'translateY(0)';
+            if (!heroChart) buildHeroChart();
+            obs.disconnect();
+          }
+        });
+      }, { threshold: 0.15 });
+      io.observe(host);
+      setTimeout(function() {
+        if (!heroChart && host.getBoundingClientRect().top < window.innerHeight) {
+          host.style.opacity = '1';
+          host.style.transform = 'translateY(0)';
+          buildHeroChart();
+        }
+      }, 400);
+
+      var first = connData[0], last = connData[connData.length - 1];
+      var connDelta = last - first, connPct = first ? (connDelta / first * 100) : 0;
+      var bestIdx = 0, bestDelta = 0;
+      for (var j = 1; j < connData.length; j++) {
+        var dd = connData[j] - connData[j - 1];
+        if (dd > bestDelta) { bestDelta = dd; bestIdx = j; }
+      }
+      var avgDelta = Math.round(connDelta / Math.max(1, connData.length - 1));
+      var ssiD = ssiData[ssiData.length - 1] - ssiData[0];
+      var col = function(v) { return v >= 0 ? '#057642' : '#cc1016'; };
+      document.getElementById('hero-stats').innerHTML =
+        '<div style="background:var(--bg);border-radius:10px;padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Connections, latest</div><div style="font-size:20px;font-weight:800;letter-spacing:-0.01em;margin-top:2px">' + fmt(last) + '</div><div style="font-size:11px;color:' + col(connDelta) + '">' + (connDelta >= 0 ? '+' : '') + fmt(connDelta) + ' (' + (connPct >= 0 ? '+' : '') + connPct.toFixed(1) + '%)</div></div>' +
+        '<div style="background:var(--bg);border-radius:10px;padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">SSI, latest</div><div style="font-size:20px;font-weight:800;letter-spacing:-0.01em;margin-top:2px">' + ssiData[ssiData.length - 1] + '</div><div style="font-size:11px;color:' + col(ssiD) + '">' + (ssiD >= 0 ? '+' : '') + ssiD + ' pts in 24mo</div></div>' +
+        '<div style="background:var(--bg);border-radius:10px;padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Best month</div><div style="font-size:20px;font-weight:800;letter-spacing:-0.01em;margin-top:2px">+' + fmt(bestDelta) + '</div><div style="font-size:11px;color:var(--text-muted)">' + labels[bestIdx] + '</div></div>' +
+        '<div style="background:var(--bg);border-radius:10px;padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Avg / month</div><div style="font-size:20px;font-weight:800;letter-spacing:-0.01em;margin-top:2px">+' + fmt(avgDelta) + '</div><div style="font-size:11px;color:var(--text-muted)">over ' + keys.length + ' months</div></div>';
+    } catch (e) {
+      console.error('hero chart', e);
+      var h = document.getElementById('hero-chart-wrap');
+      if (h) h.style.display = 'none';
+    }
+
     // Record strip (all tiers)
     try {
       if (!window.Stats) return;
-      const fmt = n => typeof n === 'number' ? n.toLocaleString('en-US') : n;
-      const streak = Stats.currentStreak('connections');
-      const best = Stats.biggestJump('connections');
-      const bestWk = Stats.bestWeek('connections');
-      const ssiBest = Stats.bestEver('ssi').max;
-      const strip = [
-        { label: 'Current streak', value: `${streak.days} days`, sub: `no decline since ${new Date(streak.from+'T00:00:00Z').toLocaleDateString()}`, emoji: '🔥' },
-        { label: 'Best single day', value: `+${fmt(best.delta)}`, sub: `on ${new 
+      var fmt2 = function(n) { return typeof n === 'number' ? n.toLocaleString('en-US') : n; };
+      var streak = Stats.currentStreak('connections');
+      var best = Stats.biggestJump('connections');
+      var bestWk = Stats.bestWeek('connections');
+      // Stats.bestEver returns { max: {value, date}, min: {value, date} }
+      var ssiBest = Stats.bestEver('ssi');
+      var ssiPeak = ssiBest && ssiBest.max ? ssiBest.max.value : null;
+      var ssiPeakDate = ssiBest && ssiBest.max ? ssiBest.max.date : null;
+      var strip = [
+        { label: 'Current streak',  value: (streak && streak.days ? streak.days : 0) + ' days', sub: streak && streak.from ? 'no decline since ' + streak.from : '—', emoji: '🔥' },
+        { label: 'Best single day', value: '+' + fmt2(best ? best.delta : 0), sub: best && best.date ? 'on ' + best.date : '—', emoji: '⚡' },
+        { label: 'Best week ever',  value: '+' + fmt2(bestWk ? bestWk.delta : 0), sub: bestWk && bestWk.from ? bestWk.from + ' → ' + bestWk.to : '—', emoji: '🚀' },
+        { label: 'SSI high',        value: fmt2(ssiPeak), sub: ssiPeakDate ? 'reached ' + ssiPeakDate : 'peak reached', emoji: '🏆' }
+      ];
+      var host = document.getElementById('record-strip');
+      if (host) {
+        host.innerHTML = strip.map(function(s) {
+          return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px">' +
+            '<div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">' + s.label + ' ' + s.emoji + '</div>' +
+            '<div style="font-size:22px;font-weight:800;letter-spacing:-0.01em">' + s.value + '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + s.sub + '</div>' +
+          '</div>';
+        }).join('');
+      }
+    } catch(e) { console.error('record strip', e); }
+  })();
+</script>
+</body>
+</html>

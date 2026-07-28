@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — My Growth</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .g-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  @media (max-width:900px){ .g-grid { grid-template-columns:repeat(2,1fr); } }
+  .g-tile { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .g-tile .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+  .g-tile .val { font-size:28px; font-weight:800; margin-top:4px; color:#1d1d1f; letter-spacing:-.02em; line-height:1; }
+  .g-tile .desc { font-size:11px; color:var(--text-muted); margin-top:8px; line-height:1.4; }
+  .up{color:#057642;font-weight:700}.down{color:#cc1016;font-weight:700}
+  .g-two { display:grid; grid-template-columns:1.25fr 1fr; gap:16px; margin-bottom:20px; }
+  @media (max-width:900px){ .g-two { grid-template-columns:1fr; } }
+  .g-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; }
+  .g-card h3 { font-size:13px; font-weight:700; margin:0 0 2px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); }
+  .g-big { font-size:32px; font-weight:800; letter-spacing:-.02em; }
+  .g-cap { font-size:12px; color:var(--text-muted); }
+  .g-bar { position:relative; height:14px; border-radius:8px; background:#f3f3f5; margin:12px 0 8px; overflow:hidden; }
+  .g-fill { position:absolute; left:0; top:0; bottom:0; border-radius:8px; transition:width .5s; }
+  .g-cap-mark { position:absolute; left:100%; top:-3px; bottom:-3px; width:2px; background:#9ca3af; opacity:.6; }
+  .g-pill { display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .g-note { font-size:11px; color:var(--text-muted); margin-top:8px; line-height:1.5; }
+  .g-topline { display:flex; justify-content:space-between; align-items:baseline; }
+  .src .row { display:flex; align-items:center; gap:10px; margin:9px 0; font-size:12px; }
+  .src .lbl { width:170px; color:var(--text-muted); flex:0 0 auto; }
+  .src .track { flex:1; height:8px; background:#f3f3f5; border-radius:6px; overflow:hidden; }
+  .src .seg { height:100%; background:#FE1B04; border-radius:6px; }
+  .src .pct { width:48px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+  .g-banner { font-size:12px; padding:10px 12px; border-radius:10px; background:#fff5f4; color:#cc1016; border:1px solid #ffd7d3; margin-bottom:16px; }
+</style>
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="growth"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>My Growth</h1>
+  </div>
+  <div class="topbar-right"><span class="avatar" title="Olivier">O</span></div>
+</div>
+<div class="content">
+
+  <div class="page-header">
+    <h2>LinkedIn Growth</h2>
+    <p>Your network growth, outreach and visibility — captured daily by the Linalysis extension from your Connections, Sent invitations, Profile views and Search appearances pages. The weekly invitation credit and acceptance rate are computed from your daily send counts and connection growth.</p>
+  </div>
+
+  <div id="asof" class="g-cap" style="margin:-6px 0 16px"></div>
+  <div id="banner" class="g-banner" style="display:none"></div>
+
+  <div class="g-grid" id="tiles"></div>
+
+  <div class="g-two">
+    <div class="g-card">
+      <div class="g-topline">
+        <div><h3>Weekly invitation credit</h3><div class="g-big" id="creditNum">—</div></div>
+        <div class="g-cap" id="creditCap">of ~100 / week</div>
+      </div>
+      <div class="g-bar"><div class="g-fill" id="creditFill" style="width:0%"></div><div class="g-cap-mark"></div></div>
+      <div><span class="g-pill" id="creditPill">—</span></div>
+      <div class="g-note" id="creditNote"></div>
+    </div>
+    <div class="g-card">
+      <h3>Acceptance rate (7d)</h3>
+      <div class="g-big" id="acceptNum">—</div>
+      <svg id="spark" width="100%" height="48" viewBox="0 0 300 48" preserveAspectRatio="none" style="display:block;margin-top:6px"></svg>
+      <div class="g-note" id="acceptNote">New connections ÷ invitations sent this week.</div>
+    </div>
+  </div>
+
+  <div class="g-card" style="margin-bottom:20px">
+    <h3>Where you appeared <span id="wk" style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--text-muted)"></span></h3>
+    <div class="src" id="sources" style="margin-top:8px"></div>
+  </div>
+
+  <div class="g-note">Weekly credit usage is the sum of invitations sent over the last 7 days (LinkedIn's ~100/week limit is a rolling window; the pending backlog above is not weekly usage). "Great ROI" = high utilization <em>and</em> a healthy acceptance rate — maxing volume with low acceptance risks throttling.</div>
+
+</div>
+</main>
+</div>
+
+<script src="/api.js"></script>
+<script src="/plan.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+(function(){
+  const WEEKLY_CAP = 100;
+  const $ = id => document.getElementById(id);
+  const fmt = n => (n==null||isNaN(n)) ? '—' : Number(n).toLocaleString('en-US');
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  const PREVIEW = { as_of:'—', now:{
+    connections:29629, invitations:711, invitations_pages:1150, invitations_sent_24h:null, invitations_sent_7d:null,
+    profile_views:1137, profile_views_change_pct:'+22%', search_appearances:491, all_appearances:1109,
+    appearance_sources:[{label:'Search',pct:44.3},{label:'Posts',pct:34.5},{label:'Comments',pct:16.7},{label:'Network recommendations',pct:4.5}],
+    appearances_week:'Jul 14 – Jul 20' }, deltas:{vs_7d:null}, series:[] };
+
+  async function load(){
+    if(!window.LinalysisAPI){ render(PREVIEW,'preview'); return; }
+    try {
+      const summary = await LinalysisAPI.get('/api/data/summary');
+      if(summary && summary.empty){ showBanner('No LinkedIn data yet — run an extension sync, then refresh.'); render(PREVIEW,'preview'); return; }
+      let series = [];
+      try { const g = await LinalysisAPI.get('/api/data/growth?range=30'); series = g.series||[]; }
+      catch(e){ if(e && e.status===404) showBanner('Growth series endpoint not deployed yet — showing summary only. Redeploy the Worker to enable trends.'); }
+      render(Object.assign({}, summary, { series }), 'live');
+    } catch(e){
+      if(e && (e.status===401 || e.error==='network')) showBanner('Sign in to Linalysis to see your live growth data. Showing sample values.');
+      render(PREVIEW,'preview');
+    }
+  }
+
+  function weeklyUsage(d){
+    const s = (d.series||[]).filter(r=>r.invitations_sent_24h!=null);
+    if(s.length){ const l7=s.slice(-7); return { value:l7.reduce((a,r)=>a+(+r.invitations_sent_24h||0),0), source:'daily-sum', covered:l7.length }; }
+    if(d.now && d.now.invitations_sent_7d!=null) return { value:+d.now.invitations_sent_7d, source:'ext-7d', covered:null };
+    if(d.now && d.now.invitations_sent_24h!=null) return { value:+d.now.invitations_sent_24h, source:'today-floor', covered:1 };
+    return { value:null, source:'none', covered:0 };
+  }
+
+  function render(d, mode){
+    const now=d.now||{}, dv7=(d.deltas&&d.deltas.vs_7d)||null;
+    $('asof').textContent = mode==='preview' ? 'Sample data — sign in and sync to see your own.' : (d.as_of?('As of '+d.as_of):'');
+    const connDelta = dv7 && dv7.connections!=null ? dv7.connections : null;
+
+    const tiles = [
+      { k:'Connections', v:fmt(now.connections), d: connDelta!=null ? (connDelta>=0?'<span class="up">+'+fmt(connDelta)+'</span> this week':'<span class="down">'+fmt(connDelta)+'</span> this week') : '1st-degree network' },
+      { k:'Profile views (90d)', v:fmt(now.profile_views), d: now.profile_views_change_pct ? chg(now.profile_views_change_pct)+' vs prior' : 'who looked you up' },
+      { k:'Appearances', v:fmt(now.all_appearances), d: now.search_appearances!=null? fmt(now.search_appearances)+' from search' : 'search + posts + comments' },
+      { k:'Pending invites', v:fmt(now.invitations), d: now.invitations_pages!=null? '+ '+fmt(now.invitations_pages)+' pages' : 'awaiting response' },
+    ];
+    $('tiles').innerHTML = tiles.map(t=>`<div class="g-tile"><div class="lbl">${t.k}</div><div class="val">${t.v}</div><div class="desc">${t.d}</div></div>`).join('');
+
+    const wu=weeklyUsage(d), val=wu.value;
+    $('creditNum').textContent = val==null?'—':fmt(val);
+    const pct = val==null?0:Math.min(100,Math.round(val/WEEKLY_CAP*100));
+    const fill=$('creditFill'); fill.style.width=pct+'%';
+    let st = val==null?'muted':pct>=80?'ok':pct>=40?'warn':'bad';
+    const col = {ok:'#057642',warn:'#d97706',bad:'#cc1016',muted:'#9ca3af'}[st];
+    fill.style.background=col;
+    const pill=$('creditPill'); pill.textContent = val==null?'collecting':(pct+'% of weekly credit');
+    pill.style.color=col; pill.style.background = st==='ok'?'#e7f5ee':st==='warn'?'#fef3e6':st==='bad'?'#fdeaea':'#f3f3f5';
+    let label = val==null?'Collecting — needs daily syncs':pct>=80?'Near cap — strong usage':pct>=40?'Moderate usage':'Under-utilizing';
+    if(wu.source==='daily-sum' && wu.covered!=null && wu.covered<7) label += ` · ${wu.covered}/7 days logged`;
+    else if(wu.source==='today-floor') label += ' · today only (a floor — needs 7 days for the true weekly figure)';
+    else if(wu.source==='ext-7d') label += ' · from extension 7-day count';
+    $('creditNote').textContent = label;
+
+    const gained=connDelta;
+    if(gained!=null && val && val>0){
+      const rate=Math.round(gained/val*100), good=rate>=35, mid=rate>=20;
+      $('acceptNum').textContent=rate+'%'; $('acceptNum').style.color=good?'#057642':mid?'#d97706':'#cc1016';
+      $('acceptNote').innerHTML=`${fmt(gained)} new connections ÷ ${fmt(val)} sent this week. `+(good?'Healthy.':mid?'Watch it — tighten targeting.':'Low — targeting/notes need work; throttling risk.');
+    } else { $('acceptNum').textContent='—'; $('acceptNote').textContent='New connections ÷ invitations sent this week — available once ~7 days of daily syncs have logged.'; }
+
+    spark((d.series||[]).map(r=>r.connections).filter(v=>v!=null));
+
+    $('wk').textContent = now.appearances_week?('· '+now.appearances_week):'';
+    const src=Array.isArray(now.appearance_sources)?now.appearance_sources:[]; const max=src.reduce((m,s)=>Math.max(m,+s.pct||0),0)||100;
+    $('sources').innerHTML = src.length? src.map(s=>`<div class="row"><div class="lbl">${esc(s.label)}</div><div class="track"><div class="seg" style="width:${Math.round((+s.pct||0)/max*100)}%"></div></div><div class="pct">${(+s.pct||0).toFixed(1)}%</div></div>`).join('') : '<div class="g-note">No source breakdown captured yet.</div>';
+  }
+
+  function chg(s){ return `<span class="${/^-/.test(String(s))?'down':'up'}">${esc(String(s))}</span>`; }
+  function spark(vals){ const el=$('spark'); if(!vals||vals.length<2){el.innerHTML='';return;} const w=300,h=48,pad=3,min=Math.min(...vals),max=Math.max(...vals),rng=(max-min)||1;
+    const pts=vals.map((v,i)=>[pad+i*(w-2*pad)/(vals.length-1), h-pad-((v-min)/rng)*(h-2*pad)]);
+    const dp=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    el.innerHTML=`<path d="${dp} L ${pad+(w-2*pad)} ${h-pad} L ${pad} ${h-pad} Z" fill="rgba(254,27,4,.10)"/><path d="${dp}" fill="none" stroke="#FE1B04" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; }
+
+  function showBanner(msg){ const b=$('banner'); b.style.display='block'; b.textContent=msg; }
+
+  load();
+})();
+</script>
+</body>
+</html>

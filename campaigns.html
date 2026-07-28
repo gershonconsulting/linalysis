@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>Linalysis — Campaigns</title>
+<title>Linalysis — My Campaigns</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/common.css" />
 </head><body>
@@ -18,70 +22,233 @@
 </div>
 <div class="content">
 
-      <div class="page-header">
-        <h2>Campaigns</h2>
-        <p>Outreach campaigns running on LinkedIn. Connect Waalaxy / Expandi / Sales Navigator for live data — values below use demo data.</p>
-      </div>
+  <div class="page-header">
+    <h2>My Campaigns</h2>
+    <p>Outreach activity derived from the LinkedIn metrics your extension captures. No third-party tooling, no demo numbers — just what's in your data.</p>
+  </div>
 
-      <div class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Active campaigns</div><div class="kpi-value">4</div><div class="kpi-delta up">▲ 1 this month</div><div class="kpi-sub">running now</div></div>
-        <div class="kpi"><div class="kpi-label">Contacts reached</div><div class="kpi-value">1,247</div><div class="kpi-delta up">▲ 312</div><div class="kpi-sub">this month</div></div>
-        <div class="kpi"><div class="kpi-label">Accept rate</div><div class="kpi-value">28%</div><div class="kpi-delta up">▲ 3 pts</div><div class="kpi-sub">last 30 days</div></div>
-        <div class="kpi"><div class="kpi-label">Reply rate</div><div class="kpi-value">17%</div><div class="kpi-delta flat">—</div><div class="kpi-sub">last 30 days</div></div>
-      </div>
+  <div class="kpi-row" id="kpi-row"></div>
 
-      <div class="grid cols-2">
-        <div class="card"><div class="card-header"><h3>Contacts reached, last 30 days</h3><span class="muted">Daily</span></div><div class="chart-wrap"><canvas id="reach"></canvas></div></div>
-        <div class="card"><div class="card-header"><h3>Accept vs Reply rates</h3><span class="muted">Weekly</span></div><div class="chart-wrap"><canvas id="rates"></canvas></div></div>
-      </div>
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="card-header"><h3>Net-new connections per day</h3><span class="muted">Last 90 days</span></div>
+      <div class="chart-wrap"><canvas id="netnew"></canvas></div>
+      <div class="metric-insight" id="ins-netnew">Loading…</div>
+      <a href="https://www.linkedin.com/mynetwork" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — My Network ↗</a>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Pending invitation backlog</h3><span class="muted">Awaiting your review</span></div>
+      <div class="chart-wrap"><canvas id="pending"></canvas></div>
+      <div class="metric-insight" id="ins-pending">Loading…</div>
+      <a href="https://www.linkedin.com/mynetwork" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — My Network ↗</a>
+    </div>
+  </div>
 
-      <div class="section-title">Active campaigns</div>
-      <div class="grid cols-2">
-        <div class="card">
-          <div class="card-header"><h3>Q2 SaaS DACH</h3><span class="muted">Active · started Feb 14</span></div>
-          <div class="metric-sub">Target: Heads of Growth at SaaS 50-500 employees · DACH</div>
-          <div class="chart-wrap short"><canvas id="camp1"></canvas></div>
-          <div class="metric-insight">31% accept rate is above Linalysis demo benchmark (24%). 18% reply rate suggests intro message is hitting — keep running.</div>
-        </div>
-        <div class="card">
-          <div class="card-header"><h3>Fintech intros</h3><span class="muted">Active · started Mar 3</span></div>
-          <div class="metric-sub">Target: CFOs at Fintech 100-500 employees · EU + US</div>
-          <div class="chart-wrap short"><canvas id="camp2"></canvas></div>
-          <div class="metric-insight">24% accept / 14% reply — standard performance. Consider A/B testing a shorter first message.</div>
-        </div>
-        <div class="card">
-          <div class="card-header"><h3>Investor outreach</h3><span class="muted">Active · started Jan 8</span></div>
-          <div class="metric-sub">Target: Principals and partners at VC funds · global</div>
-          <div class="chart-wrap short"><canvas id="camp3"></canvas></div>
-          <div class="metric-insight">Low volume (8/wk) but very high 45% accept rate — VCs respond to warm, specific outreach.</div>
-        </div>
-        <div class="card">
-          <div class="card-header"><h3>Demo request follow-up</h3><span class="muted">Active · started Mar 20</span></div>
-          <div class="metric-sub">Target: Contacts who opened but didn\'t reply to first intro</div>
-          <div class="chart-wrap short"><canvas id="camp4"></canvas></div>
-          <div class="metric-insight">Early but promising — 22% reply on second touch. Classic re-engagement pattern.</div>
-        </div>
-      </div>
+  <div class="grid cols-2">
+    <div class="card">
+      <div class="card-header"><h3>Profile views</h3><span class="muted">Rolling 90-day count, daily snapshot</span></div>
+      <div class="chart-wrap"><canvas id="views"></canvas></div>
+      <div class="metric-insight" id="ins-views">Loading…</div>
+      <a href="https://www.linkedin.com/analytics/profile-views/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Profile analytics ↗</a>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Search appearances</h3><span class="muted">Weekly</span></div>
+      <div class="chart-wrap"><canvas id="search"></canvas></div>
+      <div class="metric-insight" id="ins-search">Loading…</div>
+      <a href="https://www.linkedin.com/analytics/search-appearances/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Search appearances ↗</a>
+    </div>
+  </div>
 
-      <div class="section-title">Funnel — last 30 days</div>
-      <div class="card">
-        <div class="chart-wrap"><canvas id="funnel"></canvas></div>
-      </div>
+  <div class="section-title">Outreach summary — last 30 days</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="data-table" id="summary-table">
+      <thead><tr><th>Metric</th><th class="num">Value</th><th class="num">Change vs prior 30d</th><th>Source</th></tr></thead>
+      <tbody id="summary-rows"></tbody>
+    </table>
+  </div>
+
+  <div id="empty-state" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:40px;text-align:center;margin-top:20px">
+    <div style="font-size:14px;color:var(--text-muted);margin-bottom:8px">📊 No data yet</div>
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:6px">Install the Linalysis extension to start capturing</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:18px">Once installed, the extension reads your LinkedIn dashboard daily and populates this view with your real outreach numbers.</p>
+    <a href="/troubleshooting" class="btn primary">Set up extension →</a>
+  </div>
 
 </div>
 </main></div>
 <div id="toast"></div>
 <script src="/api.js"></script>
+<script src="/data.js"></script>
+<script src="/live-data.js"></script>
+<script src="/stats-helpers.js"></script>
 <script src="/nav.js" defer></script>
 <script>
-function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
-const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'#f1f1f3'},ticks:{color:'#9ca3af',font:{size:10}}}}};
+function toast(m,ms){ms=ms||2200;var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(function(){t.classList.remove('show')},ms);}
 
-new Chart(document.getElementById('reach'),{type:'line',data:{labels:Array(30).fill(''),datasets:[{data:[32,28,35,41,38,45,42,38,40,44,48,51,47,44,42,45,49,52,48,44,41,47,50,53,56,52,48,44,42,45],borderColor:'#FE1B04',backgroundColor:'rgba(254,27,4,0.15)',fill:true,borderWidth:2.5,tension:0.35,pointRadius:0}]},options:chartOpts});
-new Chart(document.getElementById('rates'),{type:'line',data:{labels:['Wk1','Wk2','Wk3','Wk4'],datasets:[{label:'Accept',data:[25,26,28,28],borderColor:'#0a66c2',backgroundColor:'rgba(10,102,194,0.1)',fill:true,borderWidth:2,pointRadius:3,tension:0.3},{label:'Reply',data:[15,16,17,17],borderColor:'#FE1B04',backgroundColor:'rgba(254,27,4,0.1)',fill:true,borderWidth:2,pointRadius:3,tension:0.3}]},options:{...chartOpts,plugins:{legend:{display:true,position:'top',labels:{font:{size:11}}}}}});
-function campBar(id,accept,reply){new Chart(document.getElementById(id),{type:'bar',data:{labels:['Sent','Accepted','Replied'],datasets:[{data:[100,accept,reply],backgroundColor:['#d1d5db','#0a66c2','#FE1B04'],borderRadius:4,maxBarThickness:40}]},options:chartOpts});}
-campBar('camp1',31,18); campBar('camp2',24,14); campBar('camp3',45,28); campBar('camp4',35,22);
-new Chart(document.getElementById('funnel'),{type:'bar',data:{labels:['Invites sent','Accepted','Replied','Booked meeting'],datasets:[{data:[1247,349,212,38],backgroundColor:['#d1d5db','#0a66c2','#FE1B04','#2ca02c'],borderRadius:6,maxBarThickness:60}]},options:{...chartOpts,indexAxis:'y'}});
+(function(){
+  var D = window.LINALYSIS_DATA;
+  if (!D || !D.dates || D.dates.length === 0) {
+    document.getElementById('empty-state').style.display = 'block';
+    return;
+  }
 
+  // Helper: get metric series with null-safe defaults
+  function series(key) {
+    var arr = (D.metrics && D.metrics[key]) || [];
+    return arr.slice();
+  }
+  function lastN(arr, n) { return arr.slice(Math.max(0, arr.length - n)); }
+  function lastNonNull(arr) { for (var i = arr.length - 1; i >= 0; i--) { if (arr[i] != null) return arr[i]; } return null; }
+  function deltaSeries(arr) {
+    var out = [];
+    for (var i = 1; i < arr.length; i++) {
+      if (arr[i] == null || arr[i-1] == null) { out.push(null); continue; }
+      out.push(arr[i] - arr[i-1]);
+    }
+    return out;
+  }
+  function sumSafe(arr) { var s = 0; for (var i = 0; i < arr.length; i++) if (arr[i] != null) s += arr[i]; return s; }
+  function avgSafe(arr) { var s = 0, n = 0; for (var i = 0; i < arr.length; i++) if (arr[i] != null) { s += arr[i]; n++; } return n ? s/n : null; }
+  function fmt(n, d) { if (n == null) return '—'; if (d === undefined) d = 0; return Number(n).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}); }
+  function pct(a, b) { if (b == null || b === 0) return null; return Math.round(((a - b) / Math.abs(b)) * 100); }
+
+  var dates = D.dates;
+  var conn = series('connections');
+  var pviews = series('views');
+  var sapp = series('search_appearance');
+  var pend = series('invitations');
+
+  // ── KPIs ─────────────────────────────────────────────────────────
+  var connDelta = deltaSeries(conn);
+  // Last 30 days of date range
+  var n30 = 30;
+  var connDeltaLast30 = lastN(connDelta, n30);
+  var connDeltaPrior30 = connDelta.slice(Math.max(0, connDelta.length - 60), Math.max(0, connDelta.length - 30));
+  var newConn30 = sumSafe(connDeltaLast30);
+  var newConnPrior = sumSafe(connDeltaPrior30);
+
+  var pviewsLast = lastNonNull(pviews);
+  var pviewsPrior = pviews.length >= 31 ? pviews[pviews.length - 31] : null;
+
+  var sappLast = lastNonNull(sapp);
+  var sappPrior = sapp.length >= 8 ? sapp[sapp.length - 8] : null;  // search appearances are weekly; ~7 captures back
+
+  var pendLast = lastNonNull(pend);
+  var pendPrior = pend.length >= 31 ? pend[pend.length - 31] : null;
+
+  function renderKpi(label, value, deltaTxt, deltaCls, sub) {
+    return '<div class="kpi"><div class="kpi-label">'+label+'</div>' +
+           '<div class="kpi-value">'+value+'</div>' +
+           '<div class="kpi-delta '+deltaCls+'">'+deltaTxt+'</div>' +
+           '<div class="kpi-sub">'+sub+'</div></div>';
+  }
+  function deltaPair(curr, prev, suffix) {
+    suffix = suffix || '';
+    if (prev == null || prev === 0) return { txt: '—', cls: 'flat' };
+    var diff = curr - prev;
+    var p = pct(curr, prev);
+    var arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '—');
+    var cls = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'flat');
+    return { txt: arrow + ' ' + fmt(Math.abs(diff)) + suffix + ' (' + (p > 0 ? '+' : '') + p + '%)', cls: cls };
+  }
+
+  var k1 = deltaPair(newConn30, newConnPrior);
+  var k2 = pviewsLast != null && pviewsPrior != null ? deltaPair(pviewsLast, pviewsPrior) : { txt: '—', cls: 'flat' };
+  var k3 = sappLast != null && sappPrior != null ? deltaPair(sappLast, sappPrior) : { txt: '—', cls: 'flat' };
+  var k4 = pendLast != null && pendPrior != null ? deltaPair(pendLast, pendPrior) : { txt: '—', cls: 'flat' };
+
+  document.getElementById('kpi-row').innerHTML =
+    renderKpi('Net new connections', fmt(newConn30), k1.txt, k1.cls, 'last 30 days') +
+    renderKpi('Profile views', pviewsLast != null ? fmt(pviewsLast) : '—', k2.txt, k2.cls, 'rolling 90-day count') +
+    renderKpi('Search appearances', sappLast != null ? fmt(sappLast) : '—', k3.txt, k3.cls, 'last weekly snapshot') +
+    renderKpi('Pending invitations', pendLast != null ? fmt(pendLast) : '—', k4.txt, k4.cls, 'awaiting review');
+
+  var chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { intersect: false, mode: 'index' } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 8 } },
+      y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+    }
+  };
+  function shortDate(d) { return d ? d.slice(5) : ''; }
+
+  var sliceN = 90;
+  var datesLast = lastN(dates, sliceN + 1).slice(1);
+  var connDeltaLast = lastN(connDelta, sliceN);
+  new Chart(document.getElementById('netnew'), {
+    type: 'bar',
+    data: { labels: datesLast.map(shortDate), datasets: [{ data: connDeltaLast, backgroundColor: '#FE1B04', borderRadius: 3 }] },
+    options: chartOpts
+  });
+  var avgNetNew = avgSafe(connDeltaLast);
+  document.getElementById('ins-netnew').textContent =
+    avgNetNew != null
+      ? 'Average ' + fmt(avgNetNew, 1) + ' net new connections per captured day over the last 90 days. Spikes typically follow active outreach weeks.'
+      : 'Not enough captures to compute a daily average.';
+
+  var pendLastN = lastN(pend, sliceN);
+  var pendDates = lastN(dates, sliceN);
+  new Chart(document.getElementById('pending'), {
+    type: 'line',
+    data: { labels: pendDates.map(shortDate), datasets: [{ data: pendLastN, borderColor: '#0a66c2', backgroundColor: 'rgba(10,102,194,0.1)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true }] },
+    options: chartOpts
+  });
+  var pendNonNull = pendLastN.filter(function(v){return v!=null});
+  var pendMin = pendNonNull.length ? Math.min.apply(null, pendNonNull) : null;
+  var pendMax = pendNonNull.length ? Math.max.apply(null, pendNonNull) : null;
+  document.getElementById('ins-pending').textContent =
+    pendLast != null
+      ? pendLast + ' pending invitations right now. Last 90 days ranged from ' + fmt(pendMin) + ' to ' + fmt(pendMax) + '.'
+      : 'No invitation backlog data captured recently.';
+
+  var viewsLastN = lastN(pviews, sliceN);
+  var viewsDates = lastN(dates, sliceN);
+  new Chart(document.getElementById('views'), {
+    type: 'line',
+    data: { labels: viewsDates.map(shortDate), datasets: [{ data: viewsLastN, borderColor: '#FE1B04', backgroundColor: 'rgba(254,27,4,0.12)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true }] },
+    options: chartOpts
+  });
+  var viewsAvg = avgSafe(viewsLastN);
+  document.getElementById('ins-views').textContent =
+    viewsAvg != null
+      ? 'Average rolling-90 profile views over the captured window: ' + fmt(viewsAvg) + '.'
+      : 'No profile-view data captured recently.';
+
+  var sappLastN = lastN(sapp, sliceN);
+  var sappDates = lastN(dates, sliceN);
+  new Chart(document.getElementById('search'), {
+    type: 'line',
+    data: { labels: sappDates.map(shortDate), datasets: [{ data: sappLastN, borderColor: '#7a48a8', backgroundColor: 'rgba(122,72,168,0.12)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true }] },
+    options: chartOpts
+  });
+  var sappAvg = avgSafe(sappLastN);
+  document.getElementById('ins-search').textContent =
+    sappAvg != null
+      ? 'Average weekly search appearances over the last 90 days: ' + fmt(sappAvg) + '.'
+      : 'No search-appearance data captured recently.';
+
+  function row(label, currVal, prevVal, source) {
+    var deltaCell = '—';
+    if (currVal != null && prevVal != null && prevVal !== 0) {
+      var diff = currVal - prevVal;
+      var p = pct(currVal, prevVal);
+      var color = diff > 0 ? '#16a34a' : (diff < 0 ? '#cc1016' : 'var(--text-muted)');
+      var arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '—');
+      deltaCell = '<span style="color:'+color+'">' + arrow + ' ' + fmt(Math.abs(diff)) + ' (' + (p>0?'+':'') + p + '%)</span>';
+    }
+    return '<tr>' +
+      '<td><strong>'+label+'</strong></td>' +
+      '<td class="num">'+(currVal != null ? fmt(currVal) : '—')+'</td>' +
+      '<td class="num">'+deltaCell+'</td>' +
+      '<td style="color:var(--text-muted);font-size:12px">'+source+'</td>' +
+      '</tr>';
+  }
+  document.getElementById('summary-rows').innerHTML =
+    row('Net new connections (30d)', newConn30, newConnPrior, 'CSV: Connections Δ over period') +
+    row('Profile views (rolling 90d)', pviewsLast, pviewsPrior, 'CSV: Views') +
+    row('Search appearances (weekly)', sappLast, sappPrior, 'CSV: Search Appearance') +
+    row('Pending invitations', pendLast, pendPrior, 'CSV: Invitations');
+})();
 </script>
 </body></html>

@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Linalysis — Admin</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="stylesheet" href="/common.css" />
 <style>
   .admin-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
@@ -51,14 +55,41 @@
       <div id="lockwall" class="locked-wall" style="display:none">
         <div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#FE1B04;margin-bottom:14px">🔒 Admin only</div>
         <h2 style="font-size:28px;font-weight:800;margin-bottom:8px">This area is restricted</h2>
-        <p style="opacity:0.8;font-size:14px">You need to be on the admin allowlist to view this page.</p>
-        <div style="margin-top:20px"><a href="/dashboard.html" class="btn primary">← Back to dashboard</a></div>
+        <p style="opacity:0.8;font-size:14px">Admin access is limited to authorized LinkedIn-authenticated accounts.</p>
+        <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="https://api.linalysis.net/api/auth/linkedin/start?return_to=/admin.html" class="btn primary">Sign in with LinkedIn</a>
+          <a href="/dashboard.html" class="btn">← Back to dashboard</a>
+        </div>
       </div>
 
       <div id="admin-ui" style="display:none">
         <div class="page-header">
           <h2>Customer admin</h2>
           <p>Manage every account on Linalysis. Click <strong>View as user</strong> to drop into their dashboard exactly as they see it.</p>
+        </div>
+
+        <!-- Daily SSI harvest summary -->
+        <div id="harvests" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Daily SSI harvest (09:00 UTC)</div>
+              <div style="font-size:15px;font-weight:800" id="harvest-headline">Loading…</div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)" id="harvest-meta"></div>
+          </div>
+          <div id="harvest-body" style="font-size:13px"></div>
+        </div>
+
+        <!-- Daily data-quality audit summary -->
+        <div id="audits" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Daily data-quality audit</div>
+              <div style="font-size:15px;font-weight:800" id="audit-headline">Loading…</div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)" id="audit-meta"></div>
+          </div>
+          <div id="audit-body" style="font-size:13px"></div>
         </div>
 
         <div class="admin-strip" id="strip"></div>
@@ -74,6 +105,7 @@
               <th onclick="sortBy('created_at')">Signed up</th>
               <th onclick="sortBy('last_login_at')">Last login</th>
               <th class="num" onclick="sortBy('stats_days')">Stats days</th>
+              <th onclick="sortBy('ext_version')">Extension</th>
               <th>LinkedIn</th>
               <th>Action</th>
             </tr></thead>
@@ -92,20 +124,160 @@
 function toast(m,ms){ms=ms||2500;var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(function(){t.classList.remove('show')},ms);}
 var STATE = { users: [], total: 0, paid: 0, linkedin: 0, sortKey: 'created_at', sortDir: -1 };
 
-LinalysisAPI.get('/api/admin/users').then(function(d){
-  STATE.users = d.users || [];
-  STATE.total = d.total || 0;
-  STATE.paid  = d.paid  || 0;
-  STATE.linkedin = d.linkedin_oauth || 0;
-  document.getElementById('admin-ui').style.display = 'block';
-  renderStrip();
-  render();
-}).catch(function(err){
-  document.getElementById('lockwall').style.display = 'block';
-  if (err && err.status === 401) {
-    document.getElementById('lockwall').querySelector('p').textContent = 'Sign in first.';
-  }
-});
+function loadUsers(isRefresh){
+  return LinalysisAPI.get('/api/admin/users').then(function(d){
+    STATE.users = d.users || [];
+    STATE.total = d.total || 0;
+    STATE.paid  = d.paid  || 0;
+    STATE.linkedin = d.linkedin_oauth || 0;
+    document.getElementById('admin-ui').style.display = 'block';
+    renderStrip();
+    render();
+    if (!isRefresh) { loadAudit(); loadHarvest(); }
+  }).catch(function(err){
+    if (isRefresh) return; // don't lockwall on a background refresh
+    document.getElementById('lockwall').style.display = 'block';
+    var p = document.getElementById('lockwall').querySelector('p');
+    if (err && err.status === 401) {
+      p.textContent = 'Sign in with LinkedIn to continue.';
+    } else if (err && (err.error === 'linkedin_required' || (err.body && err.body.error === 'linkedin_required'))) {
+      p.textContent = 'Admin access requires signing in via LinkedIn. Password sign-in is not permitted.';
+    } else if (err && err.status === 403) {
+      p.textContent = 'Your LinkedIn account is not on the admin allowlist.';
+    }
+  });
+}
+loadUsers(false);
+
+function loadAudit(){
+  var headline = document.getElementById('audit-headline');
+  var meta = document.getElementById('audit-meta');
+  var body = document.getElementById('audit-body');
+  LinalysisAPI.get('/api/admin/audit/latest').then(function(d){
+    if (d.no_audit_yet || !d.audit) {
+      headline.textContent = 'No audit yet';
+      meta.innerHTML = '<button class="btn primary" onclick="runAuditNow(this)" style="font-size:12px;padding:6px 14px">Run audit now</button>';
+      body.innerHTML = '<p style="color:var(--text-muted)">The daily audit runs automatically at 8pm UTC. Trigger one manually to test.</p>';
+      return;
+    }
+    var a = d.audit;
+    var when = new Date(a.run_at || Date.now()).toLocaleString();
+    var totalUsers = a.users_total || 0;
+    var totalIssues = (a.findings || []).length;
+    if (totalIssues === 0) {
+      headline.innerHTML = '<span style="color:#16a34a">✓ All ' + totalUsers + ' users have complete fresh data</span>';
+    } else {
+      headline.innerHTML = '<span style="color:#d97706">⚠ ' + totalIssues + ' of ' + totalUsers + ' users have data gaps</span>';
+    }
+    var deliveryNote = '';
+    if (d.delivery) {
+      if (d.delivery.sent) deliveryNote = ' · email sent ✓';
+      else if (d.delivery.reason) deliveryNote = ' · email skipped (' + d.delivery.reason + ')';
+      else deliveryNote = ' · email status unknown';
+    }
+    meta.innerHTML = 'Last run: ' + when + deliveryNote +
+      ' &nbsp;·&nbsp; <button class="btn" onclick="runAuditNow(this)" style="font-size:11px;padding:4px 10px">Run again</button>';
+    if (totalIssues === 0) {
+      body.innerHTML = '<p style="color:var(--text-muted)">All ' + totalUsers + ' users have complete data across all 13 LinkedIn fields, captured within the last day. Nothing to fix.</p>';
+    } else {
+      var rows = (a.findings || []).map(function(f){
+        if (f.status === 'no_data') {
+          return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px"><strong>'+f.email+'</strong></td><td colspan="3" style="padding:6px 8px;color:#cc1016">No data on file</td></tr>';
+        }
+        if (f.status === 'unreadable' || f.status === 'error') {
+          return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px"><strong>'+f.email+'</strong></td><td colspan="3" style="padding:6px 8px;color:#cc1016">'+(f.status==='error' ? 'Audit error: '+(f.message||'') : 'Latest row unreadable')+'</td></tr>';
+        }
+        var miss = (f.missing || []).join(', ') || '—';
+        var zero = (f.zero || []).join(', ') || '—';
+        var lastDate = f.last_date || 'never';
+        var stale = (f.days_old != null && f.days_old > 1) ? ' <span style="color:#cc1016;font-weight:600">+'+f.days_old+'d stale</span>' : '';
+        return '<tr style="border-bottom:1px solid var(--border)">' +
+          '<td style="padding:6px 8px"><strong>'+(f.email||'?')+'</strong></td>' +
+          '<td style="padding:6px 8px;font-size:12px">'+lastDate+stale+'</td>' +
+          '<td style="padding:6px 8px;color:#cc1016">'+miss+'</td>' +
+          '<td style="padding:6px 8px;color:#b76b00">'+zero+'</td>' +
+          '</tr>';
+      }).join('');
+      body.innerHTML =
+        '<table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:8px">' +
+          '<thead><tr style="border-bottom:2px solid var(--border)">' +
+            '<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase">User</th>' +
+            '<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase">Last capture</th>' +
+            '<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase">Missing fields</th>' +
+            '<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase">Zero fields</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<p style="margin-top:12px;font-size:12px;color:var(--text-muted)">Most likely cause when fields go missing: LinkedIn moved a DOM element. Update the extension selector for the affected metric.</p>';
+    }
+  }).catch(function(e){
+    headline.textContent = 'Audit unavailable';
+    meta.textContent = '';
+    body.innerHTML = '<p style="color:var(--text-muted)">Could not load audit: ' + ((e && e.error) || 'unknown error') + '</p>';
+  });
+}
+
+function runAuditNow(btn){
+  if (btn) { btn.disabled = true; btn.textContent = 'Running…'; }
+  LinalysisAPI.post('/api/admin/audit/run-now', {}).then(function(){
+    toast('Audit complete');
+    loadAudit();
+  }).catch(function(e){
+    toast('Audit failed: ' + ((e && e.error) || 'unknown'));
+    if (btn) { btn.disabled = false; btn.textContent = 'Run audit now'; }
+  });
+}
+
+function loadHarvest(){
+  var headline = document.getElementById('harvest-headline');
+  var meta = document.getElementById('harvest-meta');
+  var body = document.getElementById('harvest-body');
+  LinalysisAPI.get('/api/admin/harvest/latest').then(function(d){
+    if (d.no_harvest_yet || !d.summary) {
+      headline.textContent = 'No harvest yet';
+      meta.innerHTML = '<button class="btn primary" onclick="runHarvestNow(this)" style="font-size:12px;padding:6px 14px">Run harvest now</button>';
+      body.innerHTML = '<p style="color:var(--text-muted)">Daily server-side SSI scrape runs at 09:00 UTC. Uses each user\'s saved li_at cookie to fetch linkedin.com/sales/ssi.</p>';
+      return;
+    }
+    var s = d.summary;
+    var when = new Date(s.run_at).toLocaleString();
+    if (s.fail_count === 0 && s.ok_count > 0) {
+      headline.innerHTML = '<span style="color:#16a34a">✓ Harvested ' + s.ok_count + ' of ' + s.users_with_cookie + ' users cleanly</span>';
+    } else if (s.fail_count > 0) {
+      headline.innerHTML = '<span style="color:#d97706">⚠ ' + s.fail_count + ' of ' + s.users_with_cookie + ' harvests failed</span>';
+    } else {
+      headline.innerHTML = '<span style="color:var(--text-muted)">No users have saved a cookie yet</span>';
+    }
+    meta.innerHTML = 'Last run: ' + when + ' &nbsp;·&nbsp; <button class="btn" onclick="runHarvestNow(this)" style="font-size:11px;padding:4px 10px">Run again</button>';
+    var rows = (s.results || []).map(function(r){
+      if (r.skipped) {
+        return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px"><strong>' + r.email + '</strong></td><td style="padding:6px 8px;color:var(--text-muted)">no cookie saved</td></tr>';
+      }
+      var color = r.ok ? '#16a34a' : '#cc1016';
+      var text = r.ok ? '✓ harvested' : ('✗ ' + (r.error || 'failed'));
+      return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px"><strong>' + r.email + '</strong></td><td style="padding:6px 8px;color:' + color + '">' + text + '</td></tr>';
+    }).join('');
+    body.innerHTML =
+      '<table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:8px">' +
+        '<thead><tr style="border-bottom:2px solid var(--border)">' +
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase">User</th>' +
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase">Result</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }).catch(function(e){
+    headline.textContent = 'Harvest unavailable';
+    meta.textContent = '';
+    body.innerHTML = '<p style="color:var(--text-muted)">Could not load harvest: ' + ((e && e.error) || 'unknown error') + '</p>';
+  });
+}
+
+function runHarvestNow(btn){
+  if (btn) { btn.disabled = true; btn.textContent = 'Harvesting… (may take 30s)'; }
+  LinalysisAPI.post('/api/admin/harvest/run-now', {}).then(function(){
+    toast('Harvest complete');
+    loadHarvest();
+  }).catch(function(e){
+    toast('Harvest failed: ' + ((e && e.error) || 'unknown'));
+    if (btn) { btn.disabled = false; btn.textContent = 'Run harvest now'; }
+  });
+}
 
 function renderStrip(){
   document.getElementById('strip').innerHTML = [
@@ -114,6 +286,25 @@ function renderStrip(){
     {l:'LinkedIn OAuth',  v: STATE.linkedin},
     {l:'Free / Trial',    v: STATE.total - STATE.paid},
   ].map(function(s){return '<div class="admin-stat"><div class="l">'+s.l+'</div><div class="v">'+s.v+'</div></div>'}).join('');
+}
+
+function extCell(u){
+  var latest = (typeof LINALYSIS_LATEST_EXT_VERSION !== "undefined") ? LINALYSIS_LATEST_EXT_VERSION : null;
+  var v = u.ext_version;
+  var seen = u.ext_last_seen ? new Date(u.ext_last_seen) : null;
+  if (!v) {
+    return '<span style="font-size:11px;color:#cc1016;font-weight:600" title="Server has never received a version check-in from this extension">never reported</span>';
+  }
+  function cmp(a,b){var A=String(a).split(".").map(Number),B=String(b).split(".").map(Number);for(var i=0;i<Math.max(A.length,B.length);i++){var x=A[i]||0,y=B[i]||0;if(x<y)return -1;if(x>y)return 1;}return 0;}
+  var current = latest ? cmp(v, latest) >= 0 : true;
+  var mins = seen ? Math.round((Date.now()-seen.getTime())/60000) : null;
+  var ago = mins==null ? "" : (mins<60 ? mins+"m ago" : (mins<1440 ? Math.round(mins/60)+"h ago" : Math.round(mins/1440)+"d ago"));
+  var stale = mins != null && mins > 3*24*60;
+  var color = !current ? "#d97706" : (stale ? "#6b7280" : "#16a34a");
+  var label = !current ? ("v"+v+" (old)") : ("v"+v);
+  var titleTxt = "Last seen "+ago+(current?"":" — latest is v"+latest);
+  return '<span style="font-size:11px;font-weight:700;color:'+color+'" title="'+titleTxt+'">'+label+'</span>'+
+         (ago?'<div style="font-size:10px;color:var(--text-muted)">'+ago+'</div>':'');
 }
 
 function sortBy(key){
@@ -149,10 +340,73 @@ function render(){
       '<td>'+signed+'</td>' +
       '<td>'+lastLogin+'</td>' +
       '<td class="num">'+u.stats_days+'</td>' +
+      '<td>'+extCell(u)+'</td>' +
       '<td>'+li+'</td>' +
-      '<td><button class="impersonate-btn" onclick="impersonate(\''+u.email.replace(/\'/g,"\\'")+'\')">View as user →</button></td>' +
+      '<td>' +
+        '<button class="impersonate-btn" onclick="impersonate(\''+u.email.replace(/\'/g,"\\'")+'\')" style="margin-right:6px">View as user →</button>' +
+        '<button class="impersonate-btn" style="background:#6b7280" onclick="triggerSync(\''+u.email.replace(/\'/g,"\\'")+'\', this)">⟳ Sync now</button>' +
+      '</td>' +
     '</tr>';
-  }).join('') || '<tr><td colspan="8" style="padding:30px;text-align:center;color:var(--text-muted)">No accounts match.</td></tr>';
+  }).join('') || '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text-muted)">No accounts match.</td></tr>';
+}
+
+var SYNC_POLLERS = {};
+
+function setSyncBtn(btn, text, bg, title) {
+  btn.textContent = text;
+  btn.style.background = bg;
+  if (title) btn.title = title; else btn.removeAttribute('title');
+}
+
+function triggerSync(email, btn) {
+  var orig = '⟳ Sync now';
+  // Clear any prior poller for this row
+  if (SYNC_POLLERS[email]) { clearInterval(SYNC_POLLERS[email]); delete SYNC_POLLERS[email]; }
+  btn.disabled = true;
+  setSyncBtn(btn, 'Queuing…', '#6b7280');
+  LinalysisAPI.post('/api/admin/user/trigger-sync', { email: email }).then(function(r) {
+    setSyncBtn(btn, '⏳ Queued', '#d97706', 'Waiting for extension to pick up (polls every 5 min; Chrome must be open)');
+    toast('Sync queued for ' + email + '. Waiting for their extension…');
+    // Poll the real status every 4s for up to ~6 minutes.
+    var started = Date.now();
+    var MAX_MS = 6 * 60 * 1000;
+    SYNC_POLLERS[email] = setInterval(function() {
+      if (Date.now() - started > MAX_MS) {
+        clearInterval(SYNC_POLLERS[email]); delete SYNC_POLLERS[email];
+        setSyncBtn(btn, '⚠ No response', '#cc1016', 'Extension never picked up the request. Is their Chrome open and the extension installed?');
+        setTimeout(function() { btn.disabled = false; setSyncBtn(btn, orig, '#6b7280'); }, 8000);
+        return;
+      }
+      LinalysisAPI.get('/api/admin/user/sync-status?email=' + encodeURIComponent(email)).then(function(s) {
+        var st = s && s.status;
+        if (!st) return;
+        if (st.state === 'running') {
+          setSyncBtn(btn, '⟳ Syncing…', '#0a66c2', st.message || 'Extension is scraping LinkedIn');
+        } else if (st.state === 'done') {
+          clearInterval(SYNC_POLLERS[email]); delete SYNC_POLLERS[email];
+          setSyncBtn(btn, '✓ Done', '#16a34a', st.message || 'Captured');
+          toast(email + ': ' + (st.message || 'Sync complete') + (st.ext_version ? ' (v' + st.ext_version + ')' : ''));
+          // Keep the ✓ Done indicator visible; stats refresh on next page load.
+          setTimeout(function() { btn.disabled = false; setSyncBtn(btn, orig, '#6b7280'); }, 15000);
+        } else if (st.state === 'error') {
+          clearInterval(SYNC_POLLERS[email]); delete SYNC_POLLERS[email];
+          setSyncBtn(btn, '✗ Error', '#cc1016', st.message || 'Sync failed');
+          var detail = st.message || 'Sync failed';
+          if (st.diag) {
+            detail += '\n\nDiagnostic: signed-in=' + (st.diag.has_signin ? 'NO' : 'yes') +
+                      ', page had SSI sections=' + (st.diag.has_establish ? 'yes' : 'NO') +
+                      ', text length=' + (st.diag.text_len != null ? st.diag.text_len : '?');
+          }
+          toast(email + ' — ' + detail, 8000);
+          setTimeout(function() { btn.disabled = false; setSyncBtn(btn, orig, '#6b7280'); }, 12000);
+        }
+      }).catch(function(){});
+    }, 4000);
+  }).catch(function(e) {
+    setSyncBtn(btn, '✗ Failed', '#cc1016');
+    toast('Queue failed: ' + ((e && e.error) || 'unknown'));
+    setTimeout(function() { btn.disabled = false; setSyncBtn(btn, orig, '#6b7280'); }, 4000);
+  });
 }
 
 function impersonate(email){

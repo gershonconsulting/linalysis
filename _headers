@@ -23,6 +23,18 @@
   Content-Type: text/html; charset=utf-8
 /troubleshooting
   Content-Type: text/html; charset=utf-8
+/my-ssi
+  Content-Type: text/html; charset=utf-8
+
+# Extension downloads must never be cached — always serve the freshest build.
+/linalysis-extension.zip
+  Cache-Control: no-store, max-age=0
+/linalysis-extension-*.zip
+  Cache-Control: no-store, max-age=0
+/extension/updates.xml
+  Cache-Control: no-store, max-age=0
+/extension/linalysis.crx
+  Cache-Control: no-store, max-age=0
 /messaging
   Content-Type: text/html; charset=utf-8
 /emailing

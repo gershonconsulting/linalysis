@@ -64,4 +64,52 @@
     reportsList: ()             => request('/api/reports/list'),
     reportsNext: ()             => request('/api/reports/next'),
   };
+
+  // ── Sync current-user identity into localStorage.
+  // data.js gates its dataset on localStorage.linalysis_user_email — if a fresh
+  // visitor's cached identity is stale (or empty), we reload the page once so
+  // data.js re-reads with the correct email. This prevents new users from ever
+  // seeing another user's baked-in dataset.
+  (function syncIdentity() {
+    // Skip on auth pages so the OAuth flow isn't interrupted
+    var path = location.pathname.replace(/\.html$/, '');
+    if (['/login', '/signup', '/forgot-password', '/'].indexOf(path) >= 0) return;
+
+    request('/api/auth/me').then(function(resp) {
+      // API returns { user: { email, full_name, ... } }
+      var user = (resp && resp.user) ? resp.user : resp;
+      var email = (user && user.email) ? user.email.toLowerCase() : '';
+      var cached = '';
+      try { cached = (localStorage.getItem('linalysis_user_email') || '').toLowerCase(); } catch(e) {}
+      if (email) {
+        try { localStorage.setItem('linalysis_user_email', email); } catch(e) {}
+        try { localStorage.setItem('linalysis_user_name', user.full_name || ''); } catch(e) {}
+        // If cache was wrong, reload so data.js re-evaluates against the correct owner
+        if (cached !== email && !location.search.includes('_synced=1')) {
+          var sep = location.search ? '&' : '?';
+          location.replace(location.pathname + location.search + sep + '_synced=1' + location.hash);
+        }
+      } else {
+        // Not signed in — clear cache
+        try { localStorage.removeItem('linalysis_user_email'); } catch(e) {}
+        try { localStorage.removeItem('linalysis_user_name'); } catch(e) {}
+        if (cached && !location.search.includes('_synced=1')) {
+          var sep2 = location.search ? '&' : '?';
+          location.replace(location.pathname + location.search + sep2 + '_synced=1' + location.hash);
+        }
+      }
+    }).catch(function() {
+      // If /auth/me errors out (401 etc.), clear the cached identity so
+      // pages don't leak the owner's dataset to a signed-out visitor.
+      try {
+        if (localStorage.getItem('linalysis_user_email')) {
+          localStorage.removeItem('linalysis_user_email');
+          if (!location.search.includes('_synced=1')) {
+            var sep3 = location.search ? '&' : '?';
+            location.replace(location.pathname + location.search + sep3 + '_synced=1' + location.hash);
+          }
+        }
+      } catch(e) {}
+    });
+  })();
 })();

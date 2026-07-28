@@ -4,7 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Linalysis — Milestones & Streaks</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="stylesheet" href="/common.css" />
 <style>
   .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
@@ -50,9 +53,25 @@
 
 <div class="content">
   <div class="page-header">
-    <h2>5 years. 1,600+ days tracked.</h2>
+    <h2 id="hero-title">Your milestones</h2>
     <p>Every milestone you've crossed, every streak you're on, every record you hold. Share-worthy moments from your LinkedIn journey.</p>
   </div>
+  <script>
+  // Fill the hero title from real capture counts once data.js has loaded.
+  (function() {
+    var d = window.LINALYSIS_DATA;
+    var days = d && d.dates ? d.dates.length : 0;
+    if (days === 0) return; // first-time-guard.js replaces the whole content anyway
+    var years = Math.floor(days / 365);
+    var el = document.getElementById('hero-title');
+    if (!el) return;
+    if (years >= 1) {
+      el.textContent = years + ' year' + (years === 1 ? '' : 's') + '. ' + days.toLocaleString() + ' days tracked.';
+    } else {
+      el.textContent = days.toLocaleString() + ' days tracked and counting.';
+    }
+  })();
+  </script>
 
   <div class="stat-strip" id="stats"></div>
 
@@ -81,6 +100,8 @@
 
 <div id="toast"></div>
 <script src="/data.js"></script>
+<script src="/live-data.js"></script>
+<script src="/first-time-guard.js"></script>
 <script src="/plan.js"></script>
 <script src="/stats-helpers.js"></script>
 <script src="/api.js"></script>

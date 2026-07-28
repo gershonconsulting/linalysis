@@ -1,12 +1,56 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '__BUILD__';
+const LINALYSIS_BUILD = '2026-07-28.1914-live';
+const LINALYSIS_LATEST_EXT_VERSION = '0.2.0'; // bump this whenever a new extension zip ships
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
+
+// ── Extension update banner ────────────────────────────────────────
+// The extension's content-pair.js sets data-linalysis-ext-version on <html>.
+// During the testing phase the extension is installed via "Load unpacked", which does NOT
+// auto-update. So when a newer version exists we show one honest banner: download the new version
+// from My Account and reload it. No false "Chrome will update automatically" promise — that only
+// becomes true once we're on the Chrome Web Store.
+(function extUpdateBanner() {
+  function cmpVer(a, b) {
+    var A = a.split('.').map(Number), B = b.split('.').map(Number);
+    for (var i = 0; i < Math.max(A.length, B.length); i++) {
+      var x = A[i] || 0, y = B[i] || 0;
+      if (x < y) return -1;
+      if (x > y) return 1;
+    }
+    return 0;
+  }
+  function check() {
+    var installed = document.documentElement.getAttribute('data-linalysis-ext-version');
+    if (!installed) return; // extension not installed / not detected — no banner
+    if (cmpVer(installed, LINALYSIS_LATEST_EXT_VERSION) >= 0) return; // up to date
+    if (document.getElementById('lin-ext-update-banner')) return; // already shown
+
+    var b = document.createElement('div');
+    b.id = 'lin-ext-update-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#cc1016;color:#fff;padding:11px 20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
+    b.innerHTML =
+      '<span style="font-size:16px">⬆</span>' +
+      '<span>A newer Linalysis extension is available (you have v' + installed + ', latest v' + LINALYSIS_LATEST_EXT_VERSION + '). Download it and reload the extension.</span>' +
+      '<a href="/account" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Get v' + LINALYSIS_LATEST_EXT_VERSION + ' →</a>' +
+      '<button onclick="document.getElementById(\'lin-ext-update-banner\').remove();document.body.style.paddingTop=\'\'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;margin-left:6px;opacity:0.8" title="Dismiss">×</button>';
+    document.body.insertBefore(b, document.body.firstChild);
+    document.body.style.paddingTop = '48px'; // avoid banner covering content
+  }
+  // The sentinel attribute is set by the extension's content script which runs at document_idle,
+  // so we check now, again in 500ms, and once more after 2s.
+  if (document.readyState !== 'loading') check();
+  else document.addEventListener('DOMContentLoaded', check);
+  setTimeout(check, 500);
+  setTimeout(check, 2000);
+})();
 
 (function () {
   var NAV = [
     { key: 'dashboard',  label: 'My Dashboard', href: '/dashboard.html',  icon: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>' },
     { key: 'summary',    label: 'My Summary',   href: '/summary.html',    icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>' },
+    { key: 'my-ssi',     label: 'My SSI',       href: '/my-ssi.html',     icon: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>' },
+    { key: 'growth',     label: 'My Growth',    href: '/growth.html',     icon: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>' },
     { key: 'campaigns',  label: 'My Campaigns', href: '/campaigns.html',  icon: '<path d="M3 11l18-8-8 18-2-8-8-2z"/>', arrow: true },
     { key: 'my-data',    label: 'My Data',      href: '/my-data.html',    icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/>' },
     { key: 'company',    label: 'My Company',   href: '/company.html',    icon: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/>', arrow: true },
@@ -22,7 +66,7 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
     { key: 'troubleshooting', label: 'Troubleshooting', href: '/troubleshooting.html' },
     { key: 'logout',          label: 'Logout',          href: '/' }
   ];
-  var BRAND_SVG = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14" fill="#FE1B04"/><g fill="#fff"><rect x="9" y="17" width="3" height="8" rx="0.5"/><rect x="14.5" y="12" width="3" height="13" rx="0.5"/><rect x="20" y="15" width="3" height="10" rx="0.5"/></g></svg>';
+  var BRAND_SVG = '<img src="/logo-mark.png" alt="Linalysis" style="width:28px;height:28px;object-fit:contain;vertical-align:middle" />';
 
   function renderSidebar() {
     var el = document.getElementById('sidebar');
@@ -54,7 +98,7 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
     if (document.getElementById('linalysis-build-badge')) return;
     var el = document.createElement('div');
     el.id = 'linalysis-build-badge';
-    el.style.cssText = 'position:fixed;bottom:10px;right:12px;z-index:200;font-family:SFMono-Regular,Consolas,monospace;font-size:10px;color:#6e6e73;background:rgba(255,255,255,0.92);padding:4px 9px;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer;user-select:none;box-shadow:0 2px 6px rgba(0,0,0,0.04)';
+    el.style.cssText = 'position:fixed;bottom:10px;right:12px;z-index:200;font-family:SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:600;color:#fff;background:#FE1B04;padding:6px 12px;border-radius:8px;cursor:pointer;user-select:none;box-shadow:0 4px 12px rgba(254,27,4,0.35);letter-spacing:0.02em';
     el.textContent = 'Build ' + LINALYSIS_BUILD;
     el.title = 'Click to copy build stamp';
     el.onclick = function () {

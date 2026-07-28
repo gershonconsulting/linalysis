@@ -4,26 +4,30 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Create account — Linalysis</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="stylesheet" href="/common.css" />
 <style>
   body { background: linear-gradient(180deg, #fff5f5 0%, #fafafa 60%); min-height: 100vh; }
-  .auth-wrap { max-width: 460px; margin: 60px auto; padding: 30px; background: #fff; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  .auth-wrap { max-width: 460px; margin: 60px auto; padding: 36px 36px 32px; background: #fff; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
   .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; font-weight: 800; font-size: 20px; color: var(--brand); }
   .auth-logo svg { width: 32px; height: 32px; }
   .auth-wrap h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 4px; }
-  .auth-wrap .subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 22px; }
-  .auth-field { margin-bottom: 14px; }
-  .auth-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .auth-field input { width: 100%; padding: 10px 12px; font: inherit; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; }
-  .auth-field input:focus { outline: none; border-color: var(--brand); }
-  .auth-btn { width: 100%; padding: 12px; background: var(--brand); color: #fff; border: none; border-radius: 8px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
-  .auth-btn:hover { background: #d61505; }
-  .auth-footer { margin-top: 20px; text-align: center; font-size: 13px; color: var(--text-muted); }
+  .auth-wrap .subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
+  .li-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 14px; background: #0a66c2; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; transition: background .15s; box-shadow: 0 2px 8px rgba(10,102,194,0.25); }
+  .li-btn:hover { background: #084a8e; }
+  .li-bullets { margin: 22px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--text); line-height: 1.7; }
+  .li-bullets li { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; }
+  .li-bullets li::before { content: '✓'; color: var(--success); font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+  .li-bullets li strong { color: var(--text); }
+  .auth-footer { margin-top: 24px; text-align: center; font-size: 13px; color: var(--text-muted); }
   .auth-footer a { color: var(--brand); text-decoration: none; font-weight: 600; }
+  .auth-fineprint { font-size: 11px; color: var(--text-muted); margin-top: 18px; line-height: 1.5; text-align: center; }
+  .auth-fineprint a { color: var(--text-muted); text-decoration: underline; }
   .auth-error { padding: 10px 12px; background: var(--error-light); color: var(--error); border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
   .auth-error.show { display: block; }
-  .auth-fineprint { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -34,39 +38,24 @@
       Linalysis
     </div>
     <h1>Create your account</h1>
-    <p class="subtitle">14-day free trial on any paid plan. No card required to start.</p>
+    <p class="subtitle">Linalysis runs on your LinkedIn data — sign up with the same LinkedIn account you want to track. 14-day free trial on any paid plan, no card required.</p>
     <div class="auth-error" id="err"></div>
 
-    <a href="https://api.linalysis.net/api/auth/linkedin/start?return_to=/dashboard.html" id="linkedinBtn"
-       style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;background:#0a66c2;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;margin-bottom:16px;transition:background .15s">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
+    <a href="https://api.linalysis.net/api/auth/linkedin/start?return_to=/dashboard.html" class="li-btn" id="linkedinBtn">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
       </svg>
       Sign up with LinkedIn
     </a>
 
-    <div style="display:flex;align-items:center;gap:12px;margin:0 0 16px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em">
-      <div style="flex:1;height:1px;background:var(--border)"></div>
-      <span>or with email</span>
-      <div style="flex:1;height:1px;background:var(--border)"></div>
-    </div>
+    <ul class="li-bullets">
+      <li>One click — no passwords to remember</li>
+      <li><strong>We never see your password.</strong> LinkedIn handles authentication and only shares your name + email + photo.</li>
+      <li>Linalysis automatically tracks the LinkedIn profile you sign in with</li>
+    </ul>
 
-    <form id="signupForm">
-      <div class="auth-field">
-        <label>Your name</label>
-        <input type="text" id="name" autocomplete="name" />
-      </div>
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="email" required autofocus autocomplete="email" />
-      </div>
-      <div class="auth-field">
-        <label>Password (10+ characters)</label>
-        <input type="password" id="password" required minlength="10" autocomplete="new-password" />
-      </div>
-      <button type="submit" class="auth-btn" id="submitBtn">Create account</button>
-      <p class="auth-fineprint">By creating an account you agree to our <a href="/terms.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.</p>
-    </form>
+    <p class="auth-fineprint">By creating an account you agree to our <a href="/terms.html">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.</p>
+
     <div class="auth-footer">
       Already have an account? <a href="/login.html">Sign in</a>
     </div>
@@ -74,28 +63,16 @@
 
 <script src="/api.js"></script>
 <script>
-const form = document.getElementById('signupForm');
-const err = document.getElementById('err');
-const btn = document.getElementById('submitBtn');
-form.onsubmit = async (e) => {
-  e.preventDefault();
-  err.classList.remove('show');
-  btn.disabled = true; btn.textContent = 'Creating…';
-  try {
-    await LinalysisAPI.signup(
-      document.getElementById('email').value,
-      document.getElementById('password').value,
-      document.getElementById('name').value
-    );
-    location.href = '/dashboard.html';
-  } catch (ex) {
-    err.textContent = ex.error === 'network'
-      ? 'Backend unreachable — we\'re still wiring up the API. Try again shortly.'
-      : (ex.body?.message || 'Could not create account.');
-    err.classList.add('show');
-    btn.disabled = false; btn.textContent = 'Create account';
+// Surface OAuth callback errors when the user is bounced here from /api/auth/linkedin/callback
+(function() {
+  var p = new URLSearchParams(location.search);
+  var e = p.get('error');
+  if (e) {
+    var box = document.getElementById('err');
+    box.textContent = (p.get('message') || 'LinkedIn sign-up failed') + ' (' + e + ')';
+    box.classList.add('show');
   }
-};
+})();
 </script>
 </body>
 </html>

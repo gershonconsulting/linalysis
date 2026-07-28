@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>Linalysis — Account</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/common.css" />
 </head><body>
@@ -22,6 +26,198 @@
         <h2>Account</h2>
         <p>Your Linalysis account, subscription, and connected services.</p>
       </div>
+
+      <!-- ── Data collection schedule ─────────────────────────────── -->
+      <div class="card" style="margin-bottom:18px;padding:20px 24px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:18px">⏰</div>
+          <div>
+            <div style="font-size:14px;font-weight:800">Automatic data collection</div>
+            <div style="font-size:12px;color:var(--text-muted)">When your Chrome extension pulls fresh metrics from LinkedIn</div>
+          </div>
+          <span id="ext-status-pill" style="margin-left:auto;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:#f1f1f3;color:#71717a">Checking…</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em">Daily sync time</div>
+            <div style="font-size:20px;font-weight:800;margin-top:4px" id="sched-time">09:00 local</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="sched-tz">Your Chrome, your timezone</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em">Next sync</div>
+            <div style="font-size:20px;font-weight:800;margin-top:4px" id="sched-next">—</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Fires while Chrome is running</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em">Last capture</div>
+            <div style="font-size:20px;font-weight:800;margin-top:4px" id="sched-last">—</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="sched-last-sub">Never</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.55">
+          Collection runs entirely on <strong>your own machine</strong> via a <code style="background:var(--bg);padding:2px 6px;border-radius:4px">chrome.alarms</code> daily timer.
+          Because Chrome must be open for the alarm to fire, if you close it before 09:00 the sync happens the next time you open it.
+          You can trigger a sync manually anytime from the extension's popup.
+        </p>
+      </div>
+      <!-- ── Chrome extension (download latest) ───────────────────── -->
+      <div class="card" style="margin-bottom:18px;padding:20px 24px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:18px">🧩</div>
+          <div>
+            <div style="font-size:14px;font-weight:800">Chrome extension</div>
+            <div style="font-size:12px;color:var(--text-muted)">The collector that reads your LinkedIn SSI locally and syncs it here</div>
+          </div>
+          <span id="ext-ver-pill" style="margin-left:auto;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:#f1f1f3;color:#71717a">Checking…</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em">Latest version</div>
+            <div style="font-size:20px;font-weight:800;margin-top:4px" id="ext-latest-ver">—</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em">You have installed</div>
+            <div style="font-size:20px;font-weight:800;margin-top:4px" id="ext-installed-ver">—</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="ext-installed-sub">&nbsp;</div>
+          </div>
+        </div>
+
+        <a id="ext-download-btn" href="/linalysis-extension.zip" class="btn primary" style="display:inline-flex;align-items:center;gap:8px">⬇ Download latest extension</a>
+        <a href="/troubleshooting" class="btn" style="margin-left:8px">Install guide</a>
+
+        <details style="margin-top:14px">
+          <summary style="cursor:pointer;font-size:12.5px;color:var(--brand);font-weight:600">How to install / update (30 seconds)</summary>
+          <ol style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:10px 0 0 0;padding-left:22px">
+            <li>Click <strong>Download latest extension</strong> above and unzip it to a folder you'll keep (e.g. Documents — not a temp folder).</li>
+            <li>Open <code style="background:var(--bg);padding:1px 5px;border-radius:4px">chrome://extensions</code> and turn on <strong>Developer mode</strong> (top-right).</li>
+            <li>Click <strong>Load unpacked</strong> and select the unzipped folder. To update later, replace the folder's contents with a fresh download and click the ↻ reload icon on the card.</li>
+            <li>Open <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener">linkedin.com/sales/ssi</a> (signed in), then click the Linalysis icon → <strong>Sync now</strong>.</li>
+          </ol>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5">Because the extension carries a fixed key, its ID stays the same across updates, so pairing is never lost.</p>
+        </details>
+      </div>
+      <script>
+      // ── Extension version card ──────────────────────────────────
+      (function () {
+        function cmpVer(a, b) {
+          var A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
+          for (var i = 0; i < Math.max(A.length, B.length); i++) { var x = A[i]||0, y = B[i]||0; if (x<y) return -1; if (x>y) return 1; }
+          return 0;
+        }
+        var pill = document.getElementById('ext-ver-pill');
+        var latestEl = document.getElementById('ext-latest-ver');
+        var installedEl = document.getElementById('ext-installed-ver');
+        var installedSub = document.getElementById('ext-installed-sub');
+        var dlBtn = document.getElementById('ext-download-btn');
+        // Read the latest version from the update manifest (source of truth).
+        fetch('/extension/updates.xml?cb=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.text() : ''; })
+          .then(function (xml) {
+            var m = xml.match(/version="(0\.\d+\.\d+|\d+\.\d+)"/g) || [];
+            // pick the last version="x.y.z" that isn't the XML decl 1.0
+            var latest = null;
+            (xml.match(/updatecheck[^>]*version="([\d.]+)"/) || [])[1] && (latest = RegExp.$1);
+            if (!latest) { var mm = xml.match(/version="([\d.]+)"[^>]*\/>/); if (mm) latest = mm[1]; }
+            latest = latest || '0.1.7';
+            latestEl.textContent = 'v' + latest;
+            // Point at the version-stamped file — the filename itself carries the version, so the
+            // browser can never hand back a stale zip.
+            dlBtn.setAttribute('href', '/linalysis-extension-' + latest + '.zip?cb=' + Date.now());
+            dlBtn.setAttribute('download', 'linalysis-extension-' + latest + '.zip');
+            dlBtn.textContent = '⬇ Download extension v' + latest;
+            // Installed version is stamped on <html> by the extension's content script at
+            // document_idle — which can be AFTER this code runs. So poll a few times before
+            // concluding "Not detected" (this is why the card and the top banner used to disagree).
+            function paintInstalled() {
+              var installed = document.documentElement.getAttribute('data-linalysis-ext-version');
+              if (installed) {
+                installedEl.textContent = 'v' + installed;
+                if (cmpVer(installed, latest) >= 0) {
+                  pill.textContent = 'Up to date'; pill.style.background = '#dcfce7'; pill.style.color = '#16a34a';
+                  installedSub.textContent = 'You have the latest';
+                } else {
+                  pill.textContent = 'Update available'; pill.style.background = '#fef3c7'; pill.style.color = '#d97706';
+                  installedSub.innerHTML = '<span style="color:#d97706">You have v' + installed + ' — download &amp; reload to update</span>';
+                }
+                return true;
+              }
+              return false;
+            }
+            if (!paintInstalled()) {
+              installedEl.textContent = 'Checking…';
+              installedSub.textContent = 'Detecting your installed version…';
+              pill.textContent = 'Checking…'; pill.style.background = '#f1f1f3'; pill.style.color = '#71717a';
+              var tries = 0;
+              var iv = setInterval(function () {
+                tries++;
+                if (paintInstalled() || tries >= 10) {
+                  clearInterval(iv);
+                  if (tries >= 10 && !document.documentElement.getAttribute('data-linalysis-ext-version')) {
+                    installedEl.textContent = 'Not detected';
+                    installedSub.textContent = 'Install it below to start capturing';
+                    pill.textContent = 'Not installed'; pill.style.background = '#fee2e2'; pill.style.color = '#cc1016';
+                  }
+                }
+              }, 400);
+            }
+          })
+          .catch(function () {
+            latestEl.textContent = 'v0.1.7';
+            dlBtn.setAttribute('href', '/linalysis-extension.zip?v=' + Date.now());
+            pill.textContent = '—';
+          });
+      })();
+      </script>
+      <script>
+      // Fill the collection schedule card. Data source: the extension writes email + lastSyncAt into
+      // chrome.storage.local. We can't read chrome.storage from the site; instead, we get the last
+      // capture date from the API (LINALYSIS_DATA.dates), and compute the next 09:00 in the user's TZ.
+      (function() {
+        function fmtDate(d) { return d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}) + ' at 09:00'; }
+        function nextNineAM() {
+          var t = new Date();
+          t.setHours(9, 0, 0, 0);
+          if (t.getTime() <= Date.now()) t.setDate(t.getDate() + 1);
+          return t;
+        }
+        function relTime(d) {
+          var m = Math.round((Date.now() - d.getTime()) / 60000);
+          if (m < 1) return 'just now';
+          if (m < 60) return m + 'm ago';
+          var h = Math.round(m / 60);
+          if (h < 24) return h + 'h ago';
+          return Math.round(h / 24) + 'd ago';
+        }
+        function hydrate() {
+          var tz = 'unknown';
+          try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
+          var el = document.getElementById('sched-tz'); if (el) el.textContent = tz;
+          var nEl = document.getElementById('sched-next'); if (nEl) nEl.textContent = fmtDate(nextNineAM());
+
+          var D = window.LINALYSIS_DATA;
+          var lastDate = (D && D.dates && D.dates.length) ? D.dates[D.dates.length - 1] : null;
+          var lastEl = document.getElementById('sched-last');
+          var lastSub = document.getElementById('sched-last-sub');
+          if (lastDate) {
+            lastEl.textContent = lastDate;
+            var d = new Date(lastDate + 'T00:00:00Z');
+            lastSub.textContent = relTime(d);
+          }
+          // Extension status pill — is the extension detectable?
+          var extInstalled = document.documentElement.getAttribute('data-linalysis-ext') === 'installed';
+          var pill = document.getElementById('ext-status-pill');
+          if (pill) {
+            if (extInstalled) { pill.textContent = '✓ Extension installed'; pill.style.background = '#d1fae5'; pill.style.color = '#065f46'; }
+            else if (lastDate) { pill.textContent = 'Paired · not detected on this page'; pill.style.background = '#fef3c7'; pill.style.color = '#92400e'; }
+            else { pill.textContent = '⚠ Extension not installed'; pill.style.background = '#fee2e2'; pill.style.color = '#991b1b'; }
+          }
+        }
+        setTimeout(hydrate, 0);
+        setTimeout(hydrate, 500);
+        window.addEventListener('linalysisDataReady', hydrate);
+      })();
+      </script>
 
       <div class="grid cols-2">
         <div class="card">

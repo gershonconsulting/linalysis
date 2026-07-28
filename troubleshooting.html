@@ -4,8 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Linalysis — Troubleshooting</title>
-<meta name="description" content="Full diagnostic report for Linalysis — 26 checks across 8 categories." />
+<link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="description" content="Full diagnostic report for Linalysis — automated health checks across your extension, network, and account." />
 <link rel="stylesheet" href="/common.css" />
 <style>
   .info-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 18px; }
@@ -165,7 +168,7 @@
     <h3>Self-service help (21 topics)</h3>
     <div class="help-cat"><h4>Getting started</h4><div class="help-grid">
       <button class="help-btn" onclick="location.href='/help.html?topic=setup'"><span class="help-emoji">🚀</span><span><div class="help-label">How to set up Linalysis</div><div class="help-desc">Install, connect LinkedIn, first import</div></span></button>
-      <button class="help-btn" onclick="location.href='/help.html?topic=extension'"><span class="help-emoji">🧩</span><span><div class="help-label">Install the Chrome extension</div><div class="help-desc">Step-by-step from the Web Store</div></span></button>
+      <button class="help-btn" onclick="location.href='/help.html?topic=extension'"><span class="help-emoji">🧩</span><span><div class="help-label">Install the Chrome extension</div><div class="help-desc">Download, unzip, Load unpacked</div></span></button>
       <button class="help-btn" onclick="location.href='/help.html?topic=connect-linkedin'"><span class="help-emoji">🔗</span><span><div class="help-label">Connect my LinkedIn</div><div class="help-desc">Paste li_at or use the extension</div></span></button>
       <button class="help-btn" onclick="location.href='/help.html?topic=tour-dashboard'"><span class="help-emoji">🧭</span><span><div class="help-label">Tour the dashboard</div><div class="help-desc">What each KPI and chart means</div></span></button>
     </div></div>
@@ -205,123 +208,215 @@
 <script src="/nav.js" defer></script>
 <script>
 function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
-const LINALYSIS_EXT_ID='hgmhmanijnjhaffoampdlllchpolkdnj';
+// Extension ID — prefer whatever the installed extension actually reports via its sentinel
+// attribute (set by content-pair.js). Falls back to our stable signing-key ID.
+const LINALYSIS_EXT_ID = document.documentElement.getAttribute('data-linalysis-ext-id') || 'eepopmbjjhmmgjehllmbcjpcncgkmcfb';
 
-// --- 26 checks across 8 categories ---
+// --- Diagnostic checks across categories ---
+// Reports Delivery checks are intentionally omitted until the reporting feature ships.
+// The LinkedIn li_at category was removed: the extension uses your browser's own LinkedIn session
+// directly (no li_at needed), so those checks were obsolete and misleading.
 const CATS = [
-  { key:'core', icon:'⚡', title:'Critical — does Linalysis actually work?', desc:'The 4 things that matter for analytics to flow' },
+  { key:'core', icon:'⚡', title:'Critical — does Linalysis actually work?', desc:'The things that matter for analytics to flow' },
   { key:'env',  icon:'💻', title:'Environment', desc:'Browser, OS, and runtime basics' },
-  { key:'ext',  icon:'🧩', title:'Chrome Extension', desc:'Installed, enabled, and able to reach LinkedIn' },
-  { key:'li',   icon:'🔗', title:'LinkedIn Session', desc:'Your li_at cookie and profile access' },
-  { key:'net',  icon:'🌐', title:'Network & APIs', desc:'Linalysis, CookieVerify, LinkedIn, and DNS' },
+  { key:'ext',  icon:'🧩', title:'Chrome Extension', desc:'Installed, correct version, and injecting' },
+  { key:'net',  icon:'🌐', title:'Network & APIs', desc:'Linalysis, LinkedIn, and DNS' },
   { key:'cap',  icon:'⚙️', title:'Browser Capabilities', desc:'Required browser features' },
-  { key:'priv', icon:'🛡️', title:'Privacy & Blockers', desc:'Ad blockers, tracking protection, third-party cookies' },
+  { key:'priv', icon:'🛡️', title:'Privacy & Blockers', desc:'Ad blockers and tracking protection' },
   { key:'acct', icon:'👤', title:'Account & Plan', desc:'Your session, subscription, and usage limits' },
-  { key:'rep',  icon:'📨', title:'Reports Delivery', desc:'Email delivery and scheduling' },
 ];
 
 // Each check: id, cat, title, detail, run:async()=>{status,detail,action?}
 const CHECKS = [
   // ─── CORE (the 4 things that matter most) ────────────────────────
   { id:'core.extension', cat:'core', title:'Chrome extension is installed', run: async()=>{
-    // Try sentinel attribute first
-    var v = document.documentElement.dataset.linalysisExt;
-    if (v) return { status:'ok', detail:'Extension v'+v+' is active and injecting on this page.' };
-    // Try chrome-extension:// resource probe (works in some Chrome configs)
-    var probes = ['icon-128.png','icons/icon-128.png','manifest.json','icon.png'];
+    // 1. Read the version the extension stamps on <html>. IMPORTANT: data-linalysis-ext is just the
+    //    string "installed"; the actual version lives in data-linalysis-ext-version.
+    function _extVer(){ return document.documentElement.getAttribute('data-linalysis-ext-version') || null; }
+    var v = _extVer();
+    if (!v) { await new Promise(function(r){ setTimeout(r, 1500); }); v = _extVer(); }
+
+    // 2. Latest version — source of truth is the update manifest.
+    var _latest = null;
+    try {
+      var _xml = await fetch('/extension/updates.xml?cb='+Date.now(), {cache:'no-store'}).then(function(r){return r.ok?r.text():'';});
+      var _m = _xml.match(/updatecheck[^>]*version="([0-9.]+)"/); if (_m) _latest = _m[1];
+    } catch(e){}
+    function _cmp(a,b){var A=a.split('.').map(Number),B=b.split('.').map(Number);for(var i=0;i<Math.max(A.length,B.length);i++){var x=A[i]||0,y=B[i]||0;if(x<y)return -1;if(x>y)return 1;}return 0;}
+
+    if (v) {
+      try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
+      if (_latest && _cmp(v, _latest) < 0) {
+        return { status:'warn', detail:'Installed <strong>v'+v+'</strong> · latest <strong>v'+_latest+'</strong>. <a href="/account" style="color:var(--brand);font-weight:600">Download v'+_latest+'</a>, then click ↻ reload on the extension card in chrome://extensions.' };
+      }
+      return { status:'ok', detail:'Installed <strong>v'+v+'</strong>'+(_latest?' — up to date (latest v'+_latest+')':'')+'.' };
+    }
+
+    // 3. postMessage handshake (extension content script must listen for {source:'linalysis-page'})
+    var pong = await new Promise(function(res){
+      var listener = function(e) {
+        if (e && e.data && e.data.source === 'linalysis-ext' && (e.data.type === 'pong' || e.data.type === 'present')) {
+          window.removeEventListener('message', listener); res(e.data);
+        }
+      };
+      window.addEventListener('message', listener);
+      window.postMessage({ source:'linalysis-page', type:'ping' }, location.origin);
+      setTimeout(function(){ window.removeEventListener('message', listener); res(null); }, 1500);
+    });
+    if (pong) {
+      try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
+      return { status:'ok', detail:'Extension responded to handshake'+(pong.version?' (v'+pong.version+')':'')+'.' };
+    }
+
+    // 4. chrome.runtime.sendMessage — works if extension manifest has externally_connectable.matches: ["*://*.linalysis.net/*"]
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      var rtimeReply = await new Promise(function(res){
+        try {
+          chrome.runtime.sendMessage(LINALYSIS_EXT_ID, { type:'ping' }, function(reply){
+            if (chrome.runtime.lastError) { res(null); return; }
+            res(reply || true);
+          });
+          setTimeout(function(){ res(null); }, 1500);
+        } catch(e) { res(null); }
+      });
+      if (rtimeReply) {
+        try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
+        return { status:'ok', detail:'Extension responded via chrome.runtime.sendMessage'+(rtimeReply && rtimeReply.version?' (v'+rtimeReply.version+')':'')+'.' };
+      }
+    }
+
+    // 5. chrome-extension:// resource probe — works only if extension declares them as web_accessible_resources
+    var probes = ['icon-128.png','icons/icon-128.png','icons/icon128.png','manifest.json','icon.png','logo.png','icon-48.png','icon-16.png','assets/icon.png'];
     for (var i = 0; i < probes.length; i++) {
-      var path = probes[i];
       var found = await new Promise(function(res){
-        var img = new Image(); var t = setTimeout(function(){res(false)}, 500);
+        var img = new Image(); var t = setTimeout(function(){res(false)}, 800);
         img.onload = function(){ clearTimeout(t); res(true); };
         img.onerror = function(){ clearTimeout(t); res(false); };
-        img.src = 'chrome-extension://'+LINALYSIS_EXT_ID+'/'+path;
+        img.src = 'chrome-extension://'+LINALYSIS_EXT_ID+'/'+probes[i];
       });
-      if (found) return { status:'ok', detail:'Detected via chrome-extension://'+LINALYSIS_EXT_ID+'/'+path };
+      if (found) {
+        try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
+        return { status:'ok', detail:'Detected via chrome-extension://'+LINALYSIS_EXT_ID+'/'+probes[i] };
+      }
     }
-    // Manual confirm via localStorage
+
+    // 6. Server-side proof: has this signed-in user's extension ever paired with our API?
+    // If they have a 'chrome-extension' token in KV, the extension successfully paired at some point.
+    try {
+      var extStatus = await fetch('https://api.linalysis.net/api/user/extension-status', { credentials: 'include' });
+      if (extStatus.ok) {
+        var es = await extStatus.json();
+        if (es && es.paired) {
+          try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
+          var pairedAgo = es.paired_at ? Math.round((Date.now() - new Date(es.paired_at).getTime()) / 60000) : null;
+          var pairedTxt = pairedAgo != null ? (pairedAgo < 60 ? pairedAgo + 'm ago' : Math.round(pairedAgo/60) + 'h ago') : 'earlier';
+          var lastCap = es.last_capture_at ? '· Last capture ' + es.last_capture_at : '· No captures yet';
+          return {
+            status:'ok',
+            detail:'Extension paired with your account (server-side proof — token minted ' + pairedTxt + '). ' + lastCap + '.<br><span style="font-size:11px;color:var(--text-muted)">Note: the on-page sentinel isn\'t firing — the extension might be disabled or need a Chrome restart, but syncing still works.</span>'
+          };
+        }
+      }
+    } catch(e) { /* fall through */ }
+
+    // 7. Manual confirm fallback
     var manual = false;
     try { manual = localStorage.getItem('linalysis_ext_confirmed') === 'yes'; } catch(e){}
-    if (manual) return { status:'warn', detail:'Manually confirmed installed (Chrome blocks auto-detection). <a href="#" onclick="localStorage.removeItem(\'linalysis_ext_confirmed\');location.reload();return false" style="color:var(--brand)">Reset</a>' };
+    if (manual) {
+      try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
+      return { status:'ok', detail:'Manually confirmed installed. <a href="#" onclick="localStorage.removeItem(\'linalysis_ext_confirmed\');localStorage.removeItem(\'linalysis_ext_ever_seen\');runCheck(CHECKS.find(function(c){return c.id===\'core.extension\'}));return false" style="color:var(--brand)">Reset</a>' };
+    }
     return {
       status:'fail',
-      detail:'Extension not detected. Chrome blocks programmatic detection of extensions for privacy — install from the Web Store and click the manual-confirm button below.',
-      action: { label:'Install from Web Store', fn:'openExtStore' }
+      detail:'The Linalysis Chrome extension isn\'t installed on this browser yet.<br><strong>Install (about a minute):</strong><ol style="margin:6px 0 8px 20px;padding:0;font-size:12px;line-height:1.6"><li><a href="/account" style="color:var(--brand);font-weight:600">Download the latest extension</a> from My Account (the filename shows the version) and <strong>unzip it to a folder you\'ll keep</strong> (e.g. Documents — not a temp folder)</li><li>Open <code style="background:var(--bg);padding:1px 4px;border-radius:3px">chrome://extensions</code>, toggle <strong>Developer mode</strong> ON (top-right)</li><li>Click <strong>Load unpacked</strong> and select the unzipped folder</li><li>Open <strong>linalysis.net</strong> while signed in — the extension pairs automatically</li></ol><span style="font-size:11px;color:var(--text-muted)">To update later, download the newest version from <a href="/account" style="color:var(--text-muted)">My Account</a>, replace the folder\'s contents, and click the ↻ reload icon on the extension card.</span>',
+      action: { label:'I have it installed', fn:'confirmExt' }
     };
   }},
-  { id:'core.cookie', cat:'core', title:'LinkedIn cookie (li_at) is live & valid', run: async()=>{
-    // Try to read cached validation result first (from extension or previous paste)
-    var cached = null;
-    try {
-      var raw = localStorage.getItem('linalysis_cookie_check');
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if ((Date.now() - parsed.checked_at) < 24 * 3600 * 1000) cached = parsed;
-      }
-    } catch(e){}
-    if (cached && cached.valid) {
-      return { status:'ok', detail:'Validated <strong>'+cached.fullName+'</strong>'+(cached.title ? ' · '+cached.title : '')+' — last checked '+new Date(cached.checked_at).toLocaleString()+'. Re-check to refresh.', action:{label:'Re-check now', fn:'showPaste'} };
+  { id:'core.cookie', cat:'core', title:'Signed into LinkedIn in this browser', run: async()=>{
+    // The extension uses your browser's own LinkedIn session cookies automatically when it opens
+    // linkedin.com/sales/ssi during sync — we don't need to grab the raw li_at value ourselves.
+    // We just need to confirm you have an active LinkedIn session in this Chrome profile.
+    var extInstalled = document.documentElement.getAttribute('data-linalysis-ext') === 'installed';
+    if (!extInstalled) {
+      return { status:'warn', detail:'Install the Linalysis Chrome extension first — it will use your existing LinkedIn login automatically. <a href="/account" style="color:var(--brand);font-weight:600">Download extension →</a>' };
     }
-    // Try fetch from extension via custom event
-    var fromExt = await new Promise(function(res){
-      var listener = function(e){ window.removeEventListener('linalysis-li_at', listener); res(e.detail && e.detail.li_at); };
-      window.addEventListener('linalysis-li_at', listener);
-      window.dispatchEvent(new CustomEvent('linalysis-request-li_at'));
-      setTimeout(function(){ window.removeEventListener('linalysis-li_at', listener); res(null); }, 1000);
-    });
-    if (fromExt) {
-      try {
-        var r = await fetch('https://api.cookieverify.com/api/validate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cookie: fromExt}) });
-        var d = await r.json();
-        if (d.isValid) {
-          try { localStorage.setItem('linalysis_cookie_check', JSON.stringify({ valid:true, fullName:d.fullName, title:d.title, company:d.company, checked_at:Date.now() })); } catch(e){}
-          return { status:'ok', detail:'Auto-validated via extension: <strong>'+d.fullName+'</strong>'+(d.title?' · '+d.title:'')+(d.company?' @ '+d.company:'') };
-        }
-        return { status:'fail', detail:'Cookie pulled from extension but rejected by LinkedIn. <strong>Sign in to LinkedIn again</strong> in this browser to refresh it.', action:{label:'Open LinkedIn', fn:'openLinkedin'} };
-      } catch(e) { /* fallthrough */ }
-    }
-    return { status:'pending', detail:'Click "Paste cookie" below to validate manually. The extension can also push it automatically — make sure it\'s installed and enabled on linkedin.com.', action:{label:'Paste cookie', fn:'showPaste'} };
+    return {
+      status:'ok',
+      detail:'The extension uses your existing LinkedIn session in this Chrome profile — no cookie paste needed. If you\'re not signed into <a href="https://www.linkedin.com" target="_blank" style="color:var(--brand)">linkedin.com</a>, sync will fail silently.',
+      action:{label:'Check my LinkedIn tab', fn:'openLinkedIn'}
+    };
   }},
   { id:'core.fresh', cat:'core', title:'Data captured in the last 24 hours', run: async()=>{
-    var d = window.LINALYSIS_DATA && LINALYSIS_DATA.meta && LINALYSIS_DATA.meta.last_date;
-    if (!d) return { status:'fail', detail:'No data found. Run the extension on linkedin.com to capture your first snapshot.' };
+    var d = null, source = 'bundle';
+    if (window.LinalysisAPI) {
+      try {
+        var s = await LinalysisAPI.summary();
+        if (s && s.as_of) { d = s.as_of; source = 'database'; }
+      } catch (e) { /* not signed in or API down */ }
+    }
+    if (!d) {
+      d = window.LINALYSIS_DATA && LINALYSIS_DATA.meta && LINALYSIS_DATA.meta.last_date;
+      if (!d) return { status:'fail', detail:'No data on file. Run the extension on linkedin.com to capture your first snapshot.', action:{label:'Open LinkedIn', fn:'openLinkedin'} };
+    }
     var lastMs = new Date(d + 'T00:00:00Z').getTime();
-    var now = Date.now();
-    var hoursOld = Math.round((now - lastMs) / 3600000);
+    var hoursOld = Math.round((Date.now() - lastMs) / 3600000);
     var prettyAgo = hoursOld < 24 ? hoursOld + 'h ago' : Math.round(hoursOld/24) + 'd ago';
-    if (hoursOld <= 24) return { status:'ok', detail:'Latest capture is from <strong>'+d+'</strong> ('+prettyAgo+'). Daily sync is healthy.' };
-    if (hoursOld <= 72) return { status:'warn', detail:'Latest capture is from <strong>'+d+'</strong> ('+prettyAgo+'). Charts will be slightly stale — capture today to refresh.', action:{label:'Run sync', fn:'openLinkedin'} };
-    return { status:'fail', detail:'Latest capture is from <strong>'+d+'</strong> ('+prettyAgo+'). The extension hasn\'t synced in over 3 days — check it\'s still enabled.', action:{label:'Run sync', fn:'openLinkedin'} };
+    var srcNote = source === 'database'
+      ? ' <span style="color:var(--text-muted)">(via /api/data/summary)</span>'
+      : ' <span style="color:var(--text-muted)">(bundled CSV — sign in to see your live capture)</span>';
+    if (hoursOld <= 24) return { status:'ok',   detail:'Latest capture: <strong>'+d+'</strong> ('+prettyAgo+'). Daily sync is healthy.'+srcNote };
+    if (hoursOld <= 72) return { status:'warn', detail:'Latest capture: <strong>'+d+'</strong> ('+prettyAgo+'). Charts will be stale.'+srcNote, action:{label:'Refresh data', fn:'openImport'} };
+    return { status:'fail', detail:'Latest capture: <strong>'+d+'</strong> ('+prettyAgo+'). Extension hasn\'t synced in over 3 days.'+srcNote, action:{label:'Refresh data', fn:'openImport'} };
   }},
   { id:'core.sanity', cat:'core', title:'Captured data passes sanity checks', run: async()=>{
     var D = window.LINALYSIS_DATA;
     if (!D || !D.metrics) return { status:'fail', detail:'No data structure found.' };
-    var issues = [];
-    var conn = (D.metrics.connections || []);
-    var ssi  = (D.metrics.ssi         || []);
-    var inv  = (D.metrics.invitations || []);
-    if (conn.length < 2) issues.push('Less than 2 days of data — keep the extension running');
-    // Latest values are non-null + plausible
-    var lastConn = conn[conn.length-1], lastSsi = ssi[ssi.length-1], lastInv = inv[inv.length-1];
-    if (lastConn == null || lastConn === 0) issues.push('Latest connection count is empty');
-    if (lastSsi != null && (lastSsi < 0 || lastSsi > 100)) issues.push('SSI '+lastSsi+' is out of range (0-100)');
-    // Connections shouldn\'t crash 50%+ in one capture (would imply a bug)
-    if (conn.length >= 2 && conn[conn.length-2] > 0) {
-      var drop = (conn[conn.length-2] - lastConn) / conn[conn.length-2];
-      if (drop > 0.5) issues.push('Connections dropped >50% on last capture — likely a parsing error');
-    }
-    // Invitations should be non-negative
-    if (lastInv != null && lastInv < 0) issues.push('Pending invitations is negative');
-    // Date range should be reasonable
-    var first = D.meta && D.meta.first_date;
-    var last  = D.meta && D.meta.last_date;
-    if (first && last && first > last) issues.push('Date range inverted (first_date > last_date)');
-    if (issues.length === 0) {
-      return { status:'ok', detail:'All ' + conn.length + ' captures pass sanity checks. Connections=' + lastConn.toLocaleString() + ', SSI=' + lastSsi + ', pending=' + lastInv + '.' };
-    }
-    return { status: issues.length >= 2 ? 'fail' : 'warn', detail: issues.length + ' issue' + (issues.length>1?'s':'') + ' detected: <ul style="margin:6px 0 0 14px;padding:0">' + issues.map(function(i){return '<li>'+i+'</li>'}).join('') + '</ul>' };
-  }},
+    // Required columns — every one must be > 0 in the latest row
+    var REQ = [
+      ['Connections',         'connections'],
+      ['Views',               'views'],
+      ['Search Appearance',   'search_appearance'],
+      ['Invitations',         'invitations'],
+      ['SSI',                 'ssi'],
+      ['SSI Industry',        'ssi_industry'],
+      ['SSI Network',         'ssi_network'],
+      ['Company Followers',   'co_followers'],
+      ['Company Visitors',    'co_visitors'],
+      ['Company Search',      'co_search'],
+      ['Company New Foll.',   'co_new_followers'],
+      ['Company Impr.',       'co_impressions'],
+      ['Company Clicks',      'co_clicks']
+    ];
+    var dates = D.dates || [];
+    var lastDate = D.meta && D.meta.last_date || (dates.length ? dates[dates.length-1] : null);
+    if (dates.length < 2) return { status:'warn', detail:'Less than 2 days of data — nothing to sanity-check yet.' };
+    if (D.meta && D.meta.last_date && D.meta.first_date && D.meta.first_date > D.meta.last_date) return { status:'fail', detail:'Date range inverted (first_date > last_date).' };
 
+    var zero = [], missing = [], outOfRange = [];
+    var lastIdx = (D.metrics.connections || []).length - 1;
+    for (var i = 0; i < REQ.length; i++) {
+      var label = REQ[i][0], key = REQ[i][1];
+      var arr = D.metrics[key] || [];
+      var v = arr[lastIdx];
+      if (v == null || v === '') { missing.push(label); continue; }
+      if (Number(v) === 0) { zero.push(label); continue; }
+      // SSI must be 0–100
+      if (key.indexOf('ssi') === 0 && (Number(v) < 0 || Number(v) > 100)) outOfRange.push(label+'='+v);
+    }
+    var issues = [];
+    if (zero.length)       issues.push('<strong>'+zero.length+' column(s) are 0 in the last capture:</strong> '+zero.join(', ')+'. Zero is never an option.');
+    if (missing.length)    issues.push('<strong>'+missing.length+' column(s) missing values:</strong> '+missing.join(', '));
+    if (outOfRange.length) issues.push('Out of range: '+outOfRange.join(', '));
+
+    if (issues.length === 0) {
+      var rendered = REQ.map(function(r){
+        var v = (D.metrics[r[1]] || [])[lastIdx];
+        return r[0]+': '+(v != null ? Number(v).toLocaleString() : '—');
+      }).join(' · ');
+      return { status:'ok', detail:'All 13 required columns are non-zero in <strong>'+lastDate+'</strong>.<div style="margin-top:6px;font-size:11px;color:var(--text-muted);line-height:1.5">'+rendered+'</div>' };
+    }
+    return { status: zero.length ? 'fail' : 'warn', detail: 'Latest row ('+lastDate+'): <ul style="margin:6px 0 0 14px;padding:0">'+issues.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>' };
+  }},
   // ENV
   { id:'env.browser',  cat:'env',  title:'Chromium-based browser (Chrome/Edge)', run: async()=>{
     const ua=navigator.userAgent; let name='Unknown'; let v='';
@@ -355,34 +450,26 @@ const CHECKS = [
   }},
 
   // EXTENSION
-  { id:'ext.installed', cat:'ext', title:'Linalysis extension installed', run: async()=>{
-    // sentinel check
-    const v=document.documentElement.dataset.linalysisExt;
-    if(v) return { status:'ok', detail:`Detected via content-script sentinel · v${v}` };
-    // probe several common resources
-    const paths=['icon.png','icon-128.png','icon_128.png','icons/icon.png','images/icon.png','manifest.json','logo.png'];
-    for(const p of paths){
-      const r = await new Promise(res=>{const i=new Image();const t=setTimeout(()=>res(null),600);i.onload=()=>{clearTimeout(t);res(p);};i.onerror=()=>{clearTimeout(t);res(null);};i.src=`chrome-extension://${LINALYSIS_EXT_ID}/${p}`;});
-      if(r) return { status:'ok', detail:`Detected via chrome-extension://${LINALYSIS_EXT_ID}/${r}` };
+  { id:'ext.version',   cat:'ext', title:'Extension version', run: async()=>{
+    // Content scripts inject at document_idle — poll for the sentinel (up to ~4s) so this doesn't
+    // race the content script and falsely report "not detected".
+    var v = null;
+    for (var _i = 0; _i < 8; _i++) {
+      v = document.documentElement.getAttribute('data-linalysis-ext-version');
+      if (v) break;
+      await new Promise(function(r){ setTimeout(r, 500); });
     }
-    return { status:'warn', detail:`Chrome hides extensions from pages for privacy. We couldn't auto-detect ID <code>${LINALYSIS_EXT_ID}</code>. If you have it installed, click "I have it" to confirm manually.`, action:{label:'I have it — confirm', fn:'confirmExt'} };
-  }},
-  { id:'ext.enabled',   cat:'ext', title:'Extension enabled on linkedin.com', run: async()=>{
-    return { status:'warn', detail:'Chrome doesn\'t expose per-site permission state to pages. Check manually at chrome://extensions → Linalysis → Site access → "On all sites" or "linkedin.com".' };
+    var latest = null;
+    try { var xml = await fetch('/extension/updates.xml?cb='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():''); var m=xml.match(/updatecheck[^>]*version="([0-9.]+)"/); if(m) latest=m[1]; } catch(e){}
+    if (!v) return { status:'warn', detail:'Extension not detected on this page'+(latest?' (latest available: v'+latest+')':'')+'. If it\'s installed, reload it in chrome://extensions and refresh.' };
+    function cmp(a,b){var A=a.split('.').map(Number),B=b.split('.').map(Number);for(var i=0;i<Math.max(A.length,B.length);i++){var x=A[i]||0,y=B[i]||0;if(x<y)return -1;if(x>y)return 1;}return 0;}
+    if (latest && cmp(v,latest)<0) return { status:'warn', detail:'Installed <strong>v'+v+'</strong>, latest is <strong>v'+latest+'</strong>. <a href="/account" style="color:var(--brand)">Update →</a>' };
+    return { status:'ok', detail:'Installed <strong>v'+v+'</strong>'+(latest?' (latest v'+latest+')':'')+'.' };
   }},
   { id:'ext.script',    cat:'ext', title:'Content script runs on linalysis.net', run: async()=>{
     const v=document.documentElement.dataset.linalysisExt;
     return v ? { status:'ok', detail:'Content script injected the sentinel attribute.' }
              : { status:'warn', detail:'No sentinel attribute present. Extension\'s content script may not run on this domain.' };
-  }},
-
-  // LINKEDIN SESSION
-  { id:'li.cookie',   cat:'li',  title:'LinkedIn li_at cookie is valid', run: async()=>{
-    return { status:'pending', detail:'Paste your li_at value below to validate live.', action:{label:'Paste cookie', fn:'showPaste'} };
-  }},
-  { id:'li.profile',  cat:'li',  title:'LinkedIn profile reachable', run: async()=>{
-    try { await fetch('https://www.linkedin.com/favicon.ico',{mode:'no-cors',cache:'no-store'}); return { status:'ok', detail:'LinkedIn.com reachable from this browser.' }; }
-    catch(e) { return { status:'fail', detail:'Can\'t reach LinkedIn.com — check firewall / VPN.' }; }
   }},
 
   // NETWORK
@@ -436,10 +523,6 @@ const CHECKS = [
       return blocked ? { status:'warn', detail:'Ad blocker is active. It may hide parts of Linalysis UI (rare). Whitelist linalysis.net if charts look broken.' } : { status:'ok', detail:'No ad blocker interference detected.' };
     } catch(e) { return { status:'warn', detail:'Detection inconclusive.' }; }
   }},
-  { id:'priv.thirdparty', cat:'priv', title:'Third-party cookies enabled', run: async()=>{
-    // Cannot reliably detect without a 3rd-party test domain. Report based on navigator hints.
-    return { status:'warn', detail:'Chrome is phasing out third-party cookies. Linalysis doesn\'t require them, but some analytics tools do. <a href="chrome://settings/cookies" target="_blank">Check setting</a>.' };
-  }},
   { id:'priv.dnt', cat:'priv', title:'Do Not Track preference', run: async()=>{
     const dnt=navigator.doNotTrack||window.doNotTrack;
     return { status:'ok', detail: dnt==='1' ? 'DNT is ON — we respect it, no analytics tracking.' : 'DNT is OFF — we still don\'t use third-party trackers.' };
@@ -479,40 +562,6 @@ const CHECKS = [
     }
   }},
 
-  // REPORTS — live from /api/reports/*
-  { id:'rep.email', cat:'rep', title:'Email delivery configured', run: async()=>{
-    try {
-      const d = await LinalysisAPI.account();
-      if (!d.user) return { status:'warn', detail:'Sign in to verify email delivery.' };
-      return d.user.email_verified
-        ? { status:'ok', detail:`Delivery: ${d.user.email} (verified).` }
-        : { status:'warn', detail:`${d.user.email} is not verified. <a href="/account.html" style="color:var(--brand)">Verify →</a>` };
-    } catch(e) {
-      if (e.status === 401) return { status:'warn', detail:'Sign in to verify email.' };
-      return { status:'warn', detail:'Backend unreachable — demo mode.' };
-    }
-  }},
-  { id:'rep.lastsent', cat:'rep', title:'Last weekly report delivered', run: async()=>{
-    try {
-      const r = await LinalysisAPI.reportsList();
-      if (!r.last_sent) return { status:'warn', detail:'No reports sent yet — first one arrives next Monday.' };
-      const d = new Date(r.last_sent.sent_at);
-      return { status:'ok', detail:`Sent ${d.toLocaleDateString()} at ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} — report type: ${r.last_sent.report_type}.` };
-    } catch(e) {
-      if (e.status === 401) return { status:'warn', detail:'Sign in to see report history.' };
-      return { status:'warn', detail:'Backend unreachable — demo mode.' };
-    }
-  }},
-  { id:'rep.next', cat:'rep', title:'Next report scheduled', run: async()=>{
-    try {
-      const n = await LinalysisAPI.reportsNext();
-      const when = new Date(n.scheduled_for);
-      return { status:'ok', detail:`Next ${n.report_type}: ${when.toLocaleDateString()} at ${when.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.` };
-    } catch(e) {
-      if (e.status === 401) return { status:'warn', detail:'Sign in to see schedule.' };
-      return { status:'warn', detail:'Backend unreachable — demo mode.' };
-    }
-  }},
 ];
 
 const state = { results: {} };
@@ -555,7 +604,7 @@ function renderCats() {
         ${checksHere.map(c=>`
           <div class="check" id="check-${c.id}">
             <div class="check-badge pending" id="badge-${c.id}">•</div>
-            <div><div class="check-title">${c.title}</div><div class="check-detail" id="detail-${c.id}">Not run yet.</div></div>
+            <div><div class="check-title"><span style="color:var(--text-muted);font-weight:600;margin-right:6px;font-variant-numeric:tabular-nums">#${CHECKS.indexOf(c)+1}</span>${c.title}</div><div class="check-detail" id="detail-${c.id}">Not run yet.</div></div>
             <div id="action-${c.id}"></div>
           </div>`).join('')}
         ${cat.key==='li' ? `<div class="cookie-paste" id="cookie-paste" style="display:none">
@@ -647,38 +696,72 @@ function expandAll(open) {
 }
 
 function confirmExt() {
-  const c=CHECKS.find(x=>x.id==='ext.installed');
-  if (c) state.results[c.id]={status:'ok',detail:'Confirmed manually by user.'};
   try { localStorage.setItem('linalysis_ext_confirmed', 'yes'); } catch(e) {}
-  const badge=document.getElementById('badge-ext.installed');
-  if (badge) { badge.className='check-badge ok'; badge.textContent='✓'; }
-  const det=document.getElementById('detail-ext.installed');
-  if (det) det.innerHTML='Confirmed manually. Extension ID <code>'+LINALYSIS_EXT_ID+'</code>.';
-  const act=document.getElementById('action-ext.installed');
-  if (act) act.innerHTML='';
-  // Re-run core too
+  // Re-run the primary extension check (it will now honor the manual confirmation).
   const core=CHECKS.find(x=>x.id==='core.extension');
   if (core) runCheck(core);
+  const ver=CHECKS.find(x=>x.id==='ext.version');
+  if (ver) runCheck(ver);
   updateHealth();
 }
 
 function showPaste() { document.getElementById('cookie-paste').style.display='block'; document.getElementById('cookie-input').focus(); }
+function openLinkedIn() { window.open('https://www.linkedin.com/sales/ssi', '_blank'); }
 
 function openExtStore() {
-  window.open('https://chromewebstore.google.com/detail/' + LINALYSIS_EXT_ID, '_blank', 'noopener');
-  toast('Web Store opened — install, then return and click "I have it"');
+  // Not on the Web Store yet — download the versioned zip for Load-unpacked install.
+  window.open('/account', '_blank', 'noopener');
+  toast('Download the extension from My Account, then Load unpacked in chrome://extensions');
   setTimeout(function(){
     if (confirm('Have you installed the extension? Click OK to mark it confirmed.')) {
       try { localStorage.setItem('linalysis_ext_confirmed', 'yes'); } catch(e) {}
       const core = CHECKS.find(c => c.id==='core.extension'); if (core) runCheck(core);
-      const ext  = CHECKS.find(c => c.id==='ext.installed');  if (ext)  runCheck(ext);
+      const ext  = CHECKS.find(c => c.id==='ext.version');    if (ext)  runCheck(ext);
     }
   }, 4000);
 }
-
 function openLinkedin() {
   window.open('https://www.linkedin.com/feed/', '_blank', 'noopener');
   toast('LinkedIn opened — let it load fully so the extension can sync');
+}
+
+function openImport() {
+  location.href = '/import-export.html';
+}
+
+async function autoFetchCookie() {
+  toast('Opening LinkedIn — keep this tab focused so we receive the cookie back');
+  var popup = window.open('https://www.linkedin.com/feed/?linalysis_grab_cookie=1', 'lnz_grab', 'width=900,height=700');
+  var got = await new Promise(function(res){
+    var listener = function(e) {
+      if (e && e.data && e.data.source === 'linalysis-ext' && e.data.type === 'li_at' && e.data.li_at) {
+        window.removeEventListener('message', listener); res(e.data.li_at);
+      }
+    };
+    window.addEventListener('message', listener);
+    setTimeout(function(){ window.removeEventListener('message', listener); res(null); }, 30000);
+  });
+  if (popup && !popup.closed) { try { popup.close(); } catch(e){} }
+  if (!got) {
+    toast('No cookie received in 30s — make sure the extension is installed and you are signed into LinkedIn');
+    return;
+  }
+  toast('Cookie received — validating with CookieVerify...');
+  try {
+    var r = await fetch('https://api.cookieverify.com/api/validate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cookie: got}) });
+    var d = await r.json();
+    if (d.isValid) {
+      var masked = got.slice(0, 8) + '…' + got.slice(-4);
+      try { localStorage.setItem('linalysis_cookie_check', JSON.stringify({ valid:true, fullName:d.fullName, title:d.title, company:d.company, profileUrl:d.profileUrl, li_at_masked: masked, length: got.length, checked_at:Date.now() })); } catch(e) {}
+      toast('Validated as ' + d.fullName);
+      runCheck(CHECKS.find(function(c){return c.id==='core.cookie'}));
+      runCheck(CHECKS.find(function(c){return c.id==='li.cookie'}));
+    } else {
+      toast('Cookie rejected by LinkedIn — try signing out + back in on LinkedIn first');
+    }
+  } catch (e) {
+    toast('Validation failed: ' + e.message);
+  }
 }
 
 async function validateCookie() {
@@ -687,13 +770,13 @@ async function validateCookie() {
   const badge=document.getElementById('badge-li.cookie');
   const detail=document.getElementById('detail-li.cookie');
   if (badge) { badge.className='check-badge running'; badge.textContent='…'; }
-  if (detail) detail.textContent='Validating…';
+  if (detail) detail.textContent='Validating...';
   try {
     const r=await fetch('https://api.cookieverify.com/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookie:v})});
     const d=await r.json();
     if(d.isValid){
       if (badge) { badge.className='check-badge ok'; badge.textContent='✓'; }
-      if (detail) detail.innerHTML=`Valid · <strong>${d.fullName||'LinkedIn user'}</strong>${d.title?` · ${d.title}`:''}${d.company?` @ ${d.company}`:''}${d.profileUrl?` · <a href="${d.profileUrl}" target="_blank" style="color:var(--brand)">profile</a>`:''}`;
+      if (detail) detail.innerHTML=`Valid · <strong>${d.fullName||'LinkedIn user'}</strong>${d.title?` · ${d.title}`:''}${d.company?` @ ${d.company}`:''}${d.profileUrl?` · <a href="${d.profileUrl}" target="_blank" style="color:var(--brand)">profile</a>`:''} · <button onclick="testServerHarvest('${v.replace(/'/g,"&#39;")}', this)" style="margin-left:8px;padding:3px 10px;background:#6b7280;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer" title="Experimental — LinkedIn may reject requests coming from Cloudflare IPs">Test server-side collect (experimental)</button>`;
       state.results['li.cookie']={status:'ok',detail:'Cookie valid.'};
       try { localStorage.setItem('linalysis_cookie_check', JSON.stringify({ valid:true, fullName:d.fullName, title:d.title, company:d.company, profileUrl:d.profileUrl, checked_at:Date.now() })); } catch(e) {}
       const core = CHECKS.find(c => c.id==='core.cookie'); if (core) runCheck(core);
@@ -710,28 +793,55 @@ async function validateCookie() {
   updateHealth();
 }
 
+async function testServerHarvest(liAt, btn) {
+  if (!btn) btn = event && event.target;
+  var originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving cookie…'; }
+  try {
+    await LinalysisAPI.post('/api/user/li-at', { li_at: liAt });
+    if (btn) { btn.textContent = 'Testing from server (LinkedIn may reject)…'; }
+    var r = await LinalysisAPI.post('/api/user/harvest-now', {});
+    if (r.ok) {
+      var found = Object.keys(r.parsed || {}).filter(function(k){ return k.startsWith('ssi_') && r.parsed[k] != null; });
+      if (btn) { btn.textContent = '✓ Server-side worked · ' + found.length + ' SSI fields captured'; btn.style.background = '#16a34a'; }
+      toast('It worked! LinkedIn accepted the request from Cloudflare. Fields: ' + found.join(', '));
+    } else {
+      if (btn) { btn.textContent = '✗ Server-side rejected by LinkedIn (' + (r.error || 'unknown') + ')'; btn.style.background = '#cc1016'; }
+      toast('As suspected — LinkedIn rejected the server-side call: ' + (r.error || 'unknown') + '. Use the extension approach instead.');
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = originalText || 'Test server-side collect'; }
+    toast('Test failed: ' + ((e.body && e.body.message) || e.error || 'sign in first'));
+  }
+}
+
 function copyReport() {
-  const lines=[`Linalysis diagnostic report · ${new Date().toISOString()}`, `Browser: ${navigator.userAgent}`, ''];
-  CATS.forEach(cat=>{
-    lines.push(`=== ${cat.title} ===`);
-    CHECKS.filter(c=>c.cat===cat.key).forEach(c=>{
-      const r=state.results[c.id];
-      const status=r?r.status.toUpperCase():'NOT RUN';
-      lines.push(`  [${status}] ${c.title}`);
-      if (r && r.detail) lines.push(`         ${r.detail.replace(/<[^>]+>/g,'')}`);
+  const lines = ['Linalysis diagnostic report · ' + new Date().toISOString(), 'Browser: ' + navigator.userAgent, ''];
+  CATS.forEach(function(cat) {
+    lines.push('=== ' + cat.title + ' ===');
+    CHECKS.filter(function(c) { return c.cat === cat.key; }).forEach(function(c) {
+      const r = state.results[c.id];
+      const status = r ? r.status.toUpperCase() : 'NOT RUN';
+      lines.push('  [' + status + '] #' + (CHECKS.indexOf(c) + 1) + ' ' + c.title);
+      if (r && r.detail) lines.push('         ' + r.detail.replace(/<[^>]+>/g, ''));
     });
     lines.push('');
   });
-  const txt=lines.join('\n');
-  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Report copied — paste into support email'));}
-  else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Report copied');}
+  const txt = lines.join('\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(function() { toast('Report copied — paste into support email'); });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('Report copied');
+  }
 }
 
-// ---------- Init ----------
-window.addEventListener('error', e => console.error('Script error:', e));
-try { fillInfoStrip(); } catch(e){ console.error('fillInfoStrip',e); }
-try { renderCats(); } catch(e){ console.error('renderCats',e); }
-try { runAll(); } catch(e){ console.error('runAll',e); }
+// ---------- Initialize on page load ----------
+fillInfoStrip();
+renderCats();
+runAll();
 </script>
 </body>
 </html>

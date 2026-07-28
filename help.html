@@ -4,7 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Linalysis — Help</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="stylesheet" href="/common.css" />
 <style>
   .help-layout { display: grid; grid-template-columns: 260px 1fr; gap: 30px; max-width: 1100px; margin: 0 auto; }
@@ -77,7 +80,7 @@ const TOPICS = {
     sections: [
       { h: 'What you need', body: '<ul><li>Google Chrome or Microsoft Edge (Chromium-based — Firefox + Safari aren\'t supported yet)</li><li>An active LinkedIn account you\'re logged into</li><li>2–3 minutes</li></ul>' },
       { h: 'Step-by-step', steps: [
-        'Open the <a href="https://chromewebstore.google.com/detail/hgmhmanijnjhaffoampdlllchpolkdnj" target="_blank">Linalysis Chrome extension</a> page on the Web Store and click <strong>Add to Chrome</strong>. Pin it to the toolbar so you can find it again.',
+'<a href="/account">Download the extension</a> from My Account, unzip it, then load it via <code>chrome://extensions</code> → Developer mode → <strong>Load unpacked</strong>. Pin it to the toolbar so you can find it again. (Full steps under the "Install the Chrome extension" topic.)',
         'Click <strong>Sign in with LinkedIn</strong> on <a href="/signup.html">linalysis.net/signup</a>. We use LinkedIn\'s official OAuth — we never see your password.',
         'Open <a href="https://www.linkedin.com/feed/" target="_blank">linkedin.com</a> in any tab. The extension will detect you\'re signed in and capture your first metrics in the background.',
         'Come back to <a href="/dashboard.html">/dashboard</a>. The 4 KPI tiles (Connections, Views, SSI, Company Followers) populate immediately. Charts need 2+ days of data to start drawing trend lines.',
@@ -92,13 +95,14 @@ const TOPICS = {
     title: 'Install the Chrome extension',
     lead: 'The Chrome extension is what reads your LinkedIn metrics into Linalysis. Without it, your charts stay empty.',
     sections: [
-      { h: 'Install in 30 seconds', steps: [
-        'Open <a href="https://chromewebstore.google.com/detail/hgmhmanijnjhaffoampdlllchpolkdnj" target="_blank">the extension page on the Chrome Web Store</a>.',
-        'Click <strong>Add to Chrome</strong> → <strong>Add extension</strong>.',
-        'Click the puzzle-piece icon in your browser toolbar, find <strong>Linalysis</strong>, and click the pin icon to keep it visible.',
-        'Open <a href="https://www.linkedin.com/feed/" target="_blank">linkedin.com</a>. The extension activates automatically — no settings, no clicks.'
+      { h: 'Install (about a minute)', steps: [
+        '<a href="/account" target="_blank">Download the latest extension</a> from My Account (the filename shows the version) and <strong>unzip it to a folder you\'ll keep</strong> — Documents works; avoid a temporary folder.',
+        'Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong> (top-right).',
+        'Click <strong>Load unpacked</strong> and select the unzipped folder. Pin it via the puzzle-piece icon so it stays visible.',
+        'Open <a href="https://www.linkedin.com/feed/" target="_blank">linkedin.com</a> (signed in) and then <strong>linalysis.net</strong> — the extension pairs automatically, no settings.'
       ]},
-      { h: 'Microsoft Edge', body: '<p>Edge supports Chrome extensions. Same install link, click <strong>Allow extensions from other stores</strong> when Edge prompts.</p>' },
+      { h: 'Updating', body: '<p>During the current testing phase updates are manual: download the newest version from <a href="/account">My Account</a>, replace the folder\'s contents, and click the ↻ reload icon on the extension card in <code>chrome://extensions</code>. (Once we\'re on the Chrome Web Store, updates will be automatic.)</p>' },
+      { h: 'Microsoft Edge', body: '<p>Edge supports Chrome extensions loaded this way too — same Developer-mode / Load-unpacked steps at <code>edge://extensions</code>.</p>' },
       { h: 'Confirm it\'s working', body: '<p>Open <a href="/troubleshooting.html">/troubleshooting</a> and look at <strong>Chrome extension is installed</strong> at the top — it should show a green ✓. If it shows red, click <strong>I have it</strong> to confirm manually (Chrome blocks programmatic detection of extensions for privacy reasons).</p>' }
     ],
     related: ['ext-not-detected', 'connect-linkedin', 'cookie-validate']
@@ -224,7 +228,7 @@ const TOPICS = {
         'Below it, check that <strong>Site access</strong> is set to <strong>On all sites</strong> or includes <strong>linkedin.com</strong>.',
         'Click the puzzle icon in the toolbar, find Linalysis, click the pin icon to keep it visible.'
       ]},
-      { h: 'Force re-install', body: '<p>If the extension is broken: open <code>chrome://extensions</code>, click <strong>Remove</strong> on Linalysis, then re-install from the <a href="https://chromewebstore.google.com/detail/hgmhmanijnjhaffoampdlllchpolkdnj" target="_blank">Web Store</a>. Reload linkedin.com in any open tabs.</p>' },
+      { h: 'Force re-install', body: '<p>If the extension is broken: open <code>chrome://extensions</code>, click <strong>Remove</strong> on Linalysis, <a href="/account">download the latest version</a> from My Account, unzip it, and <strong>Load unpacked</strong> the folder again. Reload linkedin.com in any open tabs.</p>' },
       { h: 'Manually confirm in our diagnostics', body: '<p>On <a href="/troubleshooting.html">/troubleshooting</a>, the <strong>Chrome extension is installed</strong> check has a button that lets you confirm manually. We\'ll trust your word and turn the badge green — the in-page detection limitation doesn\'t affect actual data flow.</p>' }
     ],
     related: ['extension', 'cookie-validate', 'charts-empty']
@@ -319,6 +323,20 @@ const TOPICS = {
       { h: 'EU reverse charge', body: '<p>If you\'re a VAT-registered EU business outside the country we\'re registered in (currently Spain), VAT is reverse-charged — your invoice shows €0 VAT and notes <em>"Reverse charge — Article 196 VAT Directive"</em>. You account for VAT in your own return.</p>' }
     ],
     related: ['upgrade-plan', 'cancel-subscription']
+  },
+  'extension-contract': {
+    cat: 'Troubleshooting', emoji: '🔌',
+    title: 'Extension contract — for the extension developer',
+    lead: 'How the Chrome extension exposes itself to linalysis.net so the Troubleshooting "extension installed" check turns green.',
+    sections: [
+      { h: 'Pick any one', body: '<p>Implement <strong>any one</strong> of the four methods below — Linalysis tries them in order. Methods 1 and 3 are the most reliable and recommended.</p>' },
+      { h: '1 — Sentinel attribute (recommended)', body: '<p>Inject a content script on <code>https://linalysis.net/*</code> that sets a sentinel attribute as soon as it runs:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">// content_scripts/linalysis_marker.js (runs at document_start)\ndocument.documentElement.setAttribute(\'data-linalysis-ext\', chrome.runtime.getManifest().version);</pre><p>In <code>manifest.json</code>:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">"content_scripts": [{\n  "matches": ["https://linalysis.net/*", "https://*.linalysis.net/*"],\n  "js": ["content_scripts/linalysis_marker.js"],\n  "run_at": "document_start"\n}]</pre>' },
+      { h: '2 — postMessage handshake', body: '<p>Same content script also listens for ping/request-li_at messages from the page:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">window.addEventListener(\'message\', function(e) {\n  if (e.source !== window) return;\n  if (e.data && e.data.source === \'linalysis-page\') {\n    if (e.data.type === \'ping\') {\n      window.postMessage({source:\'linalysis-ext\', type:\'pong\', version: chrome.runtime.getManifest().version}, location.origin);\n    }\n    if (e.data.type === \'request-li_at\') {\n      // ask the background script to read the linkedin.com cookie\n      chrome.runtime.sendMessage({type:\'get-li_at\'}, function(resp) {\n        window.postMessage({source:\'linalysis-ext\', type:\'li_at\', li_at: resp && resp.li_at}, location.origin);\n      });\n    }\n  }\n});</pre><p>The background script reads the cookie:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">chrome.runtime.onMessage.addListener(function(req, sender, sendResp) {\n  if (req.type === \'get-li_at\') {\n    chrome.cookies.get({url:\'https://www.linkedin.com\', name:\'li_at\'}, function(c) {\n      sendResp({li_at: c && c.value || null});\n    });\n    return true; // async\n  }\n});</pre><p>Required permissions in <code>manifest.json</code>: <code>"cookies"</code> + <code>"host_permissions": ["https://*.linkedin.com/*", "https://linalysis.net/*"]</code></p>' },
+      { h: '3 — chrome.runtime.sendMessage from the page', body: '<p>Add to <code>manifest.json</code>:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">"externally_connectable": {\n  "matches": ["https://linalysis.net/*", "https://*.linalysis.net/*"]\n}</pre><p>Then handle the message in the background script:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">chrome.runtime.onMessageExternal.addListener(function(req, sender, sendResp) {\n  if (req.type === \'ping\') sendResp({ok:true, version: chrome.runtime.getManifest().version});\n});</pre><p>Linalysis will call <code>chrome.runtime.sendMessage(\'eepopmbjjhmmgjehllmbcjpcncgkmcfb\', {type:\'ping\'})</code> from the page.</p>' },
+      { h: '4 — Web-accessible icon', body: '<p>Lowest-tech option. Add to <code>manifest.json</code>:</p><pre style="background:#f5f5f7;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;line-height:1.5;font-family:SFMono-Regular,Consolas,monospace">"web_accessible_resources": [{\n  "resources": ["icon-128.png", "icons/icon-128.png"],\n  "matches": ["https://linalysis.net/*", "https://*.linalysis.net/*"]\n}]</pre><p>Linalysis will load <code>chrome-extension://&lt;ID&gt;/icon-128.png</code> as an Image — if it loads, the extension is detected.</p>' },
+      { h: 'Extension ID', body: '<p>The extension ID Linalysis probes for is <code>eepopmbjjhmmgjehllmbcjpcncgkmcfb</code> (set in <code>troubleshooting.html</code> as <code>LINALYSIS_EXT_ID</code>). If the published extension ID is different, update that constant on the linalysis.net side.</p>' }
+    ],
+    related: ['ext-not-detected', 'extension', 'connect-linkedin']
   },
   'team-members': {
     cat: 'Account & billing', emoji: '👥',

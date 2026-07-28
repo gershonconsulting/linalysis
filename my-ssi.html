@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Linalysis — My SSI</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/common.css" />
+<style>
+  .ssi-hero { display:flex; align-items:center; gap:24px; padding:24px; background:linear-gradient(135deg,#fff 0%,#fff5f4 100%); border:1px solid var(--border); border-radius:14px; margin-bottom:20px; }
+  .ssi-dial { width:180px; height:180px; position:relative; flex-shrink:0; }
+  .ssi-dial svg { width:100%; height:100%; transform:rotate(-90deg); }
+  .ssi-dial .ssi-num { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ssi-dial .ssi-num .val { font-size:52px; font-weight:800; color:#FE1B04; line-height:1; }
+  .ssi-dial .ssi-num .max { font-size:13px; color:var(--text-muted); margin-top:4px; }
+  .ssi-hero-text { flex:1; min-width:0; }
+  .ssi-hero-text h2 { font-size:20px; font-weight:700; margin:0 0 6px 0; }
+  .ssi-hero-text p { color:var(--text-muted); font-size:13px; margin:0; }
+  .ssi-hero-meta { margin-top:14px; display:flex; gap:24px; }
+  .ssi-hero-meta .m { font-size:13px; }
+  .ssi-hero-meta .m .lbl { color:var(--text-muted); }
+  .ssi-hero-meta .m .val { font-weight:700; color:#1d1d1f; }
+  .sub-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  @media (max-width: 900px) { .sub-row { grid-template-columns:repeat(2,1fr); } }
+  .sub-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .sub-card .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+  .sub-card .val { font-size:28px; font-weight:700; margin-top:4px; color:#1d1d1f; }
+  .sub-card .bar { height:6px; background:#f3f3f5; border-radius:3px; margin-top:10px; overflow:hidden; }
+  .sub-card .bar-fill { height:100%; background:#FE1B04; border-radius:3px; transition:width .3s; }
+  .sub-card .sub-desc { font-size:11px; color:var(--text-muted); margin-top:8px; line-height:1.4; }
+  .source-link { display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; font-weight:600; color:#0a66c2; text-decoration:none; }
+  .source-link:hover { text-decoration:underline; }
+  .card-source { display:inline-flex; align-items:center; gap:5px; margin-top:10px; font-size:11px; font-weight:600; color:#0a66c2; text-decoration:none; }
+  .card-source:hover { text-decoration:underline; }
+</style>
+</head><body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="my-ssi"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>My SSI</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="avatar" title="Olivier">O</span>
+  </div>
+</div>
+<div class="content">
+
+  <div class="page-header">
+    <h2>My Social Selling Index</h2>
+    <p>Your LinkedIn Social Selling Index — updated each time the Linalysis extension syncs your <code>/sales/ssi</code> page. SSI is the sum of four sub-scores, each 0–25.</p>
+    <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" class="source-link">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+      View the source: LinkedIn SSI page ↗
+    </a>
+  </div>
+
+  <!-- Empty state — content is filled dynamically by JS based on extension pairing status -->
+  <div id="empty-state" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:40px;text-align:center;margin-bottom:20px">
+    <div id="es-icon" style="font-size:14px;color:var(--text-muted);margin-bottom:8px">📊 Checking your extension…</div>
+    <h3 id="es-title" style="font-size:18px;font-weight:700;margin-bottom:6px">One moment</h3>
+    <p id="es-body" style="color:var(--text-muted);font-size:13px;margin-bottom:18px">Checking whether the Linalysis extension is paired and has captured your SSI.</p>
+    <div id="es-actions"><a href="/troubleshooting" class="btn primary">Open troubleshooting →</a></div>
+  </div>
+
+  <!-- Live content -->
+  <div id="live-content" style="display:none">
+    <!-- Hero dial + industry/network rank -->
+    <div class="ssi-hero">
+      <div class="ssi-dial">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#f3f3f5" stroke-width="10"/>
+          <circle id="ssi-dial-arc" cx="50" cy="50" r="44" fill="none" stroke="#FE1B04" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 276" />
+        </svg>
+        <div class="ssi-num">
+          <div class="val" id="ssi-hero-val">—</div>
+          <div class="max">of 100</div>
+        </div>
+      </div>
+      <div class="ssi-hero-text">
+        <h2 id="ssi-hero-headline">Your SSI score</h2>
+        <p id="ssi-hero-blurb">The Social Selling Index measures your effectiveness at building a professional brand, finding the right people, engaging with insights, and building relationships. Higher scores correlate with better sales outcomes.</p>
+        <div class="ssi-hero-meta">
+          <div class="m"><div class="lbl">Industry rank</div><div class="val" id="ssi-industry-val">—</div></div>
+          <div class="m"><div class="lbl">Network rank</div><div class="val" id="ssi-network-val">—</div></div>
+          <div class="m"><div class="lbl">Last captured</div><div class="val" id="ssi-last-captured">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color legend -->
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--text-muted)">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#16a34a;margin-right:5px"></span>Good — SSI 60+, sub-score 15+, rank Top ≤5%</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;margin-right:5px"></span>OK — SSI 40–60, sub-score 10–15, rank Top 5–10%</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#cc1016;margin-right:5px"></span>Needs work — SSI &lt;40, sub-score &lt;10, rank Top &gt;10%</span>
+    </div>
+
+    <!-- 4 sub-score cards -->
+    <div class="sub-row">
+      <div class="sub-card">
+        <div class="lbl">Establish brand</div>
+        <div class="val"><span id="ssi-brand-val">—</span><span style="font-size:14px;color:var(--text-muted);font-weight:500"> / 25</span></div>
+        <div class="bar"><div class="bar-fill" id="ssi-brand-bar" style="width:0%"></div></div>
+        <div class="sub-desc">How complete and compelling your profile is — headline, photo, summary, media, endorsements.</div>
+      </div>
+      <div class="sub-card">
+        <div class="lbl">Find right people</div>
+        <div class="val"><span id="ssi-prospecting-val">—</span><span style="font-size:14px;color:var(--text-muted);font-weight:500"> / 25</span></div>
+        <div class="bar"><div class="bar-fill" id="ssi-prospecting-bar" style="width:0%"></div></div>
+        <div class="sub-desc">How efficiently you find prospects — searches, viewed profiles, saved leads.</div>
+      </div>
+      <div class="sub-card">
+        <div class="lbl">Engage with insights</div>
+        <div class="val"><span id="ssi-insights-val">—</span><span style="font-size:14px;color:var(--text-muted);font-weight:500"> / 25</span></div>
+        <div class="bar"><div class="bar-fill" id="ssi-insights-bar" style="width:0%"></div></div>
+        <div class="sub-desc">How often you share, comment, and engage with content that resonates with your network.</div>
+      </div>
+      <div class="sub-card">
+        <div class="lbl">Build relationships</div>
+        <div class="val"><span id="ssi-relationships-val">—</span><span style="font-size:14px;color:var(--text-muted);font-weight:500"> / 25</span></div>
+        <div class="bar"><div class="bar-fill" id="ssi-relationships-bar" style="width:0%"></div></div>
+        <div class="sub-desc">How well you grow and nurture your professional network — connections at the right seniority.</div>
+      </div>
+    </div>
+
+    <!-- Rank standings — Industry & Network percentile, explained -->
+    <div class="section-title">Where you rank</div>
+    <div class="grid cols-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><h3>Industry SSI rank</h3><span class="muted">vs peers in your industry</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 10px 0">
+          <span id="rank-industry-big" style="font-size:38px;font-weight:800;line-height:1">—</span>
+          <span style="font-size:14px;color:var(--text-muted)">percentile</span>
+        </div>
+        <div id="rank-industry-badge" style="display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:10px">—</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin:0 0 10px 0">Your Social Selling Index ranked against everyone else in <strong>your industry</strong>. “Top 1%” means only 1% of your industry peers score higher — the lower the percentile, the better.</p>
+        <div id="rank-industry-advice" style="font-size:13px;line-height:1.5;padding:12px;border-radius:8px;background:#f9fafb"></div>
+        <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" class="card-source">Source: LinkedIn SSI ↗</a>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Network SSI rank</h3><span class="muted">vs your 1st-degree network</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin:6px 0 10px 0">
+          <span id="rank-network-big" style="font-size:38px;font-weight:800;line-height:1">—</span>
+          <span style="font-size:14px;color:var(--text-muted)">percentile</span>
+        </div>
+        <div id="rank-network-badge" style="display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:10px">—</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.5;margin:0 0 10px 0">Your SSI ranked against the people <strong>in your own network</strong>. It reflects how you compare to the peers you’re already connected to — again, lower percentile is better.</p>
+        <div id="rank-network-advice" style="font-size:13px;line-height:1.5;padding:12px;border-radius:8px;background:#f9fafb"></div>
+        <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" class="card-source">Source: LinkedIn SSI ↗</a>
+      </div>
+    </div>
+
+    <!-- Recommendations (Gold+) -->
+    <div id="ssi-reco-section" style="display:none">
+      <div class="section-title">How to increase your score
+        <span style="display:inline-block;background:#D4AF37;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:8px;letter-spacing:0.5px">GOLD</span>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0" id="ssi-reco-intro">Prioritized by biggest opportunity — the sub-scores furthest from the 25-point ceiling.</p>
+        <div id="ssi-reco-list"></div>
+      </div>
+    </div>
+
+    <!-- Locked teaser for non-gold -->
+    <div id="ssi-reco-locked" style="display:none">
+      <div class="section-title">How to increase your score</div>
+      <div class="card" style="margin-bottom:20px;text-align:center;padding:32px;background:linear-gradient(135deg,#fff 0%,#fffbeb 100%)">
+        <div style="font-size:22px;margin-bottom:8px">🔒</div>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:6px">Personalized recommendations are a Gold feature</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Upgrade to Gold to see exactly which actions will raise each of your four SSI sub-scores the fastest, ranked by opportunity.</p>
+        <a href="/pricing" class="btn primary">Upgrade to Gold →</a>
+      </div>
+    </div>
+
+    <!-- Trend charts -->
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-header"><h3>SSI overall — trend</h3><span class="muted" id="ssi-trend-range">Last captures</span></div>
+        <div class="chart-wrap"><canvas id="ssi-trend"></canvas></div>
+        <div class="metric-insight" id="ssi-trend-insight">Loading…</div>
+        <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" class="card-source">Source: LinkedIn SSI ↗</a>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Sub-scores — trend</h3><span class="muted">All 4 stacked</span></div>
+        <div class="chart-wrap"><canvas id="ssi-subs"></canvas></div>
+        <div class="metric-insight" id="ssi-subs-insight">Loading…</div>
+        <a href="https://www.linkedin.com/sales/ssi" target="_blank" rel="noopener" class="card-source">Source: LinkedIn SSI ↗</a>
+      </div>
+    </div>
+
+    <!-- Capture history table -->
+    <div class="section-title">Capture history</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="data-table">
+        <thead><tr>
+          <th>Date</th>
+          <th class="num">SSI</th>
+          <th class="num">Brand</th>
+          <th class="num">People</th>
+          <th class="num">Insights</th>
+          <th class="num">Relationships</th>
+          <th class="num">Industry rank</th>
+          <th class="num">Network rank</th>
+        </tr></thead>
+        <tbody id="ssi-history-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</main></div>
+<div id="toast"></div>
+<script src="/api.js"></script>
+<script src="/plan.js"></script>
+<script src="/data.js"></script>
+<script src="/live-data.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+function toast(m,ms){ms=ms||2200;var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(function(){t.classList.remove('show')},ms);}
+
+// ── Color coding ───────────────────────────────────────────────────
+// Green = good, Orange = ok, Red = bad. Thresholds per the metric type.
+var COLOR_GOOD = '#16a34a', COLOR_OK = '#f59e0b', COLOR_BAD = '#cc1016';
+// Overall SSI (0-100): <40 bad, 40–60 ok, 60+ good
+function colorOverall(v) { if (v == null) return '#9ca3af'; if (v >= 60) return COLOR_GOOD; if (v >= 40) return COLOR_OK; return COLOR_BAD; }
+// Sub-score (0-25): scaled proportionally — <10 bad, 10–15 ok, 15+ good
+function colorSub(v) { if (v == null) return '#9ca3af'; if (v >= 15) return COLOR_GOOD; if (v >= 10) return COLOR_OK; return COLOR_BAD; }
+// Rank percentile (Top X%): lower is better — <5 good, 5–10 ok, >10 bad
+function colorRank(v) { if (v == null) return '#9ca3af'; if (v <= 5) return COLOR_GOOD; if (v <= 10) return COLOR_OK; return COLOR_BAD; }
+
+function apiBase() {
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://127.0.0.1:8787';
+  if (location.hostname.endsWith('.pages.dev')) return 'https://linalysis-api.oattia.workers.dev';
+  return 'https://api.linalysis.net';
+}
+
+// Show the empty state with context-aware copy based on what's actually going on.
+// Three cases:
+//   (A) Extension not paired → "Install / open linalysis.net signed in"
+//   (B) Extension paired, no captures yet → "Click Sync Now"
+//   (C) Extension paired, capture exists but SSI values all null → "Scrape failed"
+async function showEmptyState(hasNullCapture) {
+  document.getElementById('empty-state').style.display = 'block';
+  document.getElementById('live-content').style.display = 'none';
+  var icon = document.getElementById('es-icon');
+  var title = document.getElementById('es-title');
+  var body = document.getElementById('es-body');
+  var actions = document.getElementById('es-actions');
+  var paired = false, pairedAt = null, lastCaptureAt = null;
+  try {
+    var r = await fetch(apiBase() + '/api/user/extension-status', { credentials: 'include' });
+    if (r.ok) { var j = await r.json(); paired = !!j.paired; pairedAt = j.paired_at; lastCaptureAt = j.last_capture_at; }
+  } catch (e) {}
+
+  if (!paired) {
+    // Case A
+    icon.textContent = '📊 No SSI data yet';
+    title.textContent = 'Install the Linalysis extension to start capturing';
+    body.textContent = 'Once installed, the extension reads your LinkedIn SSI page each day and populates this view with your real values.';
+    actions.innerHTML = '<a href="/troubleshooting" class="btn primary">Set up extension →</a>';
+  } else if (hasNullCapture) {
+    // Case C — the scrape ran but returned nulls
+    icon.textContent = '⚠️ Extension synced, but LinkedIn didn\'t return your SSI';
+    title.textContent = 'Your last sync couldn\'t read the sub-scores';
+    body.innerHTML = 'Extension is paired (last synced <strong>' + (lastCaptureAt || '—') + '</strong>). ' +
+      'This usually means you weren\'t signed in to LinkedIn when it ran, or the SSI page took too long to load. ' +
+      'Please:<br><br>' +
+      '<strong>1.</strong> Open <a href="https://www.linkedin.com/sales/ssi" target="_blank" style="color:#0a66c2">linkedin.com/sales/ssi</a> in this browser and confirm you can see your SSI score.<br>' +
+      '<strong>2.</strong> Then click the <strong>Linalysis extension icon</strong> in your toolbar → <strong>Sync now</strong>.<br>' +
+      '<strong>3.</strong> Refresh this page.';
+    actions.innerHTML = '<a href="https://www.linkedin.com/sales/ssi" target="_blank" class="btn primary" style="margin-right:10px">Open LinkedIn SSI →</a>' +
+      '<a href="/troubleshooting" class="btn">Diagnostics</a>';
+  } else {
+    // Case B
+    icon.textContent = '✓ Extension is installed';
+    title.textContent = 'Ready to capture your first SSI';
+    body.innerHTML = 'The Linalysis extension is paired' + (pairedAt ? ' (since ' + pairedAt.slice(0, 10) + ')' : '') + '. Now trigger the first capture:<br><br>' +
+      '<strong>1.</strong> Open the <strong>Linalysis extension icon</strong> in your Chrome toolbar.<br>' +
+      '<strong>2.</strong> Click <strong>Sync now</strong>.<br>' +
+      '<strong>3.</strong> Wait ~10 seconds, then refresh this page.';
+    actions.innerHTML = '<a href="/troubleshooting" class="btn">Diagnostics</a>';
+  }
+}
+
+// ── Recommendations engine (Gold+) ──────────────────────────────────
+// Each SSI sub-score caps at 25. The furthest-from-25 sub-scores are the biggest opportunities.
+// We rank them by gap-to-ceiling and surface concrete LinkedIn actions that move each one.
+var SSI_PLAYBOOK = {
+  brand: {
+    title: 'Establish your professional brand',
+    actions: [
+      'Complete every profile section — headline, About, experience, skills, and a professional photo. LinkedIn rewards 100% completeness.',
+      'Publish or repost thoughtful content weekly. Original posts and articles lift this score the most.',
+      'Add rich media to your profile: slide decks, links, videos, case studies.',
+      'Request recommendations from colleagues and give endorsements to get them back.',
+    ],
+  },
+  prospecting: {
+    title: 'Find the right people',
+    actions: [
+      'Use LinkedIn search with filters (title, industry, geography) to identify prospects daily.',
+      'View more profiles of decision-makers in your target accounts — profile views count here.',
+      'Save leads and accounts you care about so LinkedIn can surface warm paths to them.',
+      'Use “People also viewed” and alumni tools to widen your qualified prospect pool.',
+    ],
+  },
+  insights: {
+    title: 'Engage with insights',
+    actions: [
+      'Share industry articles with a short point of view — not just links.',
+      'Comment substantively on posts from prospects and peers several times a week.',
+      'Join and participate in a few relevant LinkedIn Groups.',
+      'Send occasional value-add messages (an article, a congrats) to existing connections.',
+    ],
+  },
+  relationships: {
+    title: 'Build relationships',
+    actions: [
+      'Send personalized connection requests to senior decision-makers — note why you’re connecting.',
+      'Connect with internal colleagues; LinkedIn values a strong internal network.',
+      'Accept relevant inbound requests promptly to keep your network growing.',
+      'Reconnect with dormant contacts to keep relationship strength high.',
+    ],
+  },
+};
+
+// ── Rank standings ──────────────────────────────────────────────────
+// Percentile is inverted: lower is better. <5 good, 5-10 ok, >10 needs work.
+function renderRank(which, pct, whoLabel) {
+  var big = document.getElementById('rank-' + which + '-big');
+  var badge = document.getElementById('rank-' + which + '-badge');
+  var advice = document.getElementById('rank-' + which + '-advice');
+  if (!big) return;
+  if (pct == null) {
+    big.textContent = '—'; big.style.color = '#9ca3af';
+    badge.textContent = 'No data'; badge.style.background = '#f3f4f6'; badge.style.color = '#6b7280';
+    advice.innerHTML = 'This rank will appear after your next successful SSI sync.';
+    return;
+  }
+  var color = colorRank(pct);
+  big.textContent = 'Top ' + (Math.round(pct * 10) / 10) + '%';
+  big.style.color = color;
+  var band = pct <= 5 ? 'good' : (pct <= 10 ? 'ok' : 'bad');
+  var label = band === 'good' ? 'Elite' : (band === 'ok' ? 'Strong' : 'Room to grow');
+  badge.textContent = label;
+  badge.style.background = band === 'good' ? '#dcfce7' : (band === 'ok' ? '#fef3c7' : '#fee2e2');
+  badge.style.color = color;
+  advice.style.borderLeft = '3px solid ' + color;
+  if (band === 'good') {
+    advice.innerHTML = '<strong style="color:' + color + '">You’re in the top tier vs ' + whoLabel + '.</strong> Maintain it: keep posting and engaging consistently. Your SSI sub-scores drive this rank, so sustaining them holds your position.';
+  } else if (band === 'ok') {
+    advice.innerHTML = '<strong style="color:' + color + '">You’re ahead of most, but not yet elite.</strong> To crack the top 5%, focus on your two weakest sub-scores in the recommendations below — raising your SSI directly improves how you rank against ' + whoLabel + '.';
+  } else {
+    advice.innerHTML = '<strong style="color:' + color + '">There’s meaningful room to move up vs ' + whoLabel + '.</strong> This percentile is a direct function of your SSI — every point you add to the four sub-scores below pushes you past peers. Start with the #1 recommendation.';
+  }
+}
+
+function renderRecommendations(sub) {
+  var section = document.getElementById('ssi-reco-section');
+  var locked = document.getElementById('ssi-reco-locked');
+  var isGold = true;
+  try { isGold = !window.Plan || window.Plan.allows('ai_insights'); } catch (e) { isGold = true; }
+
+  if (!isGold) {
+    if (section) section.style.display = 'none';
+    if (locked) locked.style.display = 'block';
+    return;
+  }
+  if (locked) locked.style.display = 'none';
+  if (!section) return;
+  section.style.display = 'block';
+
+  // Rank the 4 sub-scores by gap-to-25 (largest gap = biggest opportunity). Nulls treated as full gap.
+  var keys = ['brand', 'prospecting', 'insights', 'relationships'];
+  var ranked = keys.map(function (k) {
+    var v = sub[k];
+    var gap = v == null ? 25 : Math.max(0, 25 - v);
+    return { key: k, value: v, gap: gap };
+  }).sort(function (a, b) { return b.gap - a.gap; });
+
+  var totalGap = ranked.reduce(function (s, r) { return s + r.gap; }, 0);
+  var introEl = document.getElementById('ssi-reco-intro');
+  if (introEl) {
+    introEl.innerHTML = totalGap > 0.5
+      ? 'You have up to <strong>' + (Math.round(totalGap * 10) / 10) + ' points</strong> of headroom across your four sub-scores. Start at the top — that’s where the fastest gains are.'
+      : 'You’re near the ceiling on every sub-score. Focus on maintaining consistency; marginal gains from here are small.';
+  }
+
+  var html = '';
+  for (var i = 0; i < ranked.length; i++) {
+    var r = ranked[i];
+    var pb = SSI_PLAYBOOK[r.key];
+    var band = r.value == null ? 'bad' : (r.value >= 15 ? 'good' : (r.value >= 10 ? 'ok' : 'bad'));
+    var bandColor = band === 'good' ? '#16a34a' : (band === 'ok' ? '#f59e0b' : '#cc1016');
+    var gapTxt = r.gap > 0.5 ? ('+' + (Math.round(r.gap * 10) / 10) + ' pts possible') : 'near ceiling';
+    // Show the top 2 actions for the weakest 2 sub-scores; 1 action for the stronger ones.
+    var nActions = i < 2 ? 3 : 2;
+    var acts = pb.actions.slice(0, nActions).map(function (a) {
+      return '<li style="margin-bottom:6px;line-height:1.45">' + a + '</li>';
+    }).join('');
+    html +=
+      '<div style="padding:16px 0;border-top:' + (i === 0 ? 'none' : '1px solid var(--border)') + '">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+          '<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#f3f4f6;font-size:12px;font-weight:700;color:#374151">' + (i + 1) + '</span>' +
+          '<strong style="font-size:14px">' + pb.title + '</strong>' +
+          '<span style="margin-left:auto;font-size:12px;font-weight:700;color:' + bandColor + '">' + (r.value == null ? '—' : (Math.round(r.value * 100) / 100)) + '/25</span>' +
+          '<span style="font-size:11px;color:var(--text-muted);white-space:nowrap">' + gapTxt + '</span>' +
+        '</div>' +
+        '<ul style="margin:0;padding-left:32px;font-size:13px;color:var(--text-muted)">' + acts + '</ul>' +
+      '</div>';
+  }
+  document.getElementById('ssi-reco-list').innerHTML = html;
+}
+
+function render() {
+  var D = window.LINALYSIS_DATA;
+  if (!D || !D.dates || D.dates.length === 0) {
+    showEmptyState(false);
+    return;
+  }
+
+  var dates = D.dates;
+  var m = D.metrics || {};
+  function last(arr) {
+    if (!arr) return null;
+    for (var i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return arr[i];
+    return null;
+  }
+  function lastAt(arr) {
+    if (!arr) return null;
+    for (var i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return i;
+    return -1;
+  }
+  function fmt(n, d) { if (n == null) return '—'; if (d === undefined) d = 0; return Number(n).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}); }
+  function shortDate(d) { return d ? d.slice(5) : ''; }
+
+  var ssiOverall = last(m.ssi);
+  var ssiInd = last(m.ssi_industry);
+  var ssiNet = last(m.ssi_network);
+  var brand = last(m.ssi_brand);
+  var prospecting = last(m.ssi_prospecting);
+  var insights = last(m.ssi_insights);
+  var relationships = last(m.ssi_relationships);
+  var lastIdx = lastAt(m.ssi);
+  var lastDate = lastIdx >= 0 ? dates[lastIdx] : null;
+
+  // If we have literally no SSI overall AND no sub-scores, show empty state.
+  // Pass hasNullCapture=true so the copy differentiates "extension synced but got nothing" from
+  // "extension not installed."
+  if (ssiOverall == null && brand == null && prospecting == null && insights == null && relationships == null) {
+    // Check whether at least one date row exists → we did receive an ingest, just with null SSI values.
+    var hasNullCapture = D.dates.length > 0;
+    showEmptyState(hasNullCapture);
+    return;
+  }
+
+  document.getElementById('live-content').style.display = 'block';
+
+  // Hero — dial + number colored by overall band
+  var overallColor = colorOverall(ssiOverall);
+  var heroValEl = document.getElementById('ssi-hero-val');
+  heroValEl.textContent = ssiOverall != null ? fmt(ssiOverall, ssiOverall % 1 === 0 ? 0 : 1) : '—';
+  heroValEl.style.color = overallColor;
+  var arcLen = ssiOverall != null ? (ssiOverall / 100) * 276 : 0;
+  var arcEl = document.getElementById('ssi-dial-arc');
+  arcEl.setAttribute('stroke-dasharray', arcLen + ' 276');
+  arcEl.setAttribute('stroke', overallColor);
+  // Ranks — colored by percentile band (lower is better)
+  var indEl = document.getElementById('ssi-industry-val');
+  indEl.textContent = ssiInd != null ? 'Top ' + fmt(ssiInd) + '%' : '—';
+  indEl.style.color = colorRank(ssiInd);
+  var netEl = document.getElementById('ssi-network-val');
+  netEl.textContent = ssiNet != null ? 'Top ' + fmt(ssiNet) + '%' : '—';
+  netEl.style.color = colorRank(ssiNet);
+  document.getElementById('ssi-last-captured').textContent = lastDate || '—';
+
+  // Sub-cards — value + bar colored by 0-25 band (<10 bad, 10-15 ok, 15+ good)
+  function setSub(prefix, v) {
+    var el = document.getElementById('ssi-' + prefix + '-val');
+    var bar = document.getElementById('ssi-' + prefix + '-bar');
+    if (v == null) { el.textContent = '—'; el.style.color = '#9ca3af'; bar.style.width = '0%'; return; }
+    var c = colorSub(v);
+    el.textContent = fmt(v, v % 1 === 0 ? 0 : 2);
+    el.style.color = c;
+    bar.style.width = Math.min(100, (v / 25) * 100) + '%';
+    bar.style.background = c;
+  }
+  setSub('brand', brand);
+  setSub('prospecting', prospecting);
+  setSub('insights', insights);
+  setSub('relationships', relationships);
+
+  // ── Rank standings (Industry & Network percentile) ────────────────
+  renderRank('industry', ssiInd, 'industry peers');
+  renderRank('network', ssiNet, 'your network');
+
+  // ── Recommendations (Gold+) ───────────────────────────────────────
+  renderRecommendations({ brand: brand, prospecting: prospecting, insights: insights, relationships: relationships, industry: ssiInd, network: ssiNet });
+
+  // Trend chart — SSI overall
+  var ssiSeries = (m.ssi || []).map(function(v){ return v; });
+  var trendDates = dates.map(shortDate);
+  new Chart(document.getElementById('ssi-trend'), {
+    type: 'line',
+    data: { labels: trendDates, datasets: [{ data: ssiSeries, borderColor: '#FE1B04', backgroundColor: 'rgba(254,27,4,0.12)', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 2, spanGaps: true }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{intersect:false,mode:'index'}}, scales:{ x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}}, y:{ min:0, max:100, grid:{color:'#f1f1f3'}, ticks:{color:'#9ca3af',font:{size:10}} } } }
+  });
+  var nonNull = ssiSeries.filter(function(v){return v != null});
+  document.getElementById('ssi-trend-range').textContent = nonNull.length ? (nonNull.length + ' capture' + (nonNull.length === 1 ? '' : 's')) : 'No captures';
+  document.getElementById('ssi-trend-insight').textContent = nonNull.length >= 2
+    ? 'Range: ' + fmt(Math.min.apply(null, nonNull), 1) + ' → ' + fmt(Math.max.apply(null, nonNull), 1) + '. Latest: ' + fmt(ssiOverall, 1) + '.'
+    : nonNull.length === 1
+      ? 'First and only capture so far. Latest: ' + fmt(ssiOverall, 1) + '. Sync tomorrow to build the trend.'
+      : 'No SSI captures yet.';
+
+  // Sub-score trend
+  var subColors = { brand:'#FE1B04', prospecting:'#0a66c2', insights:'#7a48a8', relationships:'#16a34a' };
+  new Chart(document.getElementById('ssi-subs'), {
+    type: 'line',
+    data: { labels: trendDates, datasets: [
+      { label:'Brand', data: m.ssi_brand || [], borderColor: subColors.brand, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true },
+      { label:'People', data: m.ssi_prospecting || [], borderColor: subColors.prospecting, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true },
+      { label:'Insights', data: m.ssi_insights || [], borderColor: subColors.insights, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true },
+      { label:'Relationships', data: m.ssi_relationships || [], borderColor: subColors.relationships, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true },
+    ] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11}, boxWidth:12}},tooltip:{intersect:false,mode:'index'}}, scales:{ x:{grid:{display:false},ticks:{color:'#9ca3af',font:{size:10},maxTicksLimit:8}}, y:{ min:0, max:25, grid:{color:'#f1f1f3'}, ticks:{color:'#9ca3af',font:{size:10}} } } }
+  });
+  var maxSub = [brand, prospecting, insights, relationships].reduce(function(acc, v, i){
+    if (v == null) return acc;
+    if (!acc || v > acc.v) return { v:v, name:['brand','people','insights','relationships'][i] };
+    return acc;
+  }, null);
+  document.getElementById('ssi-subs-insight').textContent = maxSub
+    ? 'Strongest sub-score: ' + maxSub.name + ' at ' + fmt(maxSub.v, maxSub.v % 1 === 0 ? 0 : 2) + '/25.'
+    : 'Sub-scores will appear here after the next sync.';
+
+  // History table
+  var rows = [];
+  for (var i = dates.length - 1; i >= 0; i--) {
+    var d = dates[i];
+    var vals = [m.ssi && m.ssi[i], m.ssi_brand && m.ssi_brand[i], m.ssi_prospecting && m.ssi_prospecting[i], m.ssi_insights && m.ssi_insights[i], m.ssi_relationships && m.ssi_relationships[i], m.ssi_industry && m.ssi_industry[i], m.ssi_network && m.ssi_network[i]];
+    var hasAny = vals.some(function(v){return v != null});
+    if (!hasAny) continue;
+    function cell(v, color, fmtFn) {
+      if (v == null) return '<td class="num">—</td>';
+      return '<td class="num" style="color:' + color + ';font-weight:600">' + fmtFn(v) + '</td>';
+    }
+    var subFmt = function(v){ return fmt(v, v % 1 === 0 ? 0 : 2); };
+    var rankFmt = function(v){ return 'Top ' + fmt(v) + '%'; };
+    rows.push('<tr>' +
+      '<td><strong>' + d + '</strong></td>' +
+      cell(vals[0], colorOverall(vals[0]), function(v){ return fmt(v, v % 1 === 0 ? 0 : 1); }) +
+      cell(vals[1], colorSub(vals[1]), subFmt) +
+      cell(vals[2], colorSub(vals[2]), subFmt) +
+      cell(vals[3], colorSub(vals[3]), subFmt) +
+      cell(vals[4], colorSub(vals[4]), subFmt) +
+      cell(vals[5], colorRank(vals[5]), rankFmt) +
+      cell(vals[6], colorRank(vals[6]), rankFmt) +
+      '</tr>');
+    if (rows.length >= 30) break;
+  }
+  document.getElementById('ssi-history-rows').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px">No captures yet</td></tr>';
+}
+
+// Render on load and again when live-data refreshes
+render();
+window.addEventListener('linalysisDataReady', render);
+</script>
+</body></html>
