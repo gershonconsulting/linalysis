@@ -74,9 +74,16 @@
   function growthVelocity(key, windowDays = 30) {
     const s = series(key);
     if (s.length < 2) return 0;
-    const b = s.length - 1;
-    const a = Math.max(0, b - windowDays);
-    return (s[b] - s[a]) / (b - a);  // units per day
+    // Use the last non-null value and the earliest non-null value within the window.
+    // Treating a null baseline as 0 (the old behaviour) produced absurd rates on sparse data.
+    let b = -1;
+    for (let i = s.length - 1; i >= 0; i--) { if (s[i] != null) { b = i; break; } }
+    if (b <= 0) return 0;
+    const lo = Math.max(0, b - windowDays);
+    let a = -1;
+    for (let i = lo; i < b; i++) { if (s[i] != null) { a = i; break; } }
+    if (a < 0 || a === b) return 0;
+    return (s[b] - s[a]) / (b - a);  // units per real day span
   }
 
   function rollingAverage(values, window = 7) {

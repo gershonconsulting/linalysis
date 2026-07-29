@@ -95,7 +95,8 @@
     var arrow = chg > 0 ? '▲' : (chg < 0 ? '▼' : '—');
     var html;
     if (isPoints) {
-      html = chg === 0 ? '— flat' : (arrow + ' ' + Math.abs(chg) + ' pt');
+      var rc = Math.round(Math.abs(chg) * 100) / 100;
+      html = chg === 0 ? '— flat' : (arrow + ' ' + rc + ' pt');
     } else {
       html = chg === 0 ? '— flat' : (arrow + ' ' + fmt(Math.abs(chg)) + (d.pct ? ' (' + (d.pct > 0 ? '+' : '') + d.pct.toFixed(1) + '%)' : ''));
     }
@@ -174,7 +175,7 @@
     function cardHtml(cfg, chartId) {
       var v = Stats.latest(cfg.key);
       var dp = deltaParts(cfg.key, cfg.pts);
-      var pctTxt = (dp.pct == null) ? '—' : (cfg.pts ? ((dp.change > 0 ? '+' : '') + dp.change + ' pt') : ((dp.pct > 0 ? '+' : '') + dp.pct.toFixed(1) + '%'));
+      var pctTxt = (dp.pct == null) ? '—' : (cfg.pts ? ((dp.change > 0 ? '+' : '') + (Math.round(dp.change * 100) / 100) + ' pt') : ((dp.pct > 0 ? '+' : '') + dp.pct.toFixed(1) + '%'));
       var sub = (dp.start != null && dp.end != null) ? (fmt(dp.start) + ' → ' + fmt(dp.end)) : (v == null ? 'not tracked yet' : 'latest: ' + fmt(v));
       return '<div class="metric-card"><div class="metric-head"><div class="metric-title">' + cfg.label + '</div>' +
         '<div class="metric-pct ' + dp.cls + '">' + pctTxt + '</div></div>' +
@@ -227,7 +228,7 @@
       }
       var cur = Stats.latest('connections');
       var vel = Stats.growthVelocity('connections', 30);
-      if (cur != null && Stats.dates().length > 2) {
+      if (cur != null && Stats.dates().length >= 7) {
         var p = Stats.projection('connections', [365])[0];
         document.getElementById('proj-value').innerHTML = fmt(p.value) + ' <span style="font-size:14px;color:var(--text-muted);font-weight:500">in 12mo</span>';
         document.getElementById('proj-sub').textContent = 'at current 30-day pace (' + vel.toFixed(1) + '/day) · +' + fmt(p.value - cur) + ' from today';
