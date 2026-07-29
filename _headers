@@ -51,3 +51,27 @@
   Content-Type: text/html; charset=utf-8
 /forgot-password
   Content-Type: text/html; charset=utf-8
+
+# Core app scripts/styles are NOT content-hashed, so long edge caching served stale
+# code after deploys (a recurring "my deploy isn't showing" problem). Force revalidation
+# so every deploy propagates immediately; unchanged files still return a cheap 304.
+/nav.js
+  Cache-Control: no-cache
+/stats-helpers.js
+  Cache-Control: no-cache
+/live-data.js
+  Cache-Control: no-cache
+/api.js
+  Cache-Control: no-cache
+/data.js
+  Cache-Control: no-cache
+/ai-insights.js
+  Cache-Control: no-cache
+/plan.js
+  Cache-Control: no-cache
+/first-time-guard.js
+  Cache-Control: no-cache
+/onboarding.js
+  Cache-Control: no-cache
+/common.css
+  Cache-Control: no-cache
