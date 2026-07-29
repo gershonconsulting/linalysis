@@ -214,7 +214,7 @@
   if (window.Plan && window.Plan.allows && window.Plan.allows('ai_insights') && window.AI) {
     var lines = [];
     var dF = (Stats.delta('co_followers', 30) || {change:0,pct:0});
-    if (dF.change > 50) lines.push('Followers up <strong>' + sign(dF.change) + '</strong> in 30 days (' + pct(dF.pct) + ') — your strongest 30-day stretch in 5 quarters.');
+    if (dF.change > 50) lines.push('Followers up <strong>' + sign(dF.change) + '</strong> in 30 days (' + pct(dF.pct) + ') — a strong month.');
     else if (dF.change > 0) lines.push('Followers grew <strong>' + sign(dF.change) + '</strong> in 30 days — modest but consistent.');
     else lines.push('Followers flat or down 30d — review your posting cadence.');
     if (conv > 5) lines.push('Visitor→follower conversion is <strong>' + conv.toFixed(1) + '%</strong> — above the ~5% B2B average.');

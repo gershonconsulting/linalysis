@@ -36,7 +36,7 @@
       `At the current 30-day pace (about ${Math.round(v30)} connections/day) you'll cross ${fmt(S.latest('connections') + Math.round(v30 * 30))} by this time next month.`;
 
     const para2 = ssiD.change > 0
-      ? `Your SSI is ${ssi} and climbing — up ${ssiD.change} points in 30 days. That puts you in the top tier for both industry and network reach.`
+      ? `Your SSI is ${ssi} and climbing — up ${ssiD.change} points in 30 days. Keep the momentum: consistent posting and 1-on-1 outreach are what move it.`
       : ssiD.change < 0
       ? `Your SSI slipped ${Math.abs(ssiD.change)} points this month, now at ${ssi}. Usually this signals less active posting or fewer 1-on-1 messages — worth reviewing.`
       : `Your SSI is holding at ${ssi}. It's strong, but flat — the fastest way to push it up is to publish one long-form post and reply to 5 DMs this week.`;

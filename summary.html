@@ -28,11 +28,11 @@
 
       <div class="page-header">
         <h2>Executive summary</h2>
-        <p>High-level view of everything Linalysis tracks. Data range: Mar 30, 2021 → Mar 27, 2026 (1,602 days).</p>
+        <p id="sum-range">High-level view of everything Linalysis tracks.</p>
       </div>
 
       <div class="summary">
-        <div class="summary-text">You've grown from <strong>18,353</strong> to <strong>29,355</strong> connections (<strong>+60%</strong>) over 5 years — your SSI is <strong>70</strong>, top 1% industry &amp; network, and your company <strong>Gershon Consulting</strong> grew <strong>+110 followers</strong> in the last 30 days.</div>
+        <div class="summary-text" id="sum-hero">Your headline numbers appear here once the extension has synced.</div>
       </div>
 
       <!-- ── YoY + DoW + Projection widgets (Gold) ─────────── -->
@@ -55,40 +55,19 @@
           </div>
         </div>
       </div>
-      <div id="advanced-teaser" style="display:none;padding:16px 22px;background:var(--card);border:1px dashed var(--border);border-radius:12px;margin-bottom:22px;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div id="advanced-teaser" style="display:none;padding:16px 22px;background:var(--card);border:1px dashed var(--border);border-radius:12px;margin-bottom:22px;font-size:13px;color:var(--text-muted);justify-content:space-between;align-items:center;gap:10px">
         <span>🔒 <strong style="color:var(--text)">Year-over-year, day-of-week, and projection analysis</strong> are Gold features.</span>
         <a href="/pricing.html" style="padding:7px 14px;background:var(--brand);color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:12px;white-space:nowrap">Upgrade to Gold</a>
       </div>
 
       <div class="section-title">Headline KPIs (latest · 30-day delta)</div>
-      <div class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Connections</div><div class="kpi-value">29,355</div><div class="kpi-delta down">▼ 211 (-0.7%)</div><div class="kpi-sub">5-year growth +60%</div></div>
-        <div class="kpi"><div class="kpi-label">Views</div><div class="kpi-value">1,418</div><div class="kpi-delta up">▲ 196 (+16.0%)</div><div class="kpi-sub">vs previous 30d</div></div>
-        <div class="kpi"><div class="kpi-label">SSI</div><div class="kpi-value">70</div><div class="kpi-delta up">▲ 1 pt</div><div class="kpi-sub">top 1% industry &amp; network</div></div>
-        <div class="kpi"><div class="kpi-label">Invitations</div><div class="kpi-value">531</div><div class="kpi-delta flat">— flat</div><div class="kpi-sub">backlog needs triage</div></div>
-        <div class="kpi"><div class="kpi-label">Company followers</div><div class="kpi-value">1,314</div><div class="kpi-delta up">▲ 110 (+9.1%)</div><div class="kpi-sub">Gershon Consulting</div></div>
-        <div class="kpi"><div class="kpi-label">Co. post reach</div><div class="kpi-value">13</div><div class="kpi-delta up">▲ 6 (+86%)</div><div class="kpi-sub">impressions / day</div></div>
-      </div>
+      <div class="kpi-row" id="kpi-row"></div>
 
       <div class="section-title">Personal metrics — 30-day trend</div>
-      <div class="metric-grid three">
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Connections</div><div class="metric-pct down">-0.7%</div></div><div class="metric-sub">29,566 → 29,355</div><div class="metric-chart"><canvas id="c1"></canvas></div><div class="metric-insight">Deliberate pruning as you approach the 30K cap — right move for profile quality.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Views</div><div class="metric-pct up">+16.0%</div></div><div class="metric-sub">1,222 → 1,418/day</div><div class="metric-chart"><canvas id="c2"></canvas></div><div class="metric-insight">Sharp bump this month — likely tied to a recent post or mention reaching beyond first-degree network.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Search appearances</div><div class="metric-pct up">+160%</div></div><div class="metric-sub">354 → 921</div><div class="metric-chart"><canvas id="c3"></canvas></div><div class="metric-insight">Huge spike. Usually follows profile-keyword updates or mentions on third-party sites.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">SSI</div><div class="metric-pct up">+1.4%</div></div><div class="metric-sub">69 → 70</div><div class="metric-chart"><canvas id="c4"></canvas></div><div class="metric-insight">Top 1% of both industry and network. Diminishing returns past this — ceiling is ~75 in practice.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Invitations pending</div><div class="metric-pct flat">0.00%</div></div><div class="metric-sub">531 → 531</div><div class="metric-chart"><canvas id="c5"></canvas></div><div class="metric-insight">Backlog hasn't moved in 30+ days. Either triage or pause incoming invites to reset.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">SSI Industry &amp; Network %ile</div><div class="metric-pct up">Top 1%</div></div><div class="metric-sub">Both at percentile 1 throughout</div><div class="metric-chart"><canvas id="c6"></canvas></div><div class="metric-insight">Consistently in the elite band. Earlier spikes were transient drops below top tier.</div></div>
-      </div>
+      <div class="metric-grid three" id="personal-grid"></div>
 
-      <div class="section-title">Company metrics — Gershon Consulting</div>
-      <div class="metric-grid three">
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Followers</div><div class="metric-pct up">+9.1%</div></div><div class="metric-sub">1,204 → 1,314</div><div class="metric-chart"><canvas id="d1"></canvas></div><div class="metric-insight">Fastest sustained growth rate on record (~3.7/day). Posting cadence is working.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Unique visitors</div><div class="metric-pct flat">0%</div></div><div class="metric-sub">~78/day steady</div><div class="metric-chart"><canvas id="d2"></canvas></div><div class="metric-insight">Stable baseline of organic discovery. Content push would move it higher.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Search appearances</div><div class="metric-pct up">+5%</div></div><div class="metric-sub">~21/day</div><div class="metric-chart"><canvas id="d3"></canvas></div><div class="metric-insight">Low but stable. Check which keywords drive these — tagline optimization could lift.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">New followers</div><div class="metric-pct up">~5/day</div></div><div class="metric-sub">Visitor → follower ~6%</div><div class="metric-chart"><canvas id="d4"></canvas></div><div class="metric-insight">Healthy conversion for services firms. Industry average is 3-4%.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Post impressions</div><div class="metric-pct up">+86%</div></div><div class="metric-sub">7 → 13/day</div><div class="metric-chart"><canvas id="d5"></canvas></div><div class="metric-insight">Big improvement but still ~1% of follower count — frequency/format need refresh.</div></div>
-        <div class="metric-card"><div class="metric-head"><div class="metric-title">Custom clicks</div><div class="metric-pct flat">0%</div></div><div class="metric-sub">~2/day</div><div class="metric-chart"><canvas id="d6"></canvas></div><div class="metric-insight">Close to noise. If a CTA link exists, it's underperforming — audit the placement.</div></div>
-      </div>
+      <div class="section-title">Company metrics</div>
+      <div class="metric-grid three" id="company-grid"></div>
 
     </div>
   </main>
@@ -99,39 +78,32 @@
 <script src="/first-time-guard.js"></script>
 <script src="/plan.js"></script>
 <script src="/stats-helpers.js"></script>
-<script>
-  (function() {
-    if (!window.Stats) return;
-    const fmt = n => typeof n === 'number' ? n.toLocaleString('en-US') : n;
-    if (Plan.allows('yoy_comparison')) {
-      document.getElementById('advanced-widgets').style.display = 'block';
-      const y = Stats.yoy('connections');
-      if (y) {
-        document.getElementById('yoy-value').innerHTML = `${y.pct >= 0 ? '+' : ''}${y.pct.toFixed(1)}% <span style="font-size:14px;color:var(--text-muted);font-weight:500">(${y.delta >= 0 ? '+' : ''}${fmt(y.delta)})</span>`;
-        document.getElementById('yoy-sub').textContent = `${fmt(y.year_ago.value)} on ${new Date(y.year_ago.date+'T00:00:00Z').toLocaleDateString()} → ${fmt(y.today.value)} today`;
-      }
-      const dow = Stats.dayOfWeekBreakdown('connections').sort((a,b) => b.avg_delta - a.avg_delta);
-      document.getElementById('dow-value').textContent = `${dow[0].day} · +${dow[0].avg_delta.toFixed(1)}`;
-      document.getElementById('dow-sub').textContent = `vs ${dow[dow.length-1].day} at ${dow[dow.length-1].avg_delta.toFixed(1)}/day`;
-      const p = Stats.projection('connections', [365])[0];
-      document.getElementById('proj-value').innerHTML = `${fmt(p.value)} <span style="font-size:14px;color:var(--text-muted);font-weight:500">in 12mo</span>`;
-      const cur = Stats.latest('connections');
-      document.getElementById('proj-sub').textContent = `at current 30-day pace (${(Stats.growthVelocity('connections',30)).toFixed(1)}/day) · +${fmt(p.value - cur)} from today`;
-    } else {
-      document.getElementById('advanced-teaser').style.display = 'flex';
-    }
-  })();
-</script>
 <script src="/api.js"></script>
 <script src="/nav.js" defer></script>
 <script>
-  function toast(msg, ms = 2200) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    clearTimeout(toast._to);
-    toast._to = setTimeout(() => t.classList.remove('show'), ms);
+(function () {
+  if (!window.Stats || !window.Stats.dates) return;
+
+  var fmt = function (n) { return (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('en-US'); };
+
+  // Delta → { html, cls } honouring the existing up/down/flat classes. Null-safe.
+  function deltaParts(key, isPoints) {
+    var d = Stats.delta(key, 30);
+    if (!d || d.start == null || d.end == null) return { html: '—', cls: 'flat', pct: null, change: null };
+    var chg = d.change;
+    var cls = chg > 0 ? 'up' : (chg < 0 ? 'down' : 'flat');
+    var arrow = chg > 0 ? '▲' : (chg < 0 ? '▼' : '—');
+    var html;
+    if (isPoints) {
+      html = chg === 0 ? '— flat' : (arrow + ' ' + Math.abs(chg) + ' pt');
+    } else {
+      html = chg === 0 ? '— flat' : (arrow + ' ' + fmt(Math.abs(chg)) + (d.pct ? ' (' + (d.pct > 0 ? '+' : '') + d.pct.toFixed(1) + '%)' : ''));
+    }
+    return { html: html, cls: cls, pct: d.pct, change: chg, start: d.start, end: d.end };
   }
-  const chartOpts = {
+
+  // Chart helper — spanGaps so sparse real data still draws.
+  var chartOpts = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
@@ -139,41 +111,138 @@
       y: { grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } }
     }
   };
-
-  // Simple line helper
-  function line(id, data, color) {
-    new Chart(document.getElementById(id), {
+  function line(id, values, color) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var hasAny = values.some(function (v) { return v != null; });
+    if (!hasAny) { el.parentNode.innerHTML = '<div style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;height:100%">not tracked yet</div>'; return; }
+    new Chart(el, {
       type: 'line',
-      data: { labels: data.map(()=>'') , datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0 }] },
+      data: { labels: values.map(function () { return ''; }), datasets: [{ data: values, borderColor: color, backgroundColor: color + '22', fill: true, borderWidth: 2, tension: 0.3, pointRadius: 0, spanGaps: true }] },
       options: chartOpts
     });
   }
-  const CONN30 = [29566,29560,29515,29517,29518,29519,29527,29519,29516,29500,29480,29432,29394,29389,29382,29374,29355];
-  const VIEWS30 = [1222,1228,1231,1233,1226,1217,1219,1228,1233,1242,1261,1287,1307,1329,1371,1391,1418];
-  const SEARCH30 = [916,916,1327,1327,1327,1327,1327,1327,1327,1546,1567,1567,1567,1567,1567,977,921];
-  const SSI30 = [69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,69,70];
-  const INV30 = [531,531,531,531,531,531,531,531,531,531,531,531,531,531,531,531,531];
-  line('c1', CONN30, '#2244a4');
-  line('c2', VIEWS30, '#555555');
-  line('c3', SEARCH30, '#7a48a8');
-  line('c4', SSI30, '#FE1B04');
-  line('c5', INV30, '#2ca02c');
-  // Dual line for SSI Industry/Network
-  new Chart(document.getElementById('c6'), {
-    type: 'line',
-    data: { labels: INV30.map(()=>''), datasets: [
-      { label: 'Industry', data: INV30.map(()=>1), borderColor: '#f39c12', backgroundColor: 'rgba(243,156,18,0.1)', borderWidth: 2, pointRadius: 0 },
-      { label: 'Network',  data: INV30.map(()=>1), borderColor: '#0a66c2', backgroundColor: 'rgba(10,102,194,0.1)', borderWidth: 2, pointRadius: 0 },
-    ]},
-    options: { ...chartOpts, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10 } } } }, scales: { ...chartOpts.scales, y: { min: 0, max: 15, grid: { color: '#f1f1f3' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
-  });
-  line('d1', [1204,1209,1213,1218,1224,1229,1234,1239,1244,1250,1256,1262,1268,1275,1282,1289,1296,1302,1308,1314], '#FE1B04');
-  line('d2', [78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78,78], '#0a66c2');
-  line('d3', [20,20,20,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21], '#7a48a8');
-  line('d4', [5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5], '#2ca02c');
-  line('d5', [7,8,8,9,9,10,10,11,11,12,12,12,13,13,13,13,13,13,13,13], '#b76b00');
-  line('d6', [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], '#555555');
 
+  // ── Header range + hero line, from real dates/values ──
+  function render() {
+    if (window.__linalysisFirstTime) return; // no data → first-time-guard already replaced content
+    var dates = Stats.dates();
+    if (!dates || !dates.length) return;
+    var first = dates[0], last = dates[dates.length - 1];
+    function human(d) { try { return new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return d; } }
+    document.getElementById('sum-range').textContent = 'High-level view of everything Linalysis tracks. Data range: ' + human(first) + ' → ' + human(last) + ' (' + fmt(dates.length) + ' day' + (dates.length === 1 ? '' : 's') + ').';
+
+    // Hero line — only assert what the real series supports.
+    var connSeries = Stats.series('connections');
+    var connFirst = null, connLast = Stats.latest('connections');
+    for (var i = 0; i < connSeries.length; i++) { if (connSeries[i] != null) { connFirst = connSeries[i]; break; } }
+    var parts = [];
+    if (connFirst != null && connLast != null && connFirst !== connLast) {
+      var gp = connFirst ? Math.round(((connLast - connFirst) / connFirst) * 100) : null;
+      parts.push('Connections ' + fmt(connFirst) + ' → ' + fmt(connLast) + (gp != null ? ' (' + (gp >= 0 ? '+' : '') + gp + '%)' : ''));
+    } else if (connLast != null) {
+      parts.push(fmt(connLast) + ' connections');
+    }
+    var ssiNow = Stats.latest('ssi');
+    if (ssiNow != null) parts.push('SSI ' + ssiNow);
+    var coD = Stats.delta('co_followers', 30);
+    if (coD && coD.change != null && coD.change !== 0) parts.push('company followers ' + (coD.change > 0 ? '+' : '') + fmt(coD.change) + ' in 30 days');
+    document.getElementById('sum-hero').innerHTML = parts.length ? parts.join(' · ') : 'Your headline numbers appear here as the extension captures more data.';
+
+    // ── Headline KPIs ──
+    var kpis = [
+      { key: 'connections', label: 'Connections', pts: false },
+      { key: 'views', label: 'Views', pts: false },
+      { key: 'ssi', label: 'SSI', pts: true },
+      { key: 'invitations', label: 'Invitations', pts: false },
+      { key: 'co_followers', label: 'Company followers', pts: false },
+      { key: 'co_impressions', label: 'Co. post reach', pts: false }
+    ];
+    document.getElementById('kpi-row').innerHTML = kpis.map(function (k) {
+      var v = Stats.latest(k.key);
+      var dp = deltaParts(k.key, k.pts);
+      return '<div class="kpi"><div class="kpi-label">' + k.label + '</div>' +
+        '<div class="kpi-value">' + fmt(v) + '</div>' +
+        '<div class="kpi-delta ' + dp.cls + '">' + dp.html + '</div>' +
+        '<div class="kpi-sub">' + (v == null ? 'not tracked yet' : 'vs previous 30d') + '</div></div>';
+    }).join('');
+
+    // ── Metric cards (personal + company) ──
+    var COLORS = { connections: '#2244a4', views: '#555555', search_appearance: '#7a48a8', ssi: '#FE1B04', invitations: '#2ca02c',
+      co_followers: '#FE1B04', co_visitors: '#0a66c2', co_search: '#7a48a8', co_new_followers: '#2ca02c', co_impressions: '#b76b00', co_clicks: '#555555' };
+
+    function cardHtml(cfg, chartId) {
+      var v = Stats.latest(cfg.key);
+      var dp = deltaParts(cfg.key, cfg.pts);
+      var pctTxt = (dp.pct == null) ? '—' : (cfg.pts ? ((dp.change > 0 ? '+' : '') + dp.change + ' pt') : ((dp.pct > 0 ? '+' : '') + dp.pct.toFixed(1) + '%'));
+      var sub = (dp.start != null && dp.end != null) ? (fmt(dp.start) + ' → ' + fmt(dp.end)) : (v == null ? 'not tracked yet' : 'latest: ' + fmt(v));
+      return '<div class="metric-card"><div class="metric-head"><div class="metric-title">' + cfg.label + '</div>' +
+        '<div class="metric-pct ' + dp.cls + '">' + pctTxt + '</div></div>' +
+        '<div class="metric-sub">' + sub + '</div>' +
+        '<div class="metric-chart"><canvas id="' + chartId + '"></canvas></div></div>';
+    }
+
+    var personal = [
+      { key: 'connections', label: 'Connections', pts: false },
+      { key: 'views', label: 'Views', pts: false },
+      { key: 'search_appearance', label: 'Search appearances', pts: false },
+      { key: 'ssi', label: 'SSI', pts: true },
+      { key: 'invitations', label: 'Invitations pending', pts: false },
+      { key: 'ssi_industry', label: 'SSI Industry rank', pts: false }
+    ];
+    var company = [
+      { key: 'co_followers', label: 'Followers', pts: false },
+      { key: 'co_visitors', label: 'Unique visitors', pts: false },
+      { key: 'co_search', label: 'Search appearances', pts: false },
+      { key: 'co_new_followers', label: 'New followers', pts: false },
+      { key: 'co_impressions', label: 'Post impressions', pts: false },
+      { key: 'co_clicks', label: 'Custom clicks', pts: false }
+    ];
+
+    document.getElementById('personal-grid').innerHTML = personal.map(function (c, i) { return cardHtml(c, 'pc' + i); }).join('');
+    document.getElementById('company-grid').innerHTML = company.map(function (c, i) { return cardHtml(c, 'dc' + i); }).join('');
+
+    personal.forEach(function (c, i) { line('pc' + i, Stats.sliceSeries(c.key, 30).values, COLORS[c.key] || '#888'); });
+    company.forEach(function (c, i) { line('dc' + i, Stats.sliceSeries(c.key, 30).values, COLORS[c.key] || '#888'); });
+
+    // ── Advanced widgets (Gold) — real data only ──
+    if (window.Plan && Plan.allows && Plan.allows('yoy_comparison')) {
+      document.getElementById('advanced-widgets').style.display = 'block';
+      var y = Stats.yoy('connections');
+      if (y) {
+        document.getElementById('yoy-value').innerHTML = (y.pct >= 0 ? '+' : '') + y.pct.toFixed(1) + '% <span style="font-size:14px;color:var(--text-muted);font-weight:500">(' + (y.delta >= 0 ? '+' : '') + fmt(y.delta) + ')</span>';
+        document.getElementById('yoy-sub').textContent = fmt(y.year_ago.value) + ' on ' + new Date(y.year_ago.date + 'T00:00:00Z').toLocaleDateString() + ' → ' + fmt(y.today.value) + ' today';
+      } else {
+        document.getElementById('yoy-value').textContent = '—';
+        document.getElementById('yoy-sub').textContent = 'needs 12+ months of history';
+      }
+      var dowArr = Stats.dayOfWeekBreakdown('connections');
+      if (dowArr && dowArr.length && Stats.dates().length > 7) {
+        var dow = dowArr.slice().sort(function (a, b) { return b.avg_delta - a.avg_delta; });
+        document.getElementById('dow-value').textContent = dow[0].day + ' · +' + dow[0].avg_delta.toFixed(1);
+        document.getElementById('dow-sub').textContent = 'vs ' + dow[dow.length - 1].day + ' at ' + dow[dow.length - 1].avg_delta.toFixed(1) + '/day';
+      } else {
+        document.getElementById('dow-value').textContent = '—';
+        document.getElementById('dow-sub').textContent = 'needs more daily captures';
+      }
+      var cur = Stats.latest('connections');
+      var vel = Stats.growthVelocity('connections', 30);
+      if (cur != null && Stats.dates().length > 2) {
+        var p = Stats.projection('connections', [365])[0];
+        document.getElementById('proj-value').innerHTML = fmt(p.value) + ' <span style="font-size:14px;color:var(--text-muted);font-weight:500">in 12mo</span>';
+        document.getElementById('proj-sub').textContent = 'at current 30-day pace (' + vel.toFixed(1) + '/day) · +' + fmt(p.value - cur) + ' from today';
+      } else {
+        document.getElementById('proj-value').textContent = '—';
+        document.getElementById('proj-sub').textContent = 'needs more daily captures';
+      }
+    } else {
+      document.getElementById('advanced-teaser').style.display = 'flex';
+    }
+  }
+
+  render();
+  window.addEventListener('linalysisDataReady', function () { try { render(); } catch (e) {} });
+})();
 </script>
 </body>
 </html>
