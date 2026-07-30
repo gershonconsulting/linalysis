@@ -1,7 +1,7 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-07-29.1930-live';
-const LINALYSIS_LATEST_EXT_VERSION = '0.2.1'; // bump this whenever a new extension zip ships
+const LINALYSIS_BUILD = '2026-07-29.2046-live';
+const LINALYSIS_LATEST_EXT_VERSION = '0.2.2'; // bump this whenever a new extension zip ships
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
 // ── Extension update banner ────────────────────────────────────────

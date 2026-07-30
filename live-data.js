@@ -61,6 +61,7 @@
       company_search_appearances: 'co_search', company_new_followers: 'co_new_followers',
       company_post_impressions: 'co_impressions', company_custom_clicks: 'co_clicks',
       company_credits_available: 'co_credits_available', company_credits_total: 'co_credits_total',
+      inmail_credits: 'inmail_credits', premium_plan: 'premium_plan', premium_renews: 'premium_renews',
     };
     var metrics = {};
     for (var apiKey in MAP) {

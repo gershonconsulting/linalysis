@@ -75,24 +75,17 @@
                 <circle cx="65" cy="65" r="55" stroke="#e5e7eb" stroke-width="12" fill="none"/>
                 <circle id="inmail-ring" cx="65" cy="65" r="55" stroke="#0a66c2" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="345" stroke-dashoffset="345"/>
               </svg>
-              <div class="ring-label"><div class="ring-pct" id="inmail-pct">—</div><div class="ring-sub">used this month</div></div>
+              <div class="ring-label"><div class="ring-pct" id="inmail-avail">—</div><div class="ring-sub" id="inmail-ring-sub">available</div></div>
             </div>
             <div class="cred-stats">
-              <div class="cred-stat-row"><span class="l">Used</span> <span class="v" id="inmail-used">—</span></div>
-              <div class="cred-stat-row"><span class="l">Remaining</span> <span class="v" id="inmail-rem">—</span></div>
-              <div class="cred-stat-row"><span class="l">Monthly allowance</span> <span class="v" id="inmail-total">—</span></div>
-              <div class="cred-stat-row"><span class="l">Resets</span> <span class="v" id="inmail-reset">1st of month</span></div>
+              <div class="cred-stat-row"><span class="l">Credits available</span> <span class="v" id="inmail-avail2">—</span></div>
+              <div class="cred-stat-row"><span class="l">Plan</span> <span class="v" id="inmail-plan">—</span></div>
+              <div class="cred-stat-row"><span class="l">Renews</span> <span class="v" id="inmail-renews">—</span></div>
+              <div class="cred-stat-row"><span class="l">As of last sync</span> <span class="v" id="inmail-asof">—</span></div>
             </div>
           </div>
-          <div class="cred-note">
-            <strong>Set your plan:</strong> Personal InMail credits aren't visible to our extension. Pick yours below — we'll use it to compute the %.
-            <div class="plan-pick" id="inmail-plans">
-              <button data-credits="5"  data-plan="Career">Career (5/mo)</button>
-              <button data-credits="15" data-plan="Business">Business (15/mo)</button>
-              <button data-credits="25" data-plan="Recruiter Lite">Recruiter Lite (25/mo)</button>
-              <button data-credits="50" data-plan="Sales Nav">Sales Navigator Core (50/mo)</button>
-              <button data-credits="150" data-plan="Recruiter">Recruiter (150/mo)</button>
-            </div>
+          <div class="cred-note" id="inmail-note">
+            <strong>Live from LinkedIn.</strong> Your real <code>Credits available</code> balance, captured by the extension from your Premium page. LinkedIn only shows the current balance — usage and monthly allowance aren't exposed, so we never estimate them.
           </div>
         </div>
 
@@ -210,35 +203,32 @@
     else if (p >= 70) ring.setAttribute('stroke', '#b76b00');
   }
 
-  // ─── InMail (configurable plan) ────────────────────────
-  // Default = the user's real, verified plan: Sales Navigator Core (50 InMail credits/mo).
-  var inmailPlan = localStorage.getItem('linalysis_inmail_plan') || 'Sales Nav';
-  var inmailTotal = parseInt(localStorage.getItem('linalysis_inmail_total') || '50', 10);
-  // Personal InMail USAGE is not visible to the extension — we must NOT fabricate it. Show the
-  // plan cap (real, user-selected) and reset date only; usage stays "not tracked".
-  function renderInmail() {
-    document.getElementById('inmail-pct').textContent = '—';
-    document.getElementById('inmail-used').textContent = 'not tracked';
-    document.getElementById('inmail-rem').textContent = inmailTotal + ' / mo cap';
-    document.getElementById('inmail-total').textContent = inmailTotal + ' (' + inmailPlan + ')';
-    // Reset date — 1st of next month
-    var d = new Date(); d.setMonth(d.getMonth() + 1, 1);
-    document.getElementById('inmail-reset').textContent = d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-    setRing('inmail-ring', 0);
-  }
-  renderInmail();
-  // Plan picker — store choice
-  document.getElementById('inmail-plans').querySelectorAll('button').forEach(function(b) {
-    if (b.dataset.plan === inmailPlan) b.classList.add('active');
-    b.onclick = function() {
-      inmailPlan = b.dataset.plan;
-      inmailTotal = parseInt(b.dataset.credits, 10);
-      try { localStorage.setItem('linalysis_inmail_plan', inmailPlan); localStorage.setItem('linalysis_inmail_total', String(inmailTotal)); } catch(e){}
-      document.getElementById('inmail-plans').querySelectorAll('button').forEach(function(x){x.classList.remove('active')});
-      b.classList.add('active');
-      renderInmail();
-    };
-  });
+  // ─── InMail credits — REAL captured balance (extension scrapes /premium/sb/explore) ─────
+  // LinkedIn only exposes "Credits available: N". We show that real number and never fabricate
+  // usage or an allowance. If nothing captured yet, everything stays "—".
+  (function renderInmail() {
+    var el = function(id){ return document.getElementById(id); };
+    var avail  = Stats.latest('inmail_credits');
+    var plan   = Stats.latest('premium_plan');
+    var renews = Stats.latest('premium_renews');
+    var dts = Stats.dates(); var asof = (dts && dts.length) ? dts[dts.length - 1] : null;
+    if (avail == null) {
+      el('inmail-avail').textContent = '—';
+      el('inmail-avail2').textContent = 'not captured yet';
+      el('inmail-note').innerHTML = '<strong>Not captured yet.</strong> Open LinkedIn and hit <em>Sync now</em> in the Linalysis extension — it reads your real <code>Credits available</code> from linkedin.com/premium. Nothing is estimated.';
+    } else {
+      el('inmail-avail').textContent = fmt(avail);
+      el('inmail-avail2').textContent = fmt(avail);
+      var CAPS = { 'Sales Navigator Core':50, 'Sales Nav':50, 'Career':5, 'Business':15, 'Recruiter Lite':30, 'Recruiter':150 };
+      var cap = (plan && CAPS[plan]) ? CAPS[plan] : null;
+      var ring = el('inmail-ring');
+      if (ring) { var pct = cap ? Math.min(100, (avail / cap) * 100) : 0; ring.setAttribute('stroke-dashoffset', String(345 - 345 * pct / 100)); }
+      if (cap) el('inmail-ring-sub').textContent = 'of ' + cap + '/mo';
+    }
+    if (plan)   el('inmail-plan').textContent = plan;
+    if (renews) el('inmail-renews').textContent = renews;
+    if (asof)   el('inmail-asof').textContent = asof;
+  })();
 
   // ─── Weekly connection invites ───────────────────────────────
   // Only report "sent this week" from a RELIABLE source: the extension's daily invitations_sent_24h
