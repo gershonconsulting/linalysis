@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
   <app appid="eepopmbjjhmmgjehllmbcjpcncgkmcfb">
-    <updatecheck codebase="https://linalysis.net/extension/linalysis.crx" version="0.2.4" hash_sha256="8881ed413c557f2feca96707abb701f60780a15d69d96531e0b0dd3c261250f3" />
+    <updatecheck codebase="https://linalysis.net/extension/linalysis.crx" version="0.2.5" hash_sha256="618b4c20a8f58d1e251169f82e2f6d58136a55d07ff7da18745aeb1d75ce90af" />
   </app>
 </gupdate>
