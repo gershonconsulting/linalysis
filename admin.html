@@ -35,6 +35,27 @@
   .admin-search { width: 100%; max-width: 400px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
 
   .locked-wall { background: linear-gradient(135deg,#1d1d1f,#3a1a2a); color:#fff; border-radius: 18px; padding: 60px 40px; text-align: center; margin-top: 20px; }
+
+/* Delete-account modal. Deliberately high-friction: a real preview of what will be
+   destroyed, a backup link, and the exact email typed by hand before the button unlocks. */
+#del-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+#del-overlay.show{display:flex}
+#del-modal{background:#fff;border-radius:14px;max-width:560px;width:100%;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:88vh;overflow:auto}
+#del-modal h3{margin:0 0 4px;font-size:18px;color:#cc1016}
+#del-modal .sub{color:#6e6e73;font-size:13px;margin:0 0 16px}
+#del-modal .facts{background:#fdecea;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.7;margin-bottom:14px}
+#del-modal .facts b{color:#cc1016}
+#del-modal .backup{background:#f5f5f7;border-radius:10px;padding:12px 14px;font-size:12.5px;margin-bottom:14px}
+#del-modal label{display:block;font-size:12.5px;color:#1d1d1f;margin-bottom:6px}
+#del-modal input[type=text]{width:100%;padding:9px 11px;border:1px solid #d2d2d7;border-radius:8px;font-size:13px;font-family:ui-monospace,Consolas,monospace;box-sizing:border-box}
+#del-modal .ack{display:flex;gap:8px;align-items:flex-start;margin:14px 0 18px;font-size:12.5px;color:#1d1d1f}
+#del-modal .acts{display:flex;gap:10px;justify-content:flex-end}
+#del-modal button{padding:9px 16px;border-radius:8px;border:0;font-size:13px;font-weight:600;cursor:pointer}
+#del-cancel{background:#e8e8ed;color:#1d1d1f}
+#del-go{background:#cc1016;color:#fff}
+#del-go:disabled{background:#e8b3b0;cursor:not-allowed}
+.danger-btn{background:#cc1016;color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;margin-left:6px}
+.danger-btn:hover{background:#a60d12}
 </style>
 </head>
 <body>
@@ -116,6 +137,21 @@
 
     </div>
   </main>
+</div>
+<div id="del-overlay">
+  <div id="del-modal">
+    <h3>Delete account permanently</h3>
+    <p class="sub" id="del-email"></p>
+    <div class="facts" id="del-facts">Checking what this would delete…</div>
+    <div class="backup" id="del-backup"></div>
+    <label for="del-confirm">Type the email address to confirm</label>
+    <input type="text" id="del-confirm" autocomplete="off" spellcheck="false" placeholder="">
+    <div class="ack"><input type="checkbox" id="del-ack"><label for="del-ack" style="margin:0">I understand this cannot be undone and no backup is kept on the server.</label></div>
+    <div class="acts">
+      <button id="del-cancel" onclick="closeDelete()">Cancel</button>
+      <button id="del-go" disabled onclick="doDelete()">Delete permanently</button>
+    </div>
+  </div>
 </div>
 <div id="toast"></div>
 <script src="/api.js"></script>
@@ -345,6 +381,7 @@ function render(){
       '<td>' +
         '<button class="impersonate-btn" onclick="impersonate(\''+u.email.replace(/\'/g,"\\'")+'\')" style="margin-right:6px">View as user →</button>' +
         '<button class="impersonate-btn" style="background:#6b7280" onclick="triggerSync(\''+u.email.replace(/\'/g,"\\'")+'\', this)">⟳ Sync now</button>' +
+        '<button class="danger-btn" onclick="askDelete(\''+u.email.replace(/\'/g,"\\'")+'\')" title="Permanently delete this account and all its data">Delete</button>' +
       '</td>' +
     '</tr>';
   }).join('') || '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text-muted)">No accounts match.</td></tr>';
@@ -417,6 +454,74 @@ function impersonate(email){
     toast('Impersonation failed: ' + ((err.body&&err.body.message) || err.error || ''));
   });
 }
+
+// ─── Delete account ────────────────────────────────────────────────
+// Three gates before anything is destroyed: a live dry-run preview from the server,
+// the exact email typed by hand, and an explicit acknowledgement. The server enforces
+// the same two checks independently, so a stray click here can never delete anything.
+var DEL = { email: null, keys: 0, stats: 0 };
+
+function askDelete(email) {
+  DEL = { email: email, keys: 0, stats: 0 };
+  document.getElementById('del-email').textContent = email;
+  document.getElementById('del-confirm').value = '';
+  document.getElementById('del-confirm').placeholder = email;
+  document.getElementById('del-ack').checked = false;
+  document.getElementById('del-go').disabled = true;
+  document.getElementById('del-facts').innerHTML = 'Checking what this would delete…';
+  document.getElementById('del-backup').innerHTML =
+    '<strong>Back it up first.</strong> <a href="' + LinalysisAPI.BASE + '/api/admin/user/export?email=' +
+    encodeURIComponent(email) + '" target="_blank" rel="noopener" style="color:#FE1B04;font-weight:600">Download this account as JSON →</a>' +
+    ' <span style="color:#6e6e73">(every stats row, minus the password hash)</span>';
+  document.getElementById('del-overlay').classList.add('show');
+
+  LinalysisAPI.post('/api/admin/user/purge', { email: email, dry_run: true }).then(function(r) {
+    DEL.keys = r.would_delete; DEL.stats = r.stats_rows;
+    var kinds = {};
+    (r.keys || []).forEach(function(k){ var p = k.split(':')[0]; kinds[p] = (kinds[p]||0)+1; });
+    var breakdown = Object.keys(kinds).sort().map(function(k){ return k + ' × ' + kinds[k]; }).join(' · ');
+    document.getElementById('del-facts').innerHTML =
+      'This will permanently delete <b>' + r.would_delete + ' records</b>' +
+      (r.stats_rows ? ', including <b>' + r.stats_rows + ' days of captured history</b>' : '') + '.<br>' +
+      '<span style="color:#6e6e73;font-size:12px">' + breakdown + '</span>';
+  }).catch(function(err) {
+    document.getElementById('del-facts').textContent =
+      'Could not preview: ' + ((err.body && err.body.message) || err.error || 'unknown error');
+  });
+}
+
+function closeDelete() { document.getElementById('del-overlay').classList.remove('show'); }
+
+function refreshDeleteGate() {
+  var typed = (document.getElementById('del-confirm').value || '').trim().toLowerCase();
+  var acked = document.getElementById('del-ack').checked;
+  document.getElementById('del-go').disabled = !(DEL.email && typed === DEL.email.toLowerCase() && acked);
+}
+
+function doDelete() {
+  var btn = document.getElementById('del-go');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  LinalysisAPI.post('/api/admin/user/purge', {
+    email: DEL.email, confirm: DEL.email, i_have_a_backup: true
+  }).then(function(r) {
+    closeDelete();
+    btn.textContent = 'Delete permanently';
+    toast('Deleted ' + r.email + ' — ' + r.deleted + ' records removed', 6000);
+    loadUsers(true);
+  }).catch(function(err) {
+    btn.disabled = false; btn.textContent = 'Delete permanently';
+    toast('Delete failed: ' + ((err.body && err.body.message) || err.error || 'unknown error'), 8000);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var c = document.getElementById('del-confirm'), a = document.getElementById('del-ack');
+  if (c) c.addEventListener('input', refreshDeleteGate);
+  if (a) a.addEventListener('change', refreshDeleteGate);
+  var ov = document.getElementById('del-overlay');
+  if (ov) ov.addEventListener('click', function(e){ if (e.target === ov) closeDelete(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDelete(); });
+});
 </script>
 </body>
 </html>
