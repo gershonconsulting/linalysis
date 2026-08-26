@@ -1,0 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "Linalysis — LinkedIn analytics collector",
+  "version": "0.2.8",
+  "update_url": "https://linalysis.net/extension/updates.xml",
+  "description": "Reads your LinkedIn Social Selling Index and metrics from your own browser and syncs them to your Linalysis account. Runs quietly in the background.",
+  "permissions": [
+    "alarms",
+    "storage",
+    "scripting",
+    "tabs",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://linalysis.net/*",
+    "https://www.linalysis.net/*",
+    "https://api.linalysis.net/*",
+    "https://linalysis-api.oattia.workers.dev/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://linalysis.net/*",
+        "https://www.linalysis.net/*"
+      ],
+      "js": [
+        "content-pair.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.linkedin.com/sales/ssi*"
+      ],
+      "js": [
+        "content-ssi.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.linkedin.com/mynetwork/*",
+        "https://www.linkedin.com/analytics/*",
+        "https://www.linkedin.com/me/profile-views*",
+        "https://www.linkedin.com/premium/*",
+        "https://www.linkedin.com/company/*/admin/*"
+      ],
+      "js": [
+        "content-metrics.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Linalysis",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA10ALAgNEJ1HyZc2sWkwEeny4+4yWCd6yt9XG8+/ybOgv2UB+W5TZf+pB8VZYN/mPRz1BgldNIFoFEzZeQs66GQ1zvLQYOQBGQRIpgVux4y3ineP43S0tMj60WiKPXY1RbN8uDal6Cz4O14uwS2c+BqCKqJReTdk+t7rphUj6fTdgL60AAJqOQEl9Oo4UUbULFDCghxCD0LlldLyyzyChMuG+Kgv7ibv+qBbUvLi4Ij2MRcVdfwrrFPgnAhD2rDhtO30+LPbsR8xlV049srkg5QJHoWk38BgKGCdsv7YlAtW5x18RR5cYgVAGt9j9OQlcSfe0ldUcx7pvBAxgMXMqgwIDAQAB"
+}
