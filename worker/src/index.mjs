@@ -37,6 +37,11 @@ const CSV_TO_COL = {
   'Company Custom Clicks':       'company_custom_clicks',
   'Company Credits Available':   'company_credits_available',
   'Company Credits Total':       'company_credits_total',
+  // InMail / Premium credits from linkedin.com/premium/sb/explore (extension v0.2.2+)
+  'InMail Credits':              'inmail_credits',
+  'Inmail Credits':              'inmail_credits',
+  'Premium Plan':                'premium_plan',
+  'Premium Renews':              'premium_renews',
   // SSI sub-scores (0–25 each) from the extension's linkedin.com/sales/ssi scraper
   'ssi_brand':                   'ssi_brand',
   'ssi_prospecting':             'ssi_prospecting',
@@ -56,6 +61,110 @@ const CSV_TO_COL = {
   'Appearance Sources':          'appearance_sources',       // [{label,pct}] breakdown of where you appeared
   'Appearances Week':            'appearances_week',         // week range LinkedIn reports for, e.g. "Jul 14 – Jul 20"
 };
+
+// ─── Plausibility guard ─────────────────────────────────────────────
+// The extension reads numbers off pages LinkedIn re-lays-out without notice. When a selector
+// drifts it rarely fails loudly — it returns a DIFFERENT number, and that number lands in history
+// looking exactly like a measurement. It has happened three times on this data set: 1,687 company
+// followers stored as 5,916; 569 post impressions stored as 190,000 for three consecutive days
+// (the figure came from a "Get up to 190,000 more impressions by boosting this post" upsell); and
+// a whole page of values collapsing to a fifth of their size when scraped half-rendered.
+//
+// So the server treats every incoming number as a CLAIM and checks it before writing:
+//   · a hard band per column — outside it the value is impossible, not merely surprising;
+//   · a movement ceiling against the most recent known-good value for that column.
+//
+// A value that fails is not written. It is quarantined under suspect:{email}:{date} together with
+// the value it contradicts and the reason, and the daily report names it. Refusing to store a
+// doubtful number costs one day of one metric and is fully recoverable; a wrong number written
+// silently into history is not — it corrupts every trend line drawn through it afterwards.
+//
+// Nothing here auto-promotes. A genuine step change (LinkedIn switching a metric to a different
+// window, say) is accepted by an admin via POST /api/admin/user/accept-suspect, which is a
+// deliberate act by a person who looked at it.
+
+// column: [min, max, maxFactor]. maxFactor is the largest multiplicative move tolerated in a day;
+// null means the column moves too freely to police that way and only the hard band applies.
+const GUARD = {
+  connections:                [0, 40000, 1.5],      // LinkedIn caps connections at 30,000
+  profile_views:              [0, 500000, 3],       // a rolling 90-day count; it cannot triple overnight
+  search_appearances:         [0, 500000, 4],       // weekly figure, republished once a week
+  all_appearances:            [0, 500000, 4],
+  invitations:                [0, 100000, 5],       // pending backlog — can fall fast when a batch is accepted
+  invitations_pages:          [0, 100000, 8],
+  invitations_sent_24h:       [0, 1000, null],      // genuinely spiky by the day
+  invitations_sent_7d:        [0, 5000, null],
+  inmail_credits:             [0, 10000, null],     // steps up and down with the billing cycle
+  company_followers:          [0, 50000000, 1.5],
+  company_new_followers:      [0, 1000000, 3],      // rolling 30-day window
+  company_unique_visitors:    [0, 10000000, 3],     // rolling 30-day window
+  company_post_impressions:   [0, 100000000, 3],    // rolling 30-day window
+  company_search_appearances: [0, 10000000, 4],     // weekly window
+  company_custom_clicks:      [0, 10000000, null],  // frequently and legitimately zero
+  ssi_overall:                [0, 100, null],
+  ssi_brand:                  [0, 25, null],
+  ssi_prospecting:            [0, 25, null],
+  ssi_insights:               [0, 25, null],
+  ssi_relationships:          [0, 25, null],
+  ssi_industry_rank:          [0, 100, null],
+  ssi_network_rank:           [0, 100, null],
+};
+
+// How stale a reference value may be and still be worth comparing against. Beyond this a large
+// move says nothing — the account may simply not have been collected for a fortnight.
+const GUARD_MAX_AGE_DAYS = 10;
+
+function daysBetween(a, b) {
+  const t1 = Date.parse(a + 'T00:00:00Z'), t2 = Date.parse(b + 'T00:00:00Z');
+  if (!Number.isFinite(t1) || !Number.isFinite(t2)) return Infinity;
+  return Math.abs(t2 - t1) / 86400000;
+}
+
+// Screen one row. Returns the columns cleared to write, plus whatever was held back and why.
+// `ref` is the guard state: { cols: { column: { v, date } } }.
+function screenRow(mapped, ref, date) {
+  const clean = {}, suspects = [];
+  const cols = (ref && ref.cols) || {};
+  for (const [col, raw] of Object.entries(mapped)) {
+    if (col === 'captured_at') { clean[col] = raw; continue; }
+    const rule = GUARD[col];
+    const n = typeof raw === 'number' ? raw : (typeof raw === 'string' && raw.trim() !== '' && !isNaN(Number(raw)) ? Number(raw) : null);
+    // Non-numeric columns (premium_plan, appearances_week, appearance_sources…) are pass-through.
+    if (!rule || n === null) { clean[col] = raw; continue; }
+
+    const [min, max, factor] = rule;
+    if (n < min || n > max) {
+      suspects.push({ col, value: n, prior: null, reason: `outside the possible range for this metric (${min}–${max})` });
+      continue;
+    }
+
+    const prev = cols[col];
+    if (factor && prev && Number.isFinite(prev.v) && prev.v > 0 && n > 0 &&
+        daysBetween(prev.date, date) <= GUARD_MAX_AGE_DAYS) {
+      const ratio = n > prev.v ? n / prev.v : prev.v / n;
+      if (ratio > factor) {
+        suspects.push({
+          col, value: n, prior: prev.v, prior_date: prev.date,
+          reason: `moved ${ratio.toFixed(1)}× from ${prev.v} on ${prev.date} — more than this metric can move in a day`,
+        });
+        continue;
+      }
+    }
+    clean[col] = raw;
+  }
+  return { clean, suspects };
+}
+
+// Remember what each column last legitimately read, so the next day has something to compare to.
+function advanceRef(ref, clean, date) {
+  const next = { cols: Object.assign({}, (ref && ref.cols) || {}) };
+  for (const [col, raw] of Object.entries(clean)) {
+    if (col === 'captured_at' || !GUARD[col]) continue;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    if (Number.isFinite(n)) next.cols[col] = { v: n, date };
+  }
+  return next;
+}
 
 // ─── Entry point ────────────────────────────────────────────────────
 export default {
@@ -117,19 +226,19 @@ async function route(method, path, req, env, ctx) {
   if (r('POST',   '/api/admin/harvest/run-now'))   return adminHarvestRunNow(req, env);
   // Data
   if (r('GET',  '/api/data/summary'))      return dataSummary(req, env);
-  if (r('GET',  '/api/data/connections'))  return dataSeries(req, env, ['connections', 'invitations', 'profile_views', 'search_appearances']);
+  if (r('GET',  '/api/data/connections'))  return dataSeries(req, env, ['connections', 'invitations', 'profile_views', 'search_appearances', 'inmail_credits', 'premium_plan', 'premium_renews']);
   // Growth metrics daily series (extension v0.2.0). Powers the LinkedIn Growth widget + weekly
   // invite-credit gauge. invitations_sent_24h summed over 7 days = weekly credit usage.
   if (r('GET',  '/api/data/growth'))       return dataSeries(req, env, [
     'connections', 'invitations', 'invitations_pages', 'invitations_sent_24h', 'invitations_sent_7d',
     'profile_views', 'profile_views_change_pct', 'search_appearances', 'all_appearances',
+    // Appearances are a WEEKLY figure. LinkedIn was still serving the 11–17 August week on
+    // 26 August, so the same number repeats for days and the dashboard must be able to say which
+    // week it belongs to instead of drawing it as nine flat daily readings.
+    'appearances_week',
   ]);
   if (r('GET',  '/api/data/ssi'))          return dataSeries(req, env, ['ssi_overall', 'ssi_industry_rank', 'ssi_network_rank', 'ssi_brand', 'ssi_prospecting', 'ssi_insights', 'ssi_relationships']);
-  if (r('GET',  '/api/data/company'))      return dataSeries(req, env, [
-    'company_followers', 'company_new_followers', 'company_unique_visitors',
-    'company_post_impressions', 'company_custom_clicks', 'company_search_appearances',
-    'company_credits_available', 'company_credits_total',
-  ]);
+  if (r('GET',  '/api/data/company'))      return dataCompany(req, env);
 
   // Ingestion (Chrome extension)
   if (r('POST', '/api/ingest/linkedin'))   return ingest(req, env);
@@ -140,9 +249,13 @@ async function route(method, path, req, env, ctx) {
   if (r('POST', '/api/admin/user/trigger-sync')) return adminTriggerSync(req, env);
   if (r('GET',  '/api/admin/user/sync-status'))  return adminSyncStatus(req, env);
   if (r('POST', '/api/admin/user/purge-null'))   return adminPurgeNull(req, env);
+  if (r('POST', '/api/admin/stats/scrub'))       return adminStatsScrub(req, env);
+  if (r('GET',  '/api/admin/suspects'))          return adminSuspectList(req, env);
+  if (r('POST', '/api/admin/suspects/accept'))   return adminSuspectAccept(req, env);
   if (r('GET',  '/api/admin/user/diag'))         return adminUserDiag(req, env);
   if (r('GET',  '/api/user/extension-status'))   return userExtensionStatus(req, env);
   if (r('POST', '/api/user/extension-checkin'))  return userExtensionCheckin(req, env);
+  if (r('POST', '/api/user/collect-report'))     return userCollectReport(req, env);
 
   // Reports
   if (r('GET',  '/api/reports/list'))      return reportsList(req, env);
@@ -535,6 +648,27 @@ async function dataSummary(req, env) {
   } catch (e) { return err(e.code || 'unauthorized', e.message, e.status || 401); }
 }
 
+// Company series + the LinkedIn Page ID the extension reported (v0.2.9). The site needs the ID to
+// deep-link each company card to its own analytics tab — before this, every "Source" link on
+// /company pointed at a bare /company/ URL and 404'd (2026-08-28).
+async function dataCompany(req, env) {
+  const resp = await dataSeries(req, env, [
+    'company_followers', 'company_new_followers', 'company_unique_visitors',
+    'company_post_impressions', 'company_custom_clicks', 'company_search_appearances',
+    'company_credits_available', 'company_credits_total',
+  ]);
+  if (!resp || resp.status !== 200) return resp;
+  let body;
+  try { body = await resp.json(); } catch (e) { return resp; }
+  let cid = null;
+  try {
+    const user = await currentUser(req, env);
+    cid = (user && user.company_id) || null;
+  } catch (e) {}
+  body.company_id = cid;
+  return json(body);
+}
+
 async function dataSeries(req, env, fields) {
   try {
     const user = await requireAuth(req, env);
@@ -579,12 +713,26 @@ async function ingest(req, env) {
     const user = await requireAuth(req, env);
     if (!(await rateLimit(env, `ingest:${user.email}`, 100, 3600))) return err('rate_limited', 'Too many ingests this hour.', 429);
     const body = await readJson(req);
+    // v0.2.9 extensions ship the LinkedIn Page ID alongside the rows. It is account metadata, not a
+    // metric — store it on the user so /api/data/company can hand the site real analytics links.
+    const incomingCid = String((body && body.company_id) || '').trim();
+    if (/^\d{1,20}$/.test(incomingCid)) {
+      try {
+        const rec = await env.KV.get(`user:${user.email}`, 'json');
+        if (rec && rec.company_id !== incomingCid) {
+          rec.company_id = incomingCid;
+          await env.KV.put(`user:${user.email}`, JSON.stringify(rec));
+        }
+      } catch (e) { /* never fail an ingest over this */ }
+    }
     const rows = Array.isArray(body.rows) ? body.rows : [];
     if (rows.length === 0) return err('invalid_payload', 'Expected {rows: [...]}', 422);
     if (rows.length > 1000) return err('too_many_rows', 'Max 1000 rows per request.', 413);
 
     let inserted = 0, updated = 0, skipped = 0;
     const errors = [];
+    const held = [];        // values the plausibility guard refused to store
+    let guardRef = null;    // lazily loaded reference values, advanced as rows are accepted
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i];
       if (!raw || typeof raw !== 'object') { skipped++; errors.push(`row ${i}: not an object`); continue; }
@@ -619,13 +767,27 @@ async function ingest(req, env) {
         continue;
       }
 
+      // SCREEN before merging. Anything that fails is quarantined, not written — see screenRow().
+      const ref = guardRef || (guardRef = (await env.KV.get(`guard:${user.email}`, 'json')) || { cols: {} });
+      const screened = screenRow(mapped, ref, date);
+      if (screened.suspects.length) {
+        held.push(...screened.suspects.map(x => Object.assign({ date }, x)));
+        for (const x of screened.suspects) errors.push(`row ${i}: ${x.col} = ${x.value} held back — ${x.reason}`);
+      }
+      const CLEAN_COLS = Object.keys(screened.clean).filter(k => k !== 'captured_at');
+      if (!CLEAN_COLS.some(k => screened.clean[k] != null && screened.clean[k] !== '')) {
+        skipped++;
+        continue;   // everything in this row was held back; nothing left to write
+      }
+
       // MERGE: start from any existing row, overlay only the non-null incoming fields. This means a
       // partial capture never nulls-out fields that a previous capture already filled.
       const merged = Object.assign({}, existing || {}, { captured_at: date });
-      for (const k of DATA_COLS) {
-        if (mapped[k] != null && mapped[k] !== '') merged[k] = mapped[k];
+      for (const k of CLEAN_COLS) {
+        if (screened.clean[k] != null && screened.clean[k] !== '') merged[k] = screened.clean[k];
       }
       await env.KV.put(key, JSON.stringify(merged));
+      guardRef = advanceRef(ref, screened.clean, date);
       if (existing) updated++; else inserted++;
       // v0.1.6 — persist any scraper diagnostic ("_diag") that shipped alongside the row so
       // admins can see WHY a scrape returned null (URL, title, whether "Establish" appeared, etc.).
@@ -640,7 +802,19 @@ async function ingest(req, env) {
         } catch (e) { /* diag write failure is non-fatal */ }
       }
     }
-    return json({ ok: true, inserted, updated, skipped, errors });
+    if (guardRef) { try { await env.KV.put(`guard:${user.email}`, JSON.stringify(guardRef)); } catch (e) {} }
+    // Quarantine, keyed by day so the daily report can name yesterday's held-back values.
+    if (held.length) {
+      try {
+        const qk = `suspect:${user.email}:${held[0].date}`;
+        const prevQ = (await env.KV.get(qk, 'json')) || { email: user.email, date: held[0].date, items: [] };
+        const byCol = new Map(prevQ.items.map(x => [x.col, x]));
+        for (const h of held) byCol.set(h.col, Object.assign({ at: new Date().toISOString() }, h));
+        prevQ.items = Array.from(byCol.values()).slice(0, 40);
+        await env.KV.put(qk, JSON.stringify(prevQ), { expirationTtl: 60 * 86400 });
+      } catch (e) {}
+    }
+    return json({ ok: true, inserted, updated, skipped, errors, held: held.length });
   } catch (e) { return err(e.code || 'unauthorized', e.message, e.status || 401); }
 }
 
@@ -785,8 +959,7 @@ function planFromAmount(cents) {
 async function runScheduled(event, env) {
   // Cron triggers (set in worker metadata):
   //   "0 8 * * *"  daily 08:00 UTC — weekly reports if Monday, monthly if 1st of month
-  //   "0 9 * * *"  daily 09:00 UTC — SSI harvest (server-side scrape using each user's stored li_at)
-  //   "0 20 * * *" daily 20:00 UTC — data-quality audit
+  //   "0 11 * * *" daily 11:00 UTC (7am ET) — daily report on the PREVIOUS complete day
   const now = new Date();
   const hour = now.getUTCHours();
   const isMonday = now.getUTCDay() === 1;
@@ -798,7 +971,7 @@ async function runScheduled(event, env) {
   if (hour === 9) {
     await runDailySSIHarvest(env);
   }
-  if (hour === 20) {
+  if (hour === 11 || hour === 20) {
     await runDailyDataAudit(env);
   }
 }
@@ -1195,103 +1368,735 @@ const REQUIRED_COLS = [
   ['Company Clicks',      'company_custom_clicks']
 ];
 
-async function runDailyDataAudit(env) {
-  const userKeys = await listAll(env.KV, 'user:');
-  const today = new Date().toISOString().slice(0, 10);
-  const findings = []; // [{email, last_date, days_old, missing: [], zero: []}]
+// Which LinkedIn page each stored field comes from. This is what turns "a field is
+// missing" into "THIS page failed to scrape" — the difference between a puzzle and a
+// fix. `core: true` pages must succeed every day; company pages only apply once the
+// user's company ID is known, so they're reported separately and never raise an alarm.
+const COLLECTION_SOURCES = [
+  {
+    page: 'ssi', core: true,
+    label: 'SSI (Sales Navigator)',
+    url: 'linkedin.com/sales/ssi',
+    fields: [
+      ['SSI',               'ssi_overall'],
+      ['SSI Industry rank', 'ssi_industry_rank'],
+      ['SSI Network rank',  'ssi_network_rank'],
+      ['SSI Brand',         'ssi_brand'],
+      ['SSI Prospecting',   'ssi_prospecting'],
+      ['SSI Insights',      'ssi_insights'],
+      ['SSI Relationships', 'ssi_relationships'],
+    ],
+  },
+  {
+    page: 'connections', core: true,
+    label: 'Connections',
+    url: 'linkedin.com/mynetwork/',
+    fields: [['Connections', 'connections']],
+  },
+  {
+    page: 'invitations', core: true,
+    label: 'Invitations',
+    url: 'linkedin.com/mynetwork/invitation-manager/sent/',
+    fields: [
+      ['Invitations',          'invitations'],
+      ['Invitations to Pages', 'invitations_pages'],
+      ['Invitations sent 24h', 'invitations_sent_24h'],
+    ],
+  },
+  {
+    page: 'profile_views', core: true,
+    label: 'Profile views',
+    url: 'linkedin.com/analytics/profile-views/',
+    fields: [['Views', 'profile_views']],
+  },
+  {
+    page: 'appearances', core: true,
+    label: 'Search appearances',
+    url: 'linkedin.com/analytics/search-appearances/',
+    fields: [
+      ['Search Appearance', 'search_appearances'],
+      ['All Appearances',   'all_appearances'],
+    ],
+  },
+  {
+    page: 'premium', core: false,
+    label: 'InMail credits (Premium)',
+    url: 'linkedin.com/premium/sb/explore/',
+    fields: [
+      ['InMail Credits', 'inmail_credits'],
+      ['Premium Plan',   'premium_plan'],
+    ],
+  },
+  {
+    page: 'company', core: false,
+    label: 'Company admin analytics',
+    url: 'linkedin.com/company/{id}/admin/analytics/*',
+    fields: [
+      ['Company Followers',     'company_followers'],
+      ['Company New Followers', 'company_new_followers'],
+      ['Company Visitors',      'company_unique_visitors'],
+      ['Company Search',        'company_search_appearances'],
+      ['Company Impressions',   'company_post_impressions'],
+      ['Company Clicks',        'company_custom_clicks'],
+    ],
+  },
+];
 
-  for (const k of userKeys) {
-    const email = k.name.slice('user:'.length);
-    try {
-      const statsKeys = await listAll(env.KV, 'stats:' + email + ':');
-      if (!statsKeys.length) {
-        findings.push({ email, status: 'no_data' });
-        continue;
-      }
-      const lastDate = statsKeys[statsKeys.length - 1].name.split(':').pop();
-      const lastRow = await env.KV.get('stats:' + email + ':' + lastDate, 'json');
-      if (!lastRow) {
-        findings.push({ email, status: 'unreadable', last_date: lastDate });
-        continue;
-      }
-      const daysOld = Math.floor((Date.parse(today) - Date.parse(lastDate)) / 86400000);
-      const missing = [];
-      const zero = [];
-      for (const [label, key] of REQUIRED_COLS) {
-        const v = lastRow[key];
-        if (v == null || v === '') missing.push(label);
-        else if (Number(v) === 0) zero.push(label);
-      }
-      if (missing.length || zero.length || daysOld > 1) {
-        findings.push({ email, last_date: lastDate, days_old: daysOld, missing, zero });
-      }
-    } catch (e) {
-      findings.push({ email, status: 'error', message: String(e).slice(0, 200) });
+const REPORT_FROM_DEFAULT = 'Linalysis Collection <linalysis@gershon.ai>';
+const REPORT_TO_DEFAULT   = 'report@gershonconsulting.com,alerts@linalysis.com';
+
+function reportRecipients(env) {
+  return String(env.ALERTS_TO || REPORT_TO_DEFAULT)
+    .split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// ─── Per-page collection receipts (posted by the extension) ─────────
+// The extension posts one receipt per LinkedIn page it tries to scrape, whether that
+// page succeeded, returned nothing, or errored. Without this the server could only see
+// the fields that DID arrive and had to guess at everything that didn't.
+async function userCollectReport(req, env) {
+  try {
+    const user = await requireAuth(req, env);
+    const body = await readJson(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || ''))
+      ? String(body.date)
+      : new Date().toISOString().slice(0, 10);
+    const key = `collect:${user.email}:${date}`;
+    const prev = (await env.KV.get(key, 'json')) || { email: user.email, date, pages: {} };
+
+    if (body.page) {
+      prev.pages[String(body.page).slice(0, 24)] = {
+        ok: body.ok === true,
+        values: Array.isArray(body.values) ? body.values.slice(0, 30).map(v => String(v).slice(0, 40)) : [],
+        error: body.error ? String(body.error).slice(0, 200) : null,
+        url: body.url ? String(body.url).slice(0, 160) : null,
+        text_len: Number.isFinite(body.text_len) ? body.text_len : null,
+        visible: body.visible === true || body.visible === false ? body.visible : null,
+        // The extension has shipped a page sample with every failed scrape since v0.2.7 and this
+        // writer silently dropped it, so the daily report has been rendering "page landed on …"
+        // with no evidence underneath — which is why the remaining selector bugs stayed unfixable
+        // for weeks. The renderer already reads receipt.sample; it just never had one.
+        sample: body.sample ? String(body.sample).slice(0, 3000) : null,
+        at: new Date().toISOString(),
+      };
     }
-  }
+    if (body.event === 'start')  prev.started_at  = new Date().toISOString();
+    if (body.event === 'finish') prev.finished_at = new Date().toISOString();
+    if (body.trigger)     prev.trigger     = String(body.trigger).slice(0, 30);
+    if (body.ext_version) prev.ext_version = String(body.ext_version).slice(0, 20);
+    prev.updated_at = new Date().toISOString();
 
-  // Persist the audit so /admin can show it
-  const auditKey = 'audit:daily:' + new Date().toISOString();
-  await env.KV.put(auditKey, JSON.stringify({
-    run_at: new Date().toISOString(),
-    users_total: userKeys.length,
-    users_with_issues: findings.length,
-    findings,
-  }), { expirationTtl: 90 * 86400 });
-  await env.KV.put('audit:daily:latest', auditKey, { expirationTtl: 90 * 86400 });
-
-  // Build the email body
-  const subject = `[Linalysis] Daily data audit · ${findings.length}/${userKeys.length} accounts with gaps`;
-  const html = renderAuditEmail(findings, userKeys.length);
-
-  // Try to email if Resend is configured
-  if (env.RESEND_API_KEY) {
-    try {
-      const resp = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'Linalysis Alerts <alerts@linalysis.net>',
-          to: env.ALERTS_TO || 'alerts@linalysis.com',
-          subject,
-          html
-        })
-      });
-      const sent = resp.ok;
-      const body = await resp.text();
-      await env.KV.put(auditKey + ':delivery', JSON.stringify({ sent, status: resp.status, body: body.slice(0, 500) }), { expirationTtl: 90 * 86400 });
-    } catch (e) {
-      console.error('audit email send failed', e);
-    }
-  } else {
-    await env.KV.put(auditKey + ':delivery', JSON.stringify({ sent: false, reason: 'RESEND_API_KEY not configured' }), { expirationTtl: 90 * 86400 });
+    await env.KV.put(key, JSON.stringify(prev), { expirationTtl: 60 * 86400 });
+    return json({ ok: true, date, pages: Object.keys(prev.pages).length });
+  } catch (e) {
+    return err(e.code || 'unauthorized', e.message, e.status || 401);
   }
 }
 
-function renderAuditEmail(findings, totalUsers) {
-  const rows = findings.map(f => {
-    if (f.status === 'no_data')   return `<tr><td>${f.email}</td><td colspan="3" style="color:#cc1016">No data on file</td></tr>`;
-    if (f.status === 'unreadable')return `<tr><td>${f.email}</td><td>${f.last_date}</td><td colspan="2" style="color:#cc1016">Latest row unreadable</td></tr>`;
-    if (f.status === 'error')     return `<tr><td>${f.email}</td><td colspan="3" style="color:#cc1016">Audit error: ${f.message}</td></tr>`;
-    const m = (f.missing || []).map(x => '<span style="color:#cc1016">' + x + '</span>').join(', ');
-    const z = (f.zero    || []).map(x => '<span style="color:#b76b00">' + x + '</span>').join(', ');
-    const stale = f.days_old > 1 ? `<span style="color:#cc1016">+${f.days_old}d stale</span>` : '';
-    return `<tr><td>${f.email}</td><td>${f.last_date}${stale ? ' · ' + stale : ''}</td><td>${m || '—'}</td><td>${z || '—'}</td></tr>`;
-  }).join('');
-  return `<!doctype html><html><body style="font-family:-apple-system,sans-serif;color:#1d1d1f;padding:24px;background:#f5f5f7">
-    <div style="max-width:760px;margin:0 auto;background:#fff;border-radius:14px;padding:28px 32px">
-      <h1 style="font-size:20px;margin:0 0 4px;color:#FE1B04">Daily data-quality audit</h1>
-      <p style="color:#6e6e73;font-size:13px;margin:0 0 18px">Run at ${new Date().toUTCString()} · ${findings.length}/${totalUsers} accounts have data gaps in the latest capture</p>
-      ${findings.length === 0 ? '<p style="background:#e6f4ea;color:#057642;padding:14px 18px;border-radius:10px">All accounts have complete data in their latest capture. Nothing to fix.</p>' : `
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:#f5f5f7;color:#6e6e73;font-size:11px;text-transform:uppercase;letter-spacing:.05em"><th style="text-align:left;padding:8px 10px">User</th><th style="text-align:left;padding:8px 10px">Latest capture</th><th style="text-align:left;padding:8px 10px">Missing fields</th><th style="text-align:left;padding:8px 10px">Zero fields</th></tr></thead>
-        <tbody style="line-height:1.7">${rows}</tbody>
-      </table>
-      <p style="margin-top:22px;font-size:12px;color:#6e6e73">Most likely cause when fields go missing: LinkedIn moved a DOM element. Update the extension's selector for the affected metric.</p>
-      `}
-      <p style="margin-top:24px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:14px">Linalysis · audit ID logged in KV at audit:daily:* · view at <a href="https://linalysis.net/admin.html#audits" style="color:#FE1B04">linalysis.net/admin#audits</a></p>
+// ─── Daily collection report ────────────────────────────────────────
+// Runs every day and emails ONE report covering EVERY user: what was collected, whether
+// the collection succeeded, and exactly which page/field is missing when it didn't.
+// ---------------------------------------------------------------------------
+// Daily "what happened yesterday" report — progress measurement + loud alarms.
+// The report always covers the PREVIOUS COMPLETE DAY, so every number in it is
+// final. Three questions it must answer without the reader digging:
+//   1. did the system do its job at all yesterday?   (renderBigWarning)
+//   2. did the numbers move, and which way?          (buildProgress)
+//   3. is anyone still running an old extension?     (renderExtWarning)
+// ---------------------------------------------------------------------------
+
+const LATEST_EXT_FALLBACK = '0.2.7';
+
+// Semver-ish compare on dotted numeric versions. -1 = a older, 0 = same, 1 = a newer.
+function cmpVer(a, b) {
+  const pa = String(a == null ? '' : a).split('.').map(n => parseInt(n, 10) || 0);
+  const pb = String(b == null ? '' : b).split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+// Source of truth for "what version should everyone be on" is the same updates.xml
+// Chrome itself reads, so this can never drift from what is actually published.
+async function latestExtVersion(env) {
+  try {
+    const r = await fetch('https://linalysis.net/extension/updates.xml', { cf: { cacheTtl: 300 } });
+    if (r.ok) {
+      const m = (await r.text()).match(/<updatecheck[^>]*\bversion\s*=\s*['"]([0-9][0-9.]*)['"]/);
+      if (m) return { version: m[1], source: 'updates.xml' };
+    }
+  } catch (e) { /* fall through to the configured value */ }
+  return {
+    version: env.LATEST_EXT_VERSION || LATEST_EXT_FALLBACK,
+    source: env.LATEST_EXT_VERSION ? 'LATEST_EXT_VERSION worker var' : 'built-in fallback',
+  };
+}
+
+// [label, stored key, direction (1 = up is good, 0 = neutral/no verdict), decimals]
+const PROGRESS_METRICS = [
+  ['SSI overall',              'ssi_overall',                1, 2],
+  ['SSI Brand',                'ssi_brand',                  1, 2],
+  ['SSI Prospecting',          'ssi_prospecting',            1, 2],
+  ['SSI Insights',             'ssi_insights',               1, 2],
+  ['SSI Relationships',        'ssi_relationships',          1, 2],
+  ['SSI Industry rank',        'ssi_industry_rank',          0, 0],
+  ['SSI Network rank',         'ssi_network_rank',           0, 0],
+  ['Connections',              'connections',                1, 0],
+  ['Profile views',            'profile_views',              1, 0],
+  ['Search appearances',       'search_appearances',         1, 0],
+  ['All appearances',          'all_appearances',            1, 0],
+  ['Invitations pending',      'invitations',                0, 0],
+  ['Invitations sent (24h)',   'invitations_sent_24h',       0, 0],
+  ['InMail credits',           'inmail_credits',             0, 0],
+  ['Company followers',        'company_followers',          1, 0],
+  ['Company new followers',    'company_new_followers',      1, 0],
+  ['Company unique visitors',  'company_unique_visitors',    1, 0],
+  ['Company search appearances','company_search_appearances', 1, 0],
+  ['Company post impressions', 'company_post_impressions',   1, 0],
+  ['Company custom clicks',    'company_custom_clicks',      1, 0],
+];
+
+// Stored values can be strings, and German/French locales write "42,5".
+function toNum(v) {
+  if (v == null || v === '') return null;
+  const n = Number(String(v).replace(/\s/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+function fmtNum(n, dp) {
+  if (n == null) return '—';
+  return dp ? n.toFixed(dp).replace(/\.?0+$/, '') || '0' : String(Math.round(n));
+}
+
+// Day-over-day and week-over-week movement. Only metrics with dir=1 vote on the
+// headline verdict — a change in pending invitations is not "progress" either way.
+function buildProgress(row, prev, week) {
+  const rows = [];
+  let up = 0, down = 0, flat = 0;
+  for (const [label, key, dir, dp] of PROGRESS_METRICS) {
+    const cur = toNum(row && row[key]);
+    const pre = toNum(prev && prev[key]);
+    const wk  = toNum(week && week[key]);
+    if (cur == null && pre == null) continue;              // never collected — don't invent a row
+    const d  = (cur != null && pre != null) ? cur - pre : null;
+    const d7 = (cur != null && wk  != null) ? cur - wk  : null;
+    if (dir === 1 && d != null) { if (d > 0) up++; else if (d < 0) down++; else flat++; }
+    rows.push({ label, key, cur, prev: pre, week: wk, d, d7, dir, dp });
+  }
+  return { rows, up, down, flat, scored: up + down + flat };
+}
+
+// Page-by-page state for ONE day. Pulled out of the audit so the same rules can be
+// applied to the prior day, which is what makes "this page got fixed" provable.
+function computePages(row, collect) {
+  const out = [];
+  const r = row || {};
+  for (const src of COLLECTION_SOURCES) {
+    const got = [], lost = [];
+    for (const [label, key] of src.fields) {
+      const v = r[key];
+      if (v == null || v === '') lost.push(label); else got.push(label);
+    }
+    const receipt = collect && collect.pages ? collect.pages[src.page] : null;
+    let state = got.length && !lost.length ? 'ok' : (got.length ? 'partial' : 'failed');
+    if (!src.core && !got.length && !receipt) state = 'not_configured';
+    out.push({
+      page: src.page, label: src.label, url: src.url, core: !!src.core,
+      state, captured: got, missing: lost,
+      reason: receipt && receipt.error ? receipt.error : null,
+      landed_url: receipt && receipt.url ? receipt.url : null,
+      text_len: receipt ? receipt.text_len : null,
+      visible: receipt ? receipt.visible : null,
+      sample: receipt && receipt.sample ? String(receipt.sample).slice(0, 2500) : null,
+    });
+  }
+  return out;
+}
+
+function fieldCount(row) {
+  if (!row) return 0;
+  return Object.keys(row).filter(k => k !== 'captured_at' && row[k] != null && row[k] !== '').length;
+}
+
+// A delta cell, coloured only when the metric has a meaningful direction.
+function deltaCell(d, dir, dp) {
+  if (d == null) return '<span style="color:#9ca3af">—</span>';
+  if (d === 0) return '<span style="color:#6e6e73">0</span>';
+  const good = dir === 1 ? d > 0 : null;
+  const color = good === null ? '#1d1d1f' : (good ? '#057642' : '#cc1016');
+  const arrow = d > 0 ? '▲' : '▼';
+  return `<span style="color:${color};font-weight:600">${arrow} ${d > 0 ? '+' : '−'}${fmtNum(Math.abs(d), dp)}</span>`;
+}
+
+function renderProgressTable(p, reportDate, priorDate) {
+  if (!p.rows.length) {
+    return '<div style="font-size:12px;color:#9ca3af;padding:6px 0">No metrics stored for either day — nothing to compare.</div>';
+  }
+  const rows = p.rows.map(m => `<tr>
+      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6">${esc(m.label)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right;color:#6e6e73">${fmtNum(m.prev, m.dp)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">${fmtNum(m.cur, m.dp)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right">${deltaCell(m.d, m.dir, m.dp)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right">${deltaCell(m.d7, m.dir, m.dp)}</td>
+    </tr>`).join('');
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 4px">
+    <thead><tr style="background:#f5f5f7;color:#6e6e73;font-size:10px;text-transform:uppercase;letter-spacing:.05em">
+      <th style="text-align:left;padding:6px 10px">Metric</th>
+      <th style="text-align:right;padding:6px 10px">${esc(priorDate)}</th>
+      <th style="text-align:right;padding:6px 10px">${esc(reportDate)}</th>
+      <th style="text-align:right;padding:6px 10px">Day Δ</th>
+      <th style="text-align:right;padding:6px 10px">7-day Δ</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// The alarm the whole report exists for: a day went by and nothing was collected.
+function renderBigWarning(didNotRun, accounts, reportDate) {
+  if (!didNotRun.length) return '';
+  const total = accounts.length;
+  const all = didNotRun.length === total && total > 0;
+  const head = all
+    ? 'THE SYSTEM DID NOT DO ITS DAILY JOB'
+    : `${didNotRun.length} OF ${total} ACCOUNTS COLLECTED NOTHING`;
+  const sub = all
+    ? `Not a single account captured data on ${esc(reportDate)}. This is a full outage, not a gap.`
+    : `These accounts have no data at all for ${esc(reportDate)}:`;
+  const list = all ? '' : `<div style="margin-top:10px;font-size:13px;line-height:1.7">${
+    didNotRun.map(a => `• <strong>${esc(a.email)}</strong>${a.days_old > 1 ? ` — last good capture ${esc(a.last_date || 'never')} (${a.days_old} days ago)` : ''}`).join('<br>')
+  }</div>`;
+  return `<div style="background:#cc1016;color:#fff;padding:22px 24px;border-radius:12px;margin-bottom:18px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.14em;opacity:.85">🚨 CRITICAL</div>
+    <div style="font-size:24px;font-weight:800;line-height:1.25;margin:6px 0 8px">${head}</div>
+    <div style="font-size:13px;opacity:.95">${sub}</div>
+    ${list}
+    <div style="margin-top:14px;font-size:12px;opacity:.9;border-top:1px solid rgba(255,255,255,.3);padding-top:10px">
+      First things to check: is Chrome running on that machine with the extension enabled, is the account still signed in to LinkedIn,
+      and did the extension check in at all (shown per account below)?
     </div>
-  </body></html>`;
+  </div>`;
+}
+
+// Second alarm: an old extension silently collects less than the current one.
+// Third alarm, and the one that matters most for trust in the numbers: values the plausibility
+// guard refused to write. A held-back value means the scraper read something the data says cannot
+// be true — normally a selector that has drifted onto the wrong element. Naming it here is what
+// turns a silent corruption into a fifteen-minute fix.
+function renderSuspectWarning(accounts, reportDate) {
+  const withHeld = accounts.filter(a => (a.suspects || []).length);
+  if (!withHeld.length) return '';
+  const rows = withHeld.map(a => `<div style="margin-top:10px">
+      <div style="font-weight:700;font-size:13px">${esc(a.email)}</div>
+      ${a.suspects.map(x => `<div style="font-size:12.5px;line-height:1.65;padding-left:14px">
+        · <strong>${esc(x.col)}</strong> — read <strong>${esc(String(x.value))}</strong>, not stored${
+          x.prior != null ? ` (last good ${esc(String(x.prior))} on ${esc(x.prior_date || '')})` : ''
+        }<br><span style="color:#8a6d1a;padding-left:12px">${esc(x.reason || '')}</span>
+      </div>`).join('')}
+    </div>`).join('');
+  return `<div style="background:#fff8e6;border:1px solid #f0d68a;padding:18px 20px;border-radius:12px;margin-bottom:18px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.12em;color:#8a6d1a">⚠ VALUES HELD BACK</div>
+    <div style="font-size:15px;font-weight:700;margin:6px 0 4px">The scraper read numbers on ${esc(reportDate)} that cannot be right</div>
+    <div style="font-size:12.5px;color:#6e6e73">Nothing below was written to history. Each one is a metric whose value contradicts what the same
+      metric read a day or two earlier by more than it can genuinely move — almost always a selector that has landed on the wrong
+      element. Fix the selector, or accept the value deliberately if LinkedIn really did change the metric.</div>
+    ${rows}
+  </div>`;
+}
+
+function renderExtWarning(staleExt, noCheckin, latest) {
+  if (!staleExt.length && !noCheckin.length) return '';
+  const parts = [];
+  if (staleExt.length) {
+    parts.push(`<div style="font-size:14px;font-weight:700;margin-bottom:6px">⚠ ${staleExt.length} account${staleExt.length > 1 ? 's are' : ' is'} running an outdated Chrome extension</div>
+      <div style="font-size:12.5px;line-height:1.7">${staleExt.map(a =>
+        `• <strong>${esc(a.email)}</strong> — installed <strong>v${esc(a.ext_version)}</strong>, current is <strong>v${esc(latest.version)}</strong>${a.ext_last_seen ? ` · last check-in ${esc(a.ext_last_seen.slice(0, 16).replace('T', ' '))} UTC` : ''}`
+      ).join('<br>')}</div>
+      <div style="font-size:12px;margin-top:8px;opacity:.9">Older builds miss metrics the current one captures, so their gaps are expected rather than a scraping bug. Chrome auto-updates from <code>linalysis.net/extension/updates.xml</code> within a few hours of launch — if a version stays behind for more than a day, the extension was likely side-loaded or updates are blocked.</div>`);
+  }
+  if (noCheckin.length) {
+    parts.push(`<div style="font-size:13px;font-weight:700;margin:${staleExt.length ? '14px' : '0'} 0 6px">⚠ ${noCheckin.length} account${noCheckin.length > 1 ? 's have' : ' has'} never reported an extension version</div>
+      <div style="font-size:12.5px;line-height:1.7">${noCheckin.map(a => `• <strong>${esc(a.email)}</strong>`).join('<br>')}</div>`);
+  }
+  return `<div style="background:#fff4e5;color:#7a4a00;padding:16px 18px;border-radius:12px;margin-bottom:18px;border:1px solid #f0d3a3">
+    ${parts.join('')}
+    <div style="font-size:11px;margin-top:10px;color:#9a6a20">Current published version resolved from ${esc(latest.source)}.</div>
+  </div>`;
+}
+
+async function runDailyDataAudit(env) {
+  const userKeys = await listAll(env.KV, 'user:');
+  const now = new Date();
+  const dayAgo = n => new Date(now.getTime() - n * 86400000).toISOString().slice(0, 10);
+  // The report always covers the previous COMPLETE day, so nothing in it is half-finished.
+  const reportDate = dayAgo(1);
+  const priorDate  = dayAgo(2);
+  const weekDate   = dayAgo(8);
+  const today      = reportDate;   // legacy name kept for the stored audit record
+
+  const extLatest = await latestExtVersion(env);
+
+  const accounts = [];   // full per-user detail (drives the email)
+  const findings = [];   // legacy shape kept so /admin keeps rendering
+
+  for (const k of userKeys) {
+    const email = k.name.slice('user:'.length);
+    const acct = {
+      email, status: 'ok', last_date: null, days_old: null,
+      captured_today: [], missing: [], zero: [], pages: [],
+      ext_version: null, ext_last_seen: null, ext_paired: null, ext_stale: false,
+      last_error: null, last_error_at: null, notes: [],
+      ran: false, fields_count: 0, fields_prev: 0,
+      fixed: [], regressed: [], progress: null, suspects: [],
+    };
+    try {
+      const [checkin, syncStatus, collect, collectPrev, statsKeys, suspect] = await Promise.all([
+        env.KV.get('ext_checkin:' + email, 'json'),
+        env.KV.get('sync_status:' + email, 'json'),
+        env.KV.get(`collect:${email}:${reportDate}`, 'json'),
+        env.KV.get(`collect:${email}:${priorDate}`, 'json'),
+        listAll(env.KV, 'stats:' + email + ':'),
+        env.KV.get(`suspect:${email}:${reportDate}`, 'json'),
+      ]);
+      acct.suspects = (suspect && Array.isArray(suspect.items)) ? suspect.items : [];
+
+      if (checkin) {
+        acct.ext_version   = checkin.version || null;
+        acct.ext_last_seen = checkin.at || null;
+        acct.ext_paired    = checkin.paired;
+        acct.ext_stale     = !!(checkin.version && cmpVer(checkin.version, extLatest.version) < 0);
+      }
+      if (syncStatus && syncStatus.state === 'error') {
+        acct.last_error    = syncStatus.message || null;
+        acct.last_error_at = syncStatus.updated_at || null;
+      }
+
+      if (!statsKeys.length) {
+        acct.status = 'no_data';
+        acct.notes.push(checkin ? 'Extension has checked in but has never landed a row.'
+                                : 'No extension check-in and no data — account never set up.');
+        findings.push({ email, status: 'no_data' });
+        accounts.push(acct);
+        continue;
+      }
+
+      acct.last_date = statsKeys[statsKeys.length - 1].name.split(':').pop();
+      acct.days_old  = Math.floor((Date.parse(reportDate) - Date.parse(acct.last_date)) / 86400000);
+
+      const [row, prevRow, weekRow] = await Promise.all([
+        env.KV.get(`stats:${email}:${reportDate}`, 'json'),
+        env.KV.get(`stats:${email}:${priorDate}`, 'json'),
+        env.KV.get(`stats:${email}:${weekDate}`, 'json'),
+      ]);
+      acct.ran = !!row;
+
+      const fallbackRow = row || await env.KV.get(`stats:${email}:${acct.last_date}`, 'json');
+      if (!fallbackRow) {
+        acct.status = 'unreadable';
+        findings.push({ email, status: 'unreadable', last_date: acct.last_date });
+        accounts.push(acct);
+        continue;
+      }
+
+      // Page-by-page for the reported day AND the day before it, so "this page started
+      // working again" and "this page just broke" are both provable rather than guessed.
+      acct.pages = computePages(row, collect);
+      const prevPages = computePages(prevRow, collectPrev);
+      const prevByPage = {};
+      for (const p of prevPages) prevByPage[p.page] = p.state;
+      // Only meaningful when the day actually produced a row — an account that never ran
+      // has not "broken" seven pages, it has one problem, and the alarm above says so.
+      if (row) {
+        for (const p of acct.pages) {
+          const was = prevByPage[p.page];
+          if (was && was !== 'ok' && was !== 'not_configured' && p.state === 'ok') acct.fixed.push(p.label);
+          if (was === 'ok' && p.state !== 'ok') acct.regressed.push(p.label);
+        }
+      }
+
+      acct.fields_count = fieldCount(row);
+      acct.fields_prev  = fieldCount(prevRow);
+      acct.progress     = buildProgress(row, prevRow, weekRow);
+
+      for (const [label, key] of REQUIRED_COLS) {
+        const v = fallbackRow[key];
+        if (v == null || v === '') acct.missing.push(label);
+        else if (Number(v) === 0) acct.zero.push(label);
+      }
+      acct.captured_today = row
+        ? Object.keys(row).filter(x => x !== 'captured_at' && row[x] != null && row[x] !== '')
+        : [];
+
+      // Status for a CLOSED day: no row at all is a hard failure, never "not yet".
+      const coreFailed = acct.pages.filter(p => p.core && p.state === 'failed').map(p => p.label);
+      if (!row) {
+        acct.status = 'failed';
+        acct.notes.push(`Nothing was collected on ${reportDate}. Last good capture ${acct.last_date}${acct.days_old > 0 ? ` (${acct.days_old} day(s) before the reported day)` : ''}.`);
+      } else if (coreFailed.length) {
+        acct.status = 'partial';
+        acct.notes.push('These pages returned nothing: ' + coreFailed.join(', ') + '.');
+      } else if (acct.pages.some(p => p.core && p.state === 'partial')) {
+        acct.status = 'partial';
+      } else {
+        acct.status = 'ok';
+      }
+
+      if (acct.regressed.length) acct.notes.push('Worked the day before but not on the reported day: ' + acct.regressed.join(', ') + '.');
+
+      // Extension liveness and version — a silent or old extension explains everything downstream.
+      if (!checkin) acct.notes.push('Extension has never checked in for this account.');
+      else if (checkin.at && (Date.parse(reportDate) + 86400000 - Date.parse(checkin.at)) > 48 * 3600000) {
+        acct.notes.push('Extension has not checked in for over 48h — likely uninstalled, disabled, or Chrome not running.');
+        if (acct.status === 'ok') acct.status = 'partial';
+      }
+      if (acct.ext_stale) acct.notes.push(`Running extension v${acct.ext_version}; current published version is v${extLatest.version} — upgrade needed.`);
+
+      if (acct.missing.length || acct.zero.length || acct.days_old > 1) {
+        findings.push({ email, last_date: acct.last_date, days_old: acct.days_old, missing: acct.missing, zero: acct.zero });
+      }
+    } catch (e) {
+      acct.status = 'error';
+      acct.notes.push(String(e).slice(0, 200));
+      findings.push({ email, status: 'error', message: String(e).slice(0, 200) });
+    }
+    accounts.push(acct);
+  }
+
+  const counts = {
+    ok:      accounts.filter(a => a.status === 'ok').length,
+    partial: accounts.filter(a => a.status === 'partial').length,
+    failed:  accounts.filter(a => a.status === 'failed' || a.status === 'pending').length,
+    no_data: accounts.filter(a => a.status === 'no_data' || a.status === 'unreadable' || a.status === 'error').length,
+  };
+
+  const didNotRun = accounts.filter(a => !a.ran && a.status !== 'no_data');
+  const staleExt  = accounts.filter(a => a.ext_stale);
+  const noCheckin = accounts.filter(a => !a.ext_version && a.status !== 'no_data');
+  const totals = accounts.reduce((t, a) => {
+    if (a.progress) { t.up += a.progress.up; t.down += a.progress.down; t.flat += a.progress.flat; }
+    t.fields += a.fields_count; t.fields_prev += a.fields_prev;
+    t.fixed += a.fixed.length; t.regressed += a.regressed.length;
+    return t;
+  }, { up: 0, down: 0, flat: 0, fields: 0, fields_prev: 0, fixed: 0, regressed: 0 });
+
+  const ctx = { priorDate, weekDate, extLatest, didNotRun, staleExt, noCheckin, totals, build: env.BUILD || 'dev' };
+
+  const auditKey = 'audit:daily:' + new Date().toISOString();
+  await env.KV.put(auditKey, JSON.stringify({
+    run_at: new Date().toISOString(),
+    report_date: reportDate, prior_date: priorDate,
+    users_total: userKeys.length,
+    users_with_issues: findings.length,
+    findings,          // legacy shape — /admin renders this
+    accounts, counts,  // new shape — full per-user detail
+    totals, ext_latest: extLatest,
+    did_not_run: didNotRun.map(a => a.email),
+    stale_ext: staleExt.map(a => ({ email: a.email, version: a.ext_version })),
+  }), { expirationTtl: 90 * 86400 });
+  await env.KV.put('audit:daily:latest', auditKey, { expirationTtl: 90 * 86400 });
+
+  const problems = counts.partial + counts.failed + counts.no_data;
+  const extTag = staleExt.length ? ` · ⚠ ${staleExt.length} on old extension` : '';
+  let subject;
+  if (didNotRun.length && didNotRun.length === accounts.length) {
+    subject = `[Linalysis] 🚨 NOTHING COLLECTED on ${reportDate} — the system did not do its daily job${extTag}`;
+  } else if (didNotRun.length) {
+    subject = `[Linalysis] 🚨 ${didNotRun.length}/${accounts.length} account(s) collected nothing on ${reportDate}${extTag}`;
+  } else if (problems) {
+    subject = `[Linalysis] ⚠ ${problems}/${accounts.length} accounts incomplete on ${reportDate} · ${totals.up} metrics up, ${totals.down} down${extTag}`;
+  } else {
+    subject = `[Linalysis] ✓ All ${accounts.length} accounts collected on ${reportDate} · ${totals.up} metrics up, ${totals.down} down${extTag}`;
+  }
+  const html = renderAuditEmail(accounts, counts, reportDate, ctx);
+
+  const delivery = await sendReportEmail(env, subject, html);
+  await env.KV.put(auditKey + ':delivery', JSON.stringify(delivery), { expirationTtl: 90 * 86400 });
+  return { auditKey, report_date: reportDate, counts, totals, delivery };
+}
+
+async function sendReportEmail(env, subject, html) {
+  if (!env.RESEND_API_KEY) {
+    return { sent: false, reason: 'RESEND_API_KEY not configured on the Worker' };
+  }
+  const to = reportRecipients(env);
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: env.ALERTS_FROM || REPORT_FROM_DEFAULT, to, subject, html }),
+    });
+    const body = await resp.text();
+    return { sent: resp.ok, status: resp.status, to, from: env.ALERTS_FROM || REPORT_FROM_DEFAULT, body: body.slice(0, 500), at: new Date().toISOString() };
+  } catch (e) {
+    return { sent: false, reason: String(e && e.message || e).slice(0, 300), to, at: new Date().toISOString() };
+  }
+}
+
+// ─── Email rendering ────────────────────────────────────────────────
+const STATUS_STYLE = {
+  ok:        { label: 'COLLECTED',  bg: '#e6f4ea', fg: '#057642' },
+  partial:   { label: 'PARTIAL',    bg: '#fff4e5', fg: '#b76b00' },
+  pending:   { label: 'NOT YET',    bg: '#fff4e5', fg: '#b76b00' },
+  failed:    { label: 'FAILED',     bg: '#fdecea', fg: '#cc1016' },
+  no_data:   { label: 'NO DATA',    bg: '#f1f1f3', fg: '#6e6e73' },
+  unreadable:{ label: 'UNREADABLE', bg: '#fdecea', fg: '#cc1016' },
+  error:     { label: 'ERROR',      bg: '#fdecea', fg: '#cc1016' },
+};
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function pill(status) {
+  const st = STATUS_STYLE[status] || STATUS_STYLE.error;
+  return `<span style="display:inline-block;background:${st.bg};color:${st.fg};font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px">${st.label}</span>`;
+}
+
+function renderAccountBlock(a, reportDate, priorDate, latest) {
+  const pageRows = a.pages.map(p => {
+    const tone = p.state === 'ok' ? '#057642' : p.state === 'partial' ? '#b76b00' : p.state === 'not_configured' ? '#9ca3af' : '#cc1016';
+    const mark = p.state === 'ok' ? '✓' : p.state === 'not_configured' ? '–' : '✗';
+    const detail = p.state === 'ok'
+      ? esc(p.captured.join(', '))
+      : p.state === 'not_configured'
+        ? 'not set up for this account'
+        : (p.captured.length ? 'got ' + esc(p.captured.join(', ')) + ' · ' : '') + 'missing ' + esc(p.missing.join(', '));
+    const why = p.reason ? `<div style="color:#cc1016;font-size:11px;padding-left:18px">↳ ${esc(p.reason)}</div>` : '';
+    const landed = p.landed_url && p.state !== 'ok' ? `<div style="color:#6e6e73;font-size:11px;padding-left:18px">↳ page landed on ${esc(p.landed_url)}${p.text_len != null ? ' · ' + p.text_len + ' chars of text' : ''}</div>` : '';
+    const sample = p.sample && p.state !== 'ok' ? `<div style="color:#6e6e73;font-size:10.5px;padding-left:18px;margin-top:2px;font-family:ui-monospace,Menlo,monospace;background:#fafafa;border-left:2px solid #e5e7eb;padding:4px 8px;white-space:pre-wrap;max-height:120px;overflow:hidden">${esc(p.sample.slice(0, 600))}</div>` : '';
+    const badge = (a.fixed || []).includes(p.label) ? ' <span style="background:#e6f4ea;color:#057642;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px">FIXED</span>'
+      : (a.regressed || []).includes(p.label) ? ' <span style="background:#fdecea;color:#cc1016;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px">BROKE</span>' : '';
+    return `<div style="padding:3px 0"><span style="color:${tone};font-weight:700">${mark}</span> <strong style="font-size:12px">${esc(p.label)}</strong>${badge} <span style="color:#6e6e73;font-size:12px">— ${detail}</span></div>${why}${landed}${sample}`;
+  }).join('');
+
+  const notes = (a.notes || []).map(n => `<div style="font-size:12px;color:#b76b00;margin-top:4px">⚠ ${esc(n)}</div>`).join('');
+  const errLine = a.last_error
+    ? `<div style="font-size:12px;color:#cc1016;margin-top:6px;background:#fdecea;padding:8px 10px;border-radius:8px">Last reported error${a.last_error_at ? ' (' + esc(a.last_error_at.slice(0, 16).replace('T', ' ')) + ' UTC)' : ''}: ${esc(a.last_error)}</div>`
+    : '';
+  const ext = a.ext_version
+    ? `v${esc(a.ext_version)}${a.ext_stale ? ` <span style="color:#cc1016;font-weight:700">⚠ outdated — v${esc((latest || {}).version || '')} available</span>` : ''}${a.ext_last_seen ? ' · last seen ' + esc(a.ext_last_seen.slice(0, 16).replace('T', ' ')) + ' UTC' : ''}`
+    : '<span style="color:#cc1016">no extension check-in</span>';
+
+  const ranLine = a.ran
+    ? ''
+    : `<div style="background:#fdecea;color:#cc1016;font-size:12.5px;font-weight:700;padding:9px 12px;border-radius:8px;margin:8px 0">🚨 No data was collected for this account on ${esc(reportDate)}.</div>`;
+
+  const progressBlock = a.progress && a.progress.rows.length
+    ? `<div style="margin-top:10px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73;font-weight:700">Progress · ${a.progress.up} up / ${a.progress.down} down / ${a.progress.flat} unchanged</div>
+        ${renderProgressTable(a.progress, reportDate, priorDate)}
+      </div>`
+    : '';
+
+  return `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong style="font-size:14px">${esc(a.email)}</strong> ${pill(a.status)}
+    </div>
+    <div style="color:#6e6e73;font-size:12px;margin:6px 0 10px">
+      Last capture: <strong>${esc(a.last_date || 'never')}</strong>${a.days_old > 1 ? ` <span style="color:#cc1016">(${a.days_old} days before the reported day)</span>` : ''}
+      · Fields on ${esc(reportDate)}: <strong>${a.fields_count}</strong> (was ${a.fields_prev})
+      · Extension: ${ext}
+    </div>
+    ${ranLine}
+    ${pageRows}
+    ${notes}
+    ${errLine}
+    ${progressBlock}
+  </div>`;
+}
+
+function renderAuditEmail(accounts, counts, reportDate, ctx) {
+  ctx = ctx || {};
+  const t = ctx.totals || { up: 0, down: 0, flat: 0, fields: 0, fields_prev: 0, fixed: 0, regressed: 0 };
+  const priorDate = ctx.priorDate || '';
+  const latest = ctx.extLatest || { version: LATEST_EXT_FALLBACK, source: 'built-in fallback' };
+  const order = { failed: 0, pending: 1, partial: 2, error: 3, unreadable: 4, no_data: 5, ok: 6 };
+  const sorted = accounts.slice().sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+  const problems = counts.partial + counts.failed + counts.no_data;
+  const fieldsDelta = t.fields - t.fields_prev;
+
+  const verdict = t.up > t.down ? { text: 'Moving forward', color: '#057642' }
+    : t.down > t.up ? { text: 'Slipping', color: '#cc1016' }
+    : { text: 'Holding steady', color: '#6e6e73' };
+
+  const summaryRows = sorted.map(a => `<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${esc(a.email)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${pill(a.status)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${esc(a.last_date || '—')}${a.days_old > 1 ? ` <span style="color:#cc1016">+${a.days_old}d</span>` : ''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${a.fields_count}${a.fields_prev ? ` <span style="color:${a.fields_count >= a.fields_prev ? '#057642' : '#cc1016'};font-size:11px">(${a.fields_count - a.fields_prev >= 0 ? '+' : '−'}${Math.abs(a.fields_count - a.fields_prev)})</span>` : ''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${a.progress ? `<span style="color:#057642">▲${a.progress.up}</span> / <span style="color:#cc1016">▼${a.progress.down}</span>` : '—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${a.ext_version ? (a.ext_stale ? `<span style="color:#cc1016;font-weight:600">v${esc(a.ext_version)} ⚠</span>` : `v${esc(a.ext_version)}`) : '<span style="color:#cc1016">none</span>'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;color:#cc1016">${esc((a.pages || []).filter(p => p.core && p.state !== 'ok').map(p => p.label).join(', ')) || '—'}</td>
+    </tr>`).join('');
+
+  const banner = (ctx.didNotRun && ctx.didNotRun.length) ? ''
+    : problems === 0
+      ? `<div style="background:#e6f4ea;color:#057642;padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600">✓ All ${accounts.length} accounts collected cleanly on ${esc(reportDate)}.</div>`
+      : `<div style="background:#fdecea;color:#cc1016;padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600">⚠ ${problems} of ${accounts.length} accounts did not collect completely on ${esc(reportDate)}.</div>`;
+
+  const tile = (v, label, color) => `<div style="flex:1;min-width:104px;background:#f5f5f7;border-radius:10px;padding:12px 14px"><div style="font-size:22px;font-weight:700;color:${color}">${v}</div><div style="font-size:11px;color:#6e6e73;text-transform:uppercase;letter-spacing:.05em">${label}</div></div>`;
+
+  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1d1d1f;padding:24px;background:#f5f5f7;margin:0">
+  <div style="max-width:860px;margin:0 auto;background:#fff;border-radius:14px;padding:28px 32px">
+    <h1 style="font-size:20px;margin:0 0 2px;color:#FE1B04">Linalysis — what happened yesterday</h1>
+    <p style="color:#6e6e73;font-size:13px;margin:0 0 18px">Reporting on <strong>${esc(reportDate)}</strong> (compared with ${esc(priorDate)}) · generated ${new Date().toUTCString()} · build ${esc(ctx.build || 'dev')}</p>
+
+    ${renderBigWarning(ctx.didNotRun || [], accounts, reportDate)}
+    ${renderSuspectWarning(accounts, reportDate)}
+    ${renderExtWarning(ctx.staleExt || [], ctx.noCheckin || [], latest)}
+    ${banner}
+
+    <h2 style="font-size:14px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73">Did we make progress?</h2>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:17px;font-weight:700;color:${verdict.color};margin-bottom:10px">${verdict.text} — ${t.up} metric${t.up === 1 ? '' : 's'} up, ${t.down} down, ${t.flat} unchanged</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${tile('▲ ' + t.up, 'Metrics up', '#057642')}
+        ${tile('▼ ' + t.down, 'Metrics down', '#cc1016')}
+        ${tile('= ' + t.flat, 'Unchanged', '#6e6e73')}
+        ${tile((fieldsDelta >= 0 ? '+' : '−') + Math.abs(fieldsDelta), 'Fields vs prior day', fieldsDelta >= 0 ? '#057642' : '#cc1016')}
+        ${tile(t.fixed, 'Pages fixed', '#057642')}
+        ${tile(t.regressed, 'Pages broken', t.regressed ? '#cc1016' : '#6e6e73')}
+      </div>
+      <div style="font-size:11.5px;color:#6e6e73;margin-top:10px">
+        &ldquo;Metrics up/down&rdquo; counts only metrics where a rise is genuinely good (SSI, connections, views, appearances, company reach).
+        Neutral ones — pending invitations, InMail credits, SSI rank percentiles — are shown per account but never voted on.
+        &ldquo;Fields&rdquo; and &ldquo;pages&rdquo; measure the health of collection itself: ${t.fields} field${t.fields === 1 ? '' : 's'} captured across all accounts versus ${t.fields_prev} the day before.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin:18px 0 22px;flex-wrap:wrap">
+      ${tile(counts.ok, 'Collected', '#057642')}
+      ${tile(counts.partial, 'Partial', '#b76b00')}
+      ${tile(counts.failed, 'Failed', '#cc1016')}
+      ${tile(counts.no_data, 'No data', '#6e6e73')}
+    </div>
+
+    <h2 style="font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73">Summary</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:26px">
+      <thead><tr style="background:#f5f5f7;color:#6e6e73;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em">
+        <th style="text-align:left;padding:8px 10px">Account</th>
+        <th style="text-align:left;padding:8px 10px">Status</th>
+        <th style="text-align:left;padding:8px 10px">Last capture</th>
+        <th style="text-align:left;padding:8px 10px">Fields</th>
+        <th style="text-align:left;padding:8px 10px">Progress</th>
+        <th style="text-align:left;padding:8px 10px">Ext</th>
+        <th style="text-align:left;padding:8px 10px">Pages that failed</th>
+      </tr></thead>
+      <tbody>${summaryRows}</tbody>
+    </table>
+
+    <h2 style="font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73">Per-account detail</h2>
+    ${sorted.map(a => renderAccountBlock(a, reportDate, priorDate, latest)).join('')}
+
+    <div style="background:#f5f5f7;border-radius:10px;padding:14px 16px;font-size:12px;color:#6e6e73;margin-top:8px">
+      <strong style="color:#1d1d1f">What the failures usually mean</strong><br>
+      · <strong>Nothing collected at all</strong> — Chrome was closed, the extension was disabled, or the machine was off at collection time.<br>
+      · <strong>SSI page returned nothing</strong> — Sales Navigator does not render in a hidden browser tab. The extension must open it as the visible tab of a background window.<br>
+      · <strong>A single field missing</strong> — LinkedIn moved a DOM element; update that metric's selector in content-metrics.js.<br>
+      · <strong>Old extension version</strong> — older builds capture fewer fields; the gap is expected until Chrome pulls the update.<br>
+      · <strong>No data at all</strong> — the account has never paired the extension.
+    </div>
+    <p style="margin-top:20px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:14px">Linalysis · full record in KV at audit:daily:* · <a href="https://linalysis.net/admin" style="color:#FE1B04">open the admin console</a></p>
+  </div>
+</body></html>`;
 }
 
 async function adminAuditLatest(req, env) {
@@ -1601,6 +2406,52 @@ async function userSyncReport(req, env) {
 
 // Admin: delete all stats rows for a user whose data fields are entirely null/empty (failed-scrape
 // pollution), and clear any stale sync_status/sync_pending. Returns what was removed.
+// Remove specific values from specific days. Needed because a wrong number, once written, is
+// indistinguishable from a measurement — the merge in ingest() overlays fields and never clears
+// them, so there is otherwise no way to take back 190,000 impressions or 5,916 followers.
+// Dry-run by default: it reports exactly what it would clear and changes nothing until
+// confirm === true.
+async function adminStatsScrub(req, env) {
+  try {
+    await requireAdmin(req, env);
+    const body = await readJson(req);
+    const email = String(body.email || '').trim().toLowerCase();
+    const dates = Array.isArray(body.dates) ? body.dates.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(String(d))) : [];
+    const cols  = Array.isArray(body.cols) ? body.cols.map(String) : [];
+    if (!email || !dates.length || !cols.length) {
+      return err('invalid_payload', 'Expected {email, dates:[YYYY-MM-DD], cols:[column], confirm}', 422);
+    }
+    const plan = [];
+    for (const date of dates) {
+      const key = `stats:${email}:${date}`;
+      const row = await env.KV.get(key, 'json');
+      if (!row) continue;
+      const clearing = cols.filter(c => row[c] != null && row[c] !== '');
+      if (!clearing.length) continue;
+      plan.push({ date, clearing: clearing.map(c => ({ col: c, was: row[c] })) });
+      if (body.confirm === true) {
+        for (const c of clearing) delete row[c];
+        const left = Object.keys(row).filter(k => k !== 'captured_at').some(k => row[k] != null && row[k] !== '');
+        if (left) await env.KV.put(key, JSON.stringify(row));
+        else await env.KV.delete(key);   // nothing real left; an empty row is worse than none
+      }
+    }
+    // The guard's reference values must forget the scrubbed columns too, or tomorrow's correct
+    // reading gets measured against the number we just removed and is itself held back.
+    if (body.confirm === true) {
+      try {
+        const gk = `guard:${email}`;
+        const ref = await env.KV.get(gk, 'json');
+        if (ref && ref.cols) {
+          for (const c of cols) if (ref.cols[c] && dates.includes(ref.cols[c].date)) delete ref.cols[c];
+          await env.KV.put(gk, JSON.stringify(ref));
+        }
+      } catch (e) {}
+    }
+    return json({ ok: true, email, applied: body.confirm === true, days: plan.length, plan });
+  } catch (e) { return err(e.code || 'forbidden', e.message, e.status || 403); }
+}
+
 async function adminPurgeNull(req, env) {
   try {
     await requireAdmin(req, env);
@@ -1636,6 +2487,62 @@ async function adminPurgeNull(req, env) {
 // Admin: return the most recent scraper diagnostic(s) for a user — even when they have NO stats
 // rows (failed scrape). This is how we see exactly what the user's LinkedIn /sales/ssi page
 // contained (URL, title, whether it had the SSI sections, first 400 chars of text).
+// ─── Quarantine review ──────────────────────────────────────────────
+// GET  lists what the plausibility guard held back, so /admin can show it.
+// POST accepts one held-back value on purpose — the deliberate human act that lets a genuine step
+// change through. Nothing promotes itself; that is the whole point of the quarantine.
+async function adminSuspectList(req, env) {
+  try {
+    await requireAdmin(req, env);
+    const url = new URL(req.url);
+    const email = String(url.searchParams.get('email') || '').trim().toLowerCase();
+    const prefix = email ? `suspect:${email}:` : 'suspect:';
+    const keys = await listAll(env.KV, prefix);
+    const recent = keys.map(k => k.name).sort().slice(-60).reverse();
+    const records = [];
+    for (const name of recent) {
+      const rec = await env.KV.get(name, 'json');
+      if (rec && rec.items && rec.items.length) records.push(rec);
+    }
+    return json({ records, count: records.reduce((n, r) => n + r.items.length, 0) });
+  } catch (e) { return err(e.code || 'unauthorized', e.message, e.status || 401); }
+}
+
+async function adminSuspectAccept(req, env) {
+  try {
+    const admin = await requireAdmin(req, env);
+    const body = await readJson(req);
+    const email = String(body.email || '').trim().toLowerCase();
+    const date  = String(body.date || '').trim();
+    const col   = String(body.col || '').trim();
+    if (!email || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !col) {
+      return err('invalid_payload', 'Expected {email, date: YYYY-MM-DD, col}', 422);
+    }
+    const qk = `suspect:${email}:${date}`;
+    const rec = await env.KV.get(qk, 'json');
+    const item = rec && (rec.items || []).find(x => x.col === col);
+    if (!item) return err('not_found', 'No held-back value for that account, date and column.', 404);
+
+    const sk = `stats:${email}:${date}`;
+    const row = (await env.KV.get(sk, 'json')) || { captured_at: date };
+    row[col] = item.value;
+    await env.KV.put(sk, JSON.stringify(row));
+
+    // Move the guard's reference forward, or the next day's reading gets held back against the
+    // stale value we just overrode.
+    const gk = `guard:${email}`;
+    const ref = (await env.KV.get(gk, 'json')) || { cols: {} };
+    ref.cols[col] = { v: item.value, date };
+    await env.KV.put(gk, JSON.stringify(ref));
+
+    rec.items = (rec.items || []).filter(x => x.col !== col);
+    rec.accepted = (rec.accepted || []).concat([{ col, value: item.value, by: admin.email || 'admin', at: new Date().toISOString() }]);
+    await env.KV.put(qk, JSON.stringify(rec), { expirationTtl: 60 * 86400 });
+
+    return json({ ok: true, email, date, col, value: item.value });
+  } catch (e) { return err(e.code || 'unauthorized', e.message, e.status || 401); }
+}
+
 async function adminUserDiag(req, env) {
   try {
     await requireAdmin(req, env);
