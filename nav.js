@@ -1,6 +1,6 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-08-28.0731-extdl';
+const LINALYSIS_BUILD = '2026-08-28.0743-dlbtn';
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
 // ── Extension status banner (cross-app policy: Pulse / Radar / Linalysis) ──
@@ -30,6 +30,7 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.8'; // fallback only if updates.xml is
     }
     return 0;
   }
+  function zipUrl() { return '/linalysis-extension-' + latest + '.zip'; }
   function installed() { return document.documentElement.getAttribute('data-linalysis-ext-version'); }
   function present() { return !!installed() || document.documentElement.getAttribute('data-linalysis-ext') === 'installed'; }
 
@@ -57,10 +58,13 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.8'; // fallback only if updates.xml is
 
     if (!present()) {
       // NOT INSTALLED HERE — red, permanent, no dismiss.
+      // Straight to the file -- the button downloads the zip, it does not send
+      // people off to another page to hunt for a download button.
       show(
         '<span style="font-size:16px">🧩</span>' +
         '<span>The Linalysis Chrome extension <u>is not installed in this browser</u> — nothing is being collected from this computer.</span>' +
-        '<a href="/troubleshooting.html" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Install it →</a>'
+        '<a href="' + zipUrl() + '" download style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Download it →</a>' +
+        '<a href="/troubleshooting.html" style="color:#fff;text-decoration:underline;font-weight:600;font-size:12px;margin-left:4px">install steps</a>'
       );
       return;
     }
@@ -69,7 +73,8 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.8'; // fallback only if updates.xml is
       show(
         '<span style="font-size:16px">⬆</span>' +
         '<span>Your Linalysis extension is <u>out of date</u> (v' + v + ' installed, v' + latest + ' available). Older builds can stop collecting without warning.</span>' +
-        '<a href="/account" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Get v' + latest + ' →</a>'
+        '<a href="' + zipUrl() + '" download style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Download v' + latest + ' →</a>' +
+        '<a href="/troubleshooting.html" style="color:#fff;text-decoration:underline;font-weight:600;font-size:12px;margin-left:4px">update steps</a>'
       );
       return;
     }
