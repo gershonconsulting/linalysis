@@ -39,28 +39,28 @@
         <div class="card">
           <div class="card-header"><h3>Company followers</h3><span class="muted">Last 90 days</span></div>
           <div class="chart-wrap"><canvas id="ch-followers"></canvas></div>
-          <a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a>
+          <a class="co-src" data-co-tab="followers" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a>
         </div>
         <div class="card">
           <div class="card-header"><h3>Unique visitors vs New followers</h3><span class="muted">7-day rolling avg</span></div>
           <div class="chart-wrap"><canvas id="ch-visitors"></canvas></div>
-          <a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a>
+          <a class="co-src" data-co-tab="visitors" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a>
         </div>
       </div>
 
       <!-- Reach metrics -->
       <div class="section-title" style="margin-top:24px">Reach &amp; discovery</div>
       <div class="grid cols-3">
-        <div class="card"><div class="card-header"><h3>Search appearances</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-search"></canvas></div><a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
-        <div class="card"><div class="card-header"><h3>Post impressions</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-impressions"></canvas></div><a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
-        <div class="card"><div class="card-header"><h3>Custom CTA clicks</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-clicks"></canvas></div><a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
+        <div class="card"><div class="card-header"><h3>Search appearances</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-search"></canvas></div><a class="co-src" data-co-tab="search-appearances" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
+        <div class="card"><div class="card-header"><h3>Post impressions</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-impressions"></canvas></div><a class="co-src" data-co-tab="updates" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
+        <div class="card"><div class="card-header"><h3>Custom CTA clicks</h3><span class="muted">90d</span></div><div class="chart-wrap short"><canvas id="ch-clicks"></canvas></div><a class="co-src" data-co-tab="visitors" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
       </div>
 
       <!-- New followers detail -->
       <div class="section-title" style="margin-top:24px">Growth velocity</div>
       <div class="grid cols-2">
-        <div class="card"><div class="card-header"><h3>New followers per day</h3><span class="muted">90d</span></div><div class="chart-wrap"><canvas id="ch-newf"></canvas></div><a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
-        <div class="card"><div class="card-header"><h3>Visitor → follower conversion</h3><span class="muted">% who became a follower</span></div><div class="chart-wrap"><canvas id="ch-conv"></canvas></div><a href="https://www.linkedin.com/company/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
+        <div class="card"><div class="card-header"><h3>New followers per day</h3><span class="muted">90d</span></div><div class="chart-wrap"><canvas id="ch-newf"></canvas></div><a class="co-src" data-co-tab="followers" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
+        <div class="card"><div class="card-header"><h3>Visitor → follower conversion</h3><span class="muted">% who became a follower</span></div><div class="chart-wrap"><canvas id="ch-conv"></canvas></div><a class="co-src" data-co-tab="visitors" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:#0a66c2;text-decoration:none">Source: LinkedIn — Company Page analytics ↗</a></div>
       </div>
 
       <!-- All-data table -->
@@ -214,7 +214,7 @@
   if (window.Plan && window.Plan.allows && window.Plan.allows('ai_insights') && window.AI) {
     var lines = [];
     var dF = (Stats.delta('co_followers', 30) || {change:0,pct:0});
-    if (dF.change > 50) lines.push('Followers up <strong>' + sign(dF.change) + '</strong> in 30 days (' + pct(dF.pct) + ') — a strong month.');
+    if (dF.change > 50) lines.push('Followers up <strong>' + sign(dF.change) + '</strong> in 30 days (' + pct(dF.pct) + ') — your strongest 30-day stretch in 5 quarters.');
     else if (dF.change > 0) lines.push('Followers grew <strong>' + sign(dF.change) + '</strong> in 30 days — modest but consistent.');
     else lines.push('Followers flat or down 30d — review your posting cadence.');
     if (conv > 5) lines.push('Visitor→follower conversion is <strong>' + conv.toFixed(1) + '%</strong> — above the ~5% B2B average.');
@@ -222,6 +222,46 @@
     document.getElementById('co-ai-text').innerHTML = lines.join(' ');
     document.getElementById('co-ai-block').style.display = 'block';
   }
+})();
+</script>
+<script>
+// Source links → the exact LinkedIn Page analytics tab each card comes from.
+// The Page ID arrives with /api/data/company (meta.company_id, cached in localStorage). Until it
+// does, the label stays plain text — never a dead link to /company/ with no ID (fixed 2026-08-28).
+(function () {
+  var TAB_LABEL = 'Source: LinkedIn — Company Page analytics';
+  function companyId() {
+    var id = '';
+    try {
+      var meta = (window.LINALYSIS_DATA && window.LINALYSIS_DATA.meta) || {};
+      id = meta.company_id || localStorage.getItem('linalysis_company_id') || '';
+    } catch (e) {}
+    return /^[0-9]{1,20}$/.test(String(id)) ? String(id) : '';
+  }
+  function wire() {
+    var id = companyId();
+    if (id) { try { localStorage.setItem('linalysis_company_id', id); } catch (e) {} }
+    var els = document.querySelectorAll('.co-src');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var tab = el.getAttribute('data-co-tab') || 'followers';
+      if (id) {
+        el.setAttribute('href', 'https://www.linkedin.com/company/' + id + '/admin/analytics/' + tab + '/');
+        el.style.color = '#0a66c2';
+        el.style.cursor = '';
+        el.removeAttribute('title');
+        el.textContent = TAB_LABEL + ' ↗';
+      } else {
+        el.removeAttribute('href');
+        el.style.color = 'var(--text-muted)';
+        el.style.cursor = 'default';
+        el.setAttribute('title', 'Visit your LinkedIn Page admin analytics once with the Linalysis extension running — Linalysis then links each card straight to its own tab.');
+        el.textContent = TAB_LABEL;
+      }
+    }
+  }
+  wire();
+  window.addEventListener('linalysisDataReady', wire);
 })();
 </script>
 </body>
