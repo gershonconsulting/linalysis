@@ -1,18 +1,26 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-08-19.1140-ext027-diag';
-const LINALYSIS_LATEST_EXT_VERSION = '0.2.7'; // bump this whenever a new extension zip ships
+const LINALYSIS_BUILD = '2026-08-28.0659-extguard';
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
-// ── Extension update banner ────────────────────────────────────────
-// The extension's content-pair.js sets data-linalysis-ext-version on <html>.
-// During the testing phase the extension is installed via "Load unpacked", which does NOT
-// auto-update. So when a newer version exists we show one honest banner: download the new version
-// from My Account and reload it. No false "Chrome will update automatically" promise — that only
-// becomes true once we're on the Chrome Web Store.
-(function extUpdateBanner() {
+// ── Extension status banner (cross-app policy: Pulse / Radar / Linalysis) ──
+// One red bar, on every app page, whenever the extension is NOT installed in
+// THIS browser or is NOT the latest version. Nothing else in the product may
+// imply the extension is present: account-level pairing proves it exists on
+// some machine, never on this one. A fresh computer must go red immediately.
+//
+// The extension's content-pair.js stamps data-linalysis-ext-version on <html>
+// at document_idle, so we poll for ~4s before declaring it missing (no red
+// flash for people who do have it). Latest version comes from the update
+// manifest so it can never drift from what actually shipped.
+const LINALYSIS_LATEST_EXT_VERSION = '0.2.8'; // fallback only if updates.xml is unreachable
+(function extStatusBanner() {
+  var SUPPRESS = ['/troubleshooting.html', '/pricing.html'];
+  var here = location.pathname.replace(/\/$/, '');
+  for (var i = 0; i < SUPPRESS.length; i++) if (here === SUPPRESS[i]) return;
+
   function cmpVer(a, b) {
-    var A = a.split('.').map(Number), B = b.split('.').map(Number);
+    var A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
     for (var i = 0; i < Math.max(A.length, B.length); i++) {
       var x = A[i] || 0, y = B[i] || 0;
       if (x < y) return -1;
@@ -20,29 +28,56 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
     }
     return 0;
   }
-  function check() {
-    var installed = document.documentElement.getAttribute('data-linalysis-ext-version');
-    if (!installed) return; // extension not installed / not detected — no banner
-    if (cmpVer(installed, LINALYSIS_LATEST_EXT_VERSION) >= 0) return; // up to date
-    if (document.getElementById('lin-ext-update-banner')) return; // already shown
+  function installed() { return document.documentElement.getAttribute('data-linalysis-ext-version'); }
+  function present() { return !!installed() || document.documentElement.getAttribute('data-linalysis-ext') === 'installed'; }
 
+  function show(html) {
+    if (document.getElementById('lin-ext-banner')) return;
     var b = document.createElement('div');
-    b.id = 'lin-ext-update-banner';
-    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#cc1016;color:#fff;padding:11px 20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
-    b.innerHTML =
-      '<span style="font-size:16px">⬆</span>' +
-      '<span>A newer Linalysis extension is available (you have v' + installed + ', latest v' + LINALYSIS_LATEST_EXT_VERSION + '). Download it and reload the extension.</span>' +
-      '<a href="/account" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Get v' + LINALYSIS_LATEST_EXT_VERSION + ' →</a>' +
-      '<button onclick="document.getElementById(\'lin-ext-update-banner\').remove();document.body.style.paddingTop=\'\'" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;margin-left:6px;opacity:0.8" title="Dismiss">×</button>';
+    b.id = 'lin-ext-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#cc1016;color:#fff;padding:11px 20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.2);flex-wrap:wrap;text-align:center';
+    b.innerHTML = html;
     document.body.insertBefore(b, document.body.firstChild);
-    document.body.style.paddingTop = '48px'; // avoid banner covering content
+    document.body.style.paddingTop = '48px'; // keep the banner off the content
   }
-  // The sentinel attribute is set by the extension's content script which runs at document_idle,
-  // so we check now, again in 500ms, and once more after 2s.
-  if (document.readyState !== 'loading') check();
-  else document.addEventListener('DOMContentLoaded', check);
-  setTimeout(check, 500);
-  setTimeout(check, 2000);
+
+  var latest = LINALYSIS_LATEST_EXT_VERSION;
+  var latestReady = fetch('/extension/updates.xml?cb=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.text() : ''; })
+    .then(function (xml) { var m = xml.match(/updatecheck[^>]*version="([0-9.]+)"/); if (m) latest = m[1]; })
+    .catch(function () {});
+
+  async function decide() {
+    // Poll for the sentinel: content scripts inject late.
+    for (var i = 0; i < 10 && !present(); i++) await new Promise(function (r) { setTimeout(r, 400); });
+    await latestReady;
+    var v = installed();
+
+    if (!present()) {
+      // NOT INSTALLED HERE — red, permanent, no dismiss.
+      show(
+        '<span style="font-size:16px">🧩</span>' +
+        '<span>The Linalysis Chrome extension <u>is not installed in this browser</u> — nothing is being collected from this computer.</span>' +
+        '<a href="/troubleshooting.html" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Install it →</a>'
+      );
+      return;
+    }
+    if (v && cmpVer(v, latest) < 0) {
+      // INSTALLED BUT STALE — also red: an old build can stop collecting silently.
+      show(
+        '<span style="font-size:16px">⬆</span>' +
+        '<span>Your Linalysis extension is <u>out of date</u> (v' + v + ' installed, v' + latest + ' available). Older builds can stop collecting without warning.</span>' +
+        '<a href="/account" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Get v' + latest + ' →</a>'
+      );
+      return;
+    }
+    // Installed and current — no banner, and drop any padding a stale banner left.
+    var b = document.getElementById('lin-ext-banner');
+    if (b) { b.remove(); document.body.style.paddingTop = ''; }
+  }
+
+  if (document.readyState !== 'loading') decide();
+  else document.addEventListener('DOMContentLoaded', decide);
 })();
 
 (function () {

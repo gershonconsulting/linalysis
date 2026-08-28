@@ -115,7 +115,7 @@
 
   <div class="page-header">
     <h2>Setup &amp; diagnostics</h2>
-    <p>30 automated checks across 9 categories. If something's broken, we'll tell you what and how to fix it.</p>
+    <p id="diag-blurb">Automated checks across your whole setup. If something's broken, we'll tell you what and how to fix it.</p>
   </div>
 
   <!-- Info strip -->
@@ -144,7 +144,7 @@
     </div>
     <div>
       <div class="health-title" id="health-title">Running diagnostics…</div>
-      <div class="health-subtitle" id="health-subtitle">We're testing 30 aspects of your setup — environment, extension, LinkedIn session, network, and more.</div>
+      <div class="health-subtitle" id="health-subtitle">We're testing every aspect of your setup — environment, extension, LinkedIn session, network, and more.</div>
       <div class="health-actions">
         <button class="btn primary" onclick="runAll()">Re-run all checks</button>
         <button class="btn" onclick="expandAll(true)">Expand all</button>
@@ -229,30 +229,50 @@ const CATS = [
 // Each check: id, cat, title, detail, run:async()=>{status,detail,action?}
 const CHECKS = [
   // ─── CORE (the 4 things that matter most) ────────────────────────
-  { id:'core.extension', cat:'core', title:'Chrome extension is installed', run: async()=>{
-    // 1. Read the version the extension stamps on <html>. IMPORTANT: data-linalysis-ext is just the
-    //    string "installed"; the actual version lives in data-linalysis-ext-version.
-    function _extVer(){ return document.documentElement.getAttribute('data-linalysis-ext-version') || null; }
-    var v = _extVer();
-    if (!v) { await new Promise(function(r){ setTimeout(r, 1500); }); v = _extVer(); }
+  { id:'core.extension', cat:'core', title:'Chrome extension is installed in this browser', run: async()=>{
+    // ── POLICY (same across Pulse / Radar / Linalysis) ───────────────────────
+    // This check may go GREEN only when the extension proves itself LOCALLY --
+    // in the very browser rendering this page -- AND is on the latest version.
+    // Account-level facts (a pairing token in KV, a capture from last week)
+    // prove an extension exists on SOME machine, never that it is installed
+    // here. Treating those as proof is how a brand-new computer with no
+    // extension at all showed a green tick. Anything short of local proof of
+    // the latest version is RED.
+    // ─────────────────────────────────────────────────────────────────────────
+    var INSTALL_STEPS = '<strong>Install it on this computer (about a minute):</strong><ol style="margin:6px 0 8px 20px;padding:0;font-size:12px;line-height:1.6"><li><a href="/account" style="color:var(--brand);font-weight:600">Download the latest extension</a> from My Account (the filename shows the version) and <strong>unzip it to a folder you\'ll keep</strong> (e.g. Documents — not a temp folder)</li><li>Open <code style="background:var(--bg);padding:1px 4px;border-radius:3px">chrome://extensions</code>, toggle <strong>Developer mode</strong> ON (top-right)</li><li>Click <strong>Load unpacked</strong> and select the unzipped folder</li><li>Open <strong>linalysis.net</strong> while signed in — the extension pairs automatically</li></ol><span style="font-size:11px;color:var(--text-muted)">To update later, download the newest version from <a href="/account" style="color:var(--text-muted)">My Account</a>, replace the folder\'s contents, and click the ↻ reload icon on the extension card.</span>';
 
-    // 2. Latest version — source of truth is the update manifest.
+    function _extVer(){ return document.documentElement.getAttribute('data-linalysis-ext-version') || null; }
+    function _cmp(a,b){var A=String(a).split('.').map(Number),B=String(b).split('.').map(Number);for(var i=0;i<Math.max(A.length,B.length);i++){var x=A[i]||0,y=B[i]||0;if(x<y)return -1;if(x>y)return 1;}return 0;}
+
+    // Latest shipped version -- source of truth is the update manifest.
     var _latest = null;
     try {
       var _xml = await fetch('/extension/updates.xml?cb='+Date.now(), {cache:'no-store'}).then(function(r){return r.ok?r.text():'';});
       var _m = _xml.match(/updatecheck[^>]*version="([0-9.]+)"/); if (_m) _latest = _m[1];
     } catch(e){}
-    function _cmp(a,b){var A=a.split('.').map(Number),B=b.split('.').map(Number);for(var i=0;i<Math.max(A.length,B.length);i++){var x=A[i]||0,y=B[i]||0;if(x<y)return -1;if(x>y)return 1;}return 0;}
 
-    if (v) {
+    // Turns a LOCAL detection into a verdict. Local + latest = green. Local but
+    // stale = red (policy: "installed" means installed AND current).
+    function _verdict(v, how) {
       try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
-      if (_latest && _cmp(v, _latest) < 0) {
-        return { status:'warn', detail:'Installed <strong>v'+v+'</strong> · latest <strong>v'+_latest+'</strong>. <a href="/account" style="color:var(--brand);font-weight:600">Download v'+_latest+'</a>, then click ↻ reload on the extension card in chrome://extensions.' };
+      if (!v) {
+        return { status:'warn', detail:'The extension is running in this browser ('+how+') but did not report its version'+(_latest?', so we cannot confirm it is the latest (v'+_latest+')':'')+'. Open <code>chrome://extensions</code>, click ↻ reload on the Linalysis card, then refresh this page.' };
       }
-      return { status:'ok', detail:'Installed <strong>v'+v+'</strong>'+(_latest?' — up to date (latest v'+_latest+')':'')+'.' };
+      if (_latest && _cmp(v, _latest) < 0) {
+        return { status:'fail', detail:'Running <strong>v'+v+'</strong> in this browser — <strong>out of date</strong>. Latest is <strong>v'+_latest+'</strong> and older versions can silently stop collecting. <a href="/account" style="color:var(--brand);font-weight:600">Download v'+_latest+'</a>, replace the unzipped folder\'s contents, then click ↻ reload on the extension card in <code>chrome://extensions</code>.' };
+      }
+      return { status:'ok', detail:'Installed in <strong>this</strong> browser — <strong>v'+v+'</strong>'+(_latest?', up to date (latest v'+_latest+')':'')+'.<br><span style="font-size:11px;color:var(--text-muted)">Verified locally via '+how+'.</span>' };
     }
 
-    // 3. postMessage handshake (extension content script must listen for {source:'linalysis-page'})
+    // ── LOCAL PROOF 1: the sentinel the content script stamps on <html>.
+    // Content scripts inject at document_idle, so poll rather than race them.
+    var v = _extVer();
+    for (var _i = 0; !v && _i < 6; _i++) { await new Promise(function(r){ setTimeout(r, 400); }); v = _extVer(); }
+    if (v || document.documentElement.getAttribute('data-linalysis-ext') === 'installed') {
+      return _verdict(v, 'the on-page sentinel');
+    }
+
+    // ── LOCAL PROOF 2: postMessage handshake with the content script.
     var pong = await new Promise(function(res){
       var listener = function(e) {
         if (e && e.data && e.data.source === 'linalysis-ext' && (e.data.type === 'pong' || e.data.type === 'present')) {
@@ -263,12 +283,9 @@ const CHECKS = [
       window.postMessage({ source:'linalysis-page', type:'ping' }, location.origin);
       setTimeout(function(){ window.removeEventListener('message', listener); res(null); }, 1500);
     });
-    if (pong) {
-      try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
-      return { status:'ok', detail:'Extension responded to handshake'+(pong.version?' (v'+pong.version+')':'')+'.' };
-    }
+    if (pong) return _verdict(pong.version || null, 'a postMessage handshake');
 
-    // 4. chrome.runtime.sendMessage — works if extension manifest has externally_connectable.matches: ["*://*.linalysis.net/*"]
+    // ── LOCAL PROOF 3: chrome.runtime.sendMessage to the extension ID.
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       var rtimeReply = await new Promise(function(res){
         try {
@@ -279,13 +296,10 @@ const CHECKS = [
           setTimeout(function(){ res(null); }, 1500);
         } catch(e) { res(null); }
       });
-      if (rtimeReply) {
-        try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
-        return { status:'ok', detail:'Extension responded via chrome.runtime.sendMessage'+(rtimeReply && rtimeReply.version?' (v'+rtimeReply.version+')':'')+'.' };
-      }
+      if (rtimeReply) return _verdict((rtimeReply && rtimeReply.version) || null, 'chrome.runtime.sendMessage');
     }
 
-    // 5. chrome-extension:// resource probe — works only if extension declares them as web_accessible_resources
+    // ── LOCAL PROOF 4: chrome-extension:// web-accessible resource probe.
     var probes = ['icon-128.png','icons/icon-128.png','icons/icon128.png','manifest.json','icon.png','logo.png','icon-48.png','icon-16.png','assets/icon.png'];
     for (var i = 0; i < probes.length; i++) {
       var found = await new Promise(function(res){
@@ -294,42 +308,37 @@ const CHECKS = [
         img.onerror = function(){ clearTimeout(t); res(false); };
         img.src = 'chrome-extension://'+LINALYSIS_EXT_ID+'/'+probes[i];
       });
-      if (found) {
-        try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
-        return { status:'ok', detail:'Detected via chrome-extension://'+LINALYSIS_EXT_ID+'/'+probes[i] };
-      }
+      if (found) return _verdict(null, 'a chrome-extension:// resource probe');
     }
 
-    // 6. Server-side proof: has this signed-in user's extension ever paired with our API?
-    // If they have a 'chrome-extension' token in KV, the extension successfully paired at some point.
+    // ── NO LOCAL PROOF. Everything below is RED. We still look up the account's
+    // pairing state, but ONLY to explain the situation -- never to pass the check.
+    var acctNote = '';
     try {
       var extStatus = await fetch('https://api.linalysis.net/api/user/extension-status', { credentials: 'include' });
       if (extStatus.ok) {
         var es = await extStatus.json();
         if (es && es.paired) {
-          try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
           var pairedAgo = es.paired_at ? Math.round((Date.now() - new Date(es.paired_at).getTime()) / 60000) : null;
           var pairedTxt = pairedAgo != null ? (pairedAgo < 60 ? pairedAgo + 'm ago' : Math.round(pairedAgo/60) + 'h ago') : 'earlier';
-          var lastCap = es.last_capture_at ? '· Last capture ' + es.last_capture_at : '· No captures yet';
-          return {
-            status:'ok',
-            detail:'Extension paired with your account (server-side proof — token minted ' + pairedTxt + '). ' + lastCap + '.<br><span style="font-size:11px;color:var(--text-muted)">Note: the on-page sentinel isn\'t firing — the extension might be disabled or need a Chrome restart, but syncing still works.</span>'
-          };
+          var lastCap = es.last_capture_at ? 'last capture ' + es.last_capture_at : 'no captures yet';
+          acctNote = '<div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);line-height:1.5">Your <strong>account</strong> is paired with an extension on a different browser or computer (token minted ' + pairedTxt + ', ' + lastCap + '). That copy may still be syncing — but <strong>this</strong> browser is collecting nothing, and if that other machine is gone, your data stops here.</div>';
         }
       }
-    } catch(e) { /* fall through */ }
+    } catch(e) { /* offline / signed out -- the check is red either way */ }
 
-    // 7. Manual confirm fallback
+    // Manual "I have it installed" self-attestation. It is a note, not proof:
+    // never green, because the extension is demonstrably not answering here.
     var manual = false;
     try { manual = localStorage.getItem('linalysis_ext_confirmed') === 'yes'; } catch(e){}
     if (manual) {
-      try { localStorage.setItem('linalysis_ext_ever_seen','yes'); } catch(e){}
-      return { status:'ok', detail:'Manually confirmed installed. <a href="#" onclick="localStorage.removeItem(\'linalysis_ext_confirmed\');localStorage.removeItem(\'linalysis_ext_ever_seen\');runCheck(CHECKS.find(function(c){return c.id===\'core.extension\'}));return false" style="color:var(--brand)">Reset</a>' };
+      return { status:'fail', detail:'You marked the extension as installed on this browser, but it is <strong>not responding on this page</strong> — it is disabled, removed, or Chrome needs a restart. Open <code style="background:var(--bg);padding:1px 4px;border-radius:3px">chrome://extensions</code> and check the Linalysis card is enabled, then click ↻ reload and refresh. <a href="#" onclick="localStorage.removeItem(\'linalysis_ext_confirmed\');localStorage.removeItem(\'linalysis_ext_ever_seen\');runCheck(CHECKS.find(function(c){return c.id===\'core.extension\'}));return false" style="color:var(--brand)">Clear this confirmation</a>' + acctNote };
     }
+
     return {
       status:'fail',
-      detail:'The Linalysis Chrome extension isn\'t installed on this browser yet.<br><strong>Install (about a minute):</strong><ol style="margin:6px 0 8px 20px;padding:0;font-size:12px;line-height:1.6"><li><a href="/account" style="color:var(--brand);font-weight:600">Download the latest extension</a> from My Account (the filename shows the version) and <strong>unzip it to a folder you\'ll keep</strong> (e.g. Documents — not a temp folder)</li><li>Open <code style="background:var(--bg);padding:1px 4px;border-radius:3px">chrome://extensions</code>, toggle <strong>Developer mode</strong> ON (top-right)</li><li>Click <strong>Load unpacked</strong> and select the unzipped folder</li><li>Open <strong>linalysis.net</strong> while signed in — the extension pairs automatically</li></ol><span style="font-size:11px;color:var(--text-muted)">To update later, download the newest version from <a href="/account" style="color:var(--text-muted)">My Account</a>, replace the folder\'s contents, and click the ↻ reload icon on the extension card.</span>',
-      action: { label:'I have it installed', fn:'confirmExt' }
+      detail:'The Linalysis Chrome extension <strong>is not installed in this browser</strong>, so nothing is being collected from this computer.<br>' + INSTALL_STEPS + acctNote,
+      action: { label:'Re-check now', fn:'recheckExt' }
     };
   }},
   { id:'core.cookie', cat:'core', title:'Signed into LinkedIn in this browser', run: async()=>{
@@ -461,9 +470,9 @@ const CHECKS = [
     }
     var latest = null;
     try { var xml = await fetch('/extension/updates.xml?cb='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():''); var m=xml.match(/updatecheck[^>]*version="([0-9.]+)"/); if(m) latest=m[1]; } catch(e){}
-    if (!v) return { status:'warn', detail:'Extension not detected on this page'+(latest?' (latest available: v'+latest+')':'')+'. If it\'s installed, reload it in chrome://extensions and refresh.' };
+    if (!v) return { status:'fail', detail:'Extension not detected in this browser'+(latest?' (latest available: v'+latest+')':'')+'. If you believe it is installed, reload it in <code>chrome://extensions</code> and refresh this page.' };
     function cmp(a,b){var A=a.split('.').map(Number),B=b.split('.').map(Number);for(var i=0;i<Math.max(A.length,B.length);i++){var x=A[i]||0,y=B[i]||0;if(x<y)return -1;if(x>y)return 1;}return 0;}
-    if (latest && cmp(v,latest)<0) return { status:'warn', detail:'Installed <strong>v'+v+'</strong>, latest is <strong>v'+latest+'</strong>. <a href="/account" style="color:var(--brand)">Update →</a>' };
+    if (latest && cmp(v,latest)<0) return { status:'fail', detail:'Installed <strong>v'+v+'</strong>, latest is <strong>v'+latest+'</strong> — out of date. <a href="/account" style="color:var(--brand);font-weight:600">Update →</a>' };
     return { status:'ok', detail:'Installed <strong>v'+v+'</strong>'+(latest?' (latest v'+latest+')':'')+'.' };
   }},
   { id:'ext.script',    cat:'ext', title:'Content script runs on linalysis.net', run: async()=>{
@@ -677,11 +686,22 @@ function updateHealth() {
     const title=document.getElementById('health-title');
     const sub=document.getElementById('health-subtitle');
     const lbl=document.getElementById('health-label');
-    if(fail>0){title.textContent=`${fail} issue${fail>1?'s':''} need attention.`;sub.textContent='Expand the red categories below to see what to fix.';lbl.textContent='Issues';}
+    if(fail>0){
+      const extDown = state.results['core.extension'] && state.results['core.extension'].status==='fail';
+      title.textContent = extDown
+        ? 'The Chrome extension isn\'t working in this browser.'
+        : `${fail} issue${fail>1?'s':''} need${fail>1?'':'s'} attention.`;
+      sub.textContent = extDown
+        ? 'Until it is installed and up to date here, this computer collects nothing. Expand the red categories below.'
+        : 'Expand the red categories below to see what to fix.';
+      lbl.textContent='Issues';
+    }
     else if(warn>0){title.textContent='All core systems OK — some warnings.';sub.textContent='Nothing blocking, but review warnings below.';lbl.textContent='Healthy';}
     else {title.textContent='Everything\'s working perfectly. 🎉';sub.textContent=`All ${total} checks passed. You're set.`;lbl.textContent='Perfect';}
   }
 }
+
+(function(){ var el=document.getElementById('diag-blurb'); if(el) el.textContent = CHECKS.length+' automated checks across '+CATS.length+" categories. If something's broken, we'll tell you what and how to fix it."; })();
 
 async function runAll() {
   state.results={};
@@ -693,6 +713,14 @@ async function runAll() {
 
 function expandAll(open) {
   document.querySelectorAll('.diag-cat').forEach(el=>el.classList.toggle('open', open));
+}
+
+function recheckExt() {
+  // No self-attestation: just run the real local detection again.
+  toast('Re-checking this browser for the extension…');
+  const core = CHECKS.find(x=>x.id==='core.extension'); if (core) runCheck(core).then(updateHealth);
+  const ver  = CHECKS.find(x=>x.id==='ext.version');    if (ver)  runCheck(ver).then(updateHealth);
+  const scr  = CHECKS.find(x=>x.id==='ext.script');     if (scr)  runCheck(scr).then(updateHealth);
 }
 
 function confirmExt() {
@@ -712,13 +740,7 @@ function openExtStore() {
   // Not on the Web Store yet — download the versioned zip for Load-unpacked install.
   window.open('/account', '_blank', 'noopener');
   toast('Download the extension from My Account, then Load unpacked in chrome://extensions');
-  setTimeout(function(){
-    if (confirm('Have you installed the extension? Click OK to mark it confirmed.')) {
-      try { localStorage.setItem('linalysis_ext_confirmed', 'yes'); } catch(e) {}
-      const core = CHECKS.find(c => c.id==='core.extension'); if (core) runCheck(core);
-      const ext  = CHECKS.find(c => c.id==='ext.version');    if (ext)  runCheck(ext);
-    }
-  }, 4000);
+  setTimeout(function(){ recheckExt(); }, 4000);
 }
 function openLinkedin() {
   window.open('https://www.linkedin.com/feed/', '_blank', 'noopener');
