@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Linalysis — LinkedIn analytics collector",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "update_url": "https://linalysis.net/extension/updates.xml",
   "description": "Reads your LinkedIn Social Selling Index and metrics from your own browser and syncs them to your Linalysis account. Runs quietly in the background.",
   "permissions": [
