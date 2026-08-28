@@ -475,6 +475,32 @@ const CHECKS = [
     if (latest && cmp(v,latest)<0) return { status:'fail', detail:'Installed <strong>v'+v+'</strong>, latest is <strong>v'+latest+'</strong> — out of date. <a href="/account" style="color:var(--brand);font-weight:600">Update →</a>' };
     return { status:'ok', detail:'Installed <strong>v'+v+'</strong>'+(latest?' (latest v'+latest+')':'')+'.' };
   }},
+  { id:'ext.download',  cat:'ext', title:'Extension download link actually works', run: async()=>{
+    // A dead download used to fail SILENTLY: Cloudflare Pages answers an unknown
+    // path with the 404 page at HTTP *200*, so the browser happily saves an HTML
+    // document as "linalysis-extension-x.y.z.zip" and Windows then says the zip is
+    // invalid. 200 is not enough -- check the bytes are really a zip (PK\x03\x04).
+    var latest = null;
+    try {
+      var xml = await fetch('/extension/updates.xml?cb='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():'';});
+      var m = xml.match(/updatecheck[^>]*version="([0-9.]+)"/); if (m) latest = m[1];
+    } catch(e){}
+    if (!latest) return { status:'warn', detail:'Could not read <code>/extension/updates.xml</code>, so the download link could not be checked.' };
+    var url = '/linalysis-extension-'+latest+'.zip';
+    try {
+      var r = await fetch(url+'?cb='+Date.now(), {cache:'no-store'});
+      if (!r.ok) return { status:'fail', detail:'<code>'+url+'</code> returned HTTP '+r.status+'. The v'+latest+' zip was never uploaded — the Download button on <a href="/account" style="color:var(--brand)">My Account</a> is dead.' };
+      var buf = new Uint8Array(await r.arrayBuffer());
+      var isZip = buf.length > 4 && buf[0]===0x50 && buf[1]===0x4B && (buf[2]===3||buf[2]===5||buf[2]===7);
+      if (!isZip) {
+        var head = String.fromCharCode.apply(null, buf.slice(0,16)).replace(/[^\x20-\x7e]/g,'.');
+        return { status:'fail', detail:'<code>'+url+'</code> answered HTTP 200 but sent <strong>'+(buf.length>2000?'an HTML page':'something that is not a zip')+'</strong> (starts with "'+head+'"). Downloading it gives a file Windows calls invalid. The v'+latest+' zip is missing from the site.' };
+      }
+      return { status:'ok', detail:'<code>'+url+'</code> serves a real zip ('+Math.round(buf.length/1024)+' KB).' };
+    } catch(e) {
+      return { status:'fail', detail:'Could not fetch <code>'+url+'</code>: '+e.message };
+    }
+  }},
   { id:'ext.script',    cat:'ext', title:'Content script runs on linalysis.net', run: async()=>{
     const v=document.documentElement.dataset.linalysisExt;
     return v ? { status:'ok', detail:'Content script injected the sentinel attribute.' }

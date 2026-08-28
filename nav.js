@@ -1,6 +1,6 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-08-28.0705-extguard2';
+const LINALYSIS_BUILD = '2026-08-28.0731-extdl';
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
 // ── Extension status banner (cross-app policy: Pulse / Radar / Linalysis) ──
