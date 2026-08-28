@@ -1,6 +1,6 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-08-28.0659-extguard';
+const LINALYSIS_BUILD = '2026-08-28.0705-extguard2';
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
 // ── Extension status banner (cross-app policy: Pulse / Radar / Linalysis) ──
@@ -15,8 +15,10 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
 // manifest so it can never drift from what actually shipped.
 const LINALYSIS_LATEST_EXT_VERSION = '0.2.8'; // fallback only if updates.xml is unreachable
 (function extStatusBanner() {
-  var SUPPRESS = ['/troubleshooting.html', '/pricing.html'];
-  var here = location.pathname.replace(/\/$/, '');
+  // Cloudflare Pages serves these extensionless (/troubleshooting, not
+  // /troubleshooting.html) -- normalise before comparing or the list never matches.
+  var SUPPRESS = ['/troubleshooting', '/pricing'];
+  var here = location.pathname.replace(/\/$/, '').replace(/\.html$/, '');
   for (var i = 0; i < SUPPRESS.length; i++) if (here === SUPPRESS[i]) return;
 
   function cmpVer(a, b) {
