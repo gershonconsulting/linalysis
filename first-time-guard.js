@@ -18,6 +18,33 @@
   var pageName = document.title.split('—').pop() || 'this page';
   pageName = pageName.replace(/Linalysis/, '').trim() || 'this page';
 
+  // A computer set to "Viewing only" (My Account -> This computer) is not
+  // supposed to install anything — pointing it at the extension setup is wrong.
+  // nav.js owns window.LinalysisCollecting but is deferred, so it may not exist
+  // yet when this runs. Read the key directly — same source of truth.
+  var viewer = false;
+  try {
+    viewer = window.LinalysisCollecting
+      ? window.LinalysisCollecting.isViewer()
+      : localStorage.getItem('linalysis_collecting_session') === 'off';
+  } catch (e) {}
+  if (viewer) {
+    content.innerHTML =
+      '<div style="background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:18px;padding:44px 40px;margin-bottom:24px">' +
+        '<div style="max-width:640px">' +
+          '<div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#FE1B04;margin-bottom:12px">Welcome to Linalysis' + (name ? ', ' + name : '') + '</div>' +
+          '<h2 style="font-size:28px;font-weight:800;letter-spacing:-0.01em;margin-bottom:12px">' + pageName + ' is empty — no data has been collected yet.</h2>' +
+          '<p style="font-size:15px;opacity:0.8;line-height:1.55;margin-bottom:24px">This computer is set to <strong>Viewing only</strong>, so nothing needs to be installed here. Metrics appear as soon as the collecting computer — the one running the Linalysis extension — completes its first daily sync.</p>' +
+          '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+            '<a href="/account.html#collecting" style="background:#FE1B04;color:#fff;padding:12px 22px;border-radius:10px;font-weight:700;text-decoration:none">Collection settings →</a>' +
+            '<a href="/help.html" style="background:rgba(255,255,255,0.1);color:#fff;padding:12px 22px;border-radius:10px;font-weight:600;text-decoration:none">Help &amp; guides</a>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    window.__linalysisFirstTime = true;
+    return;
+  }
+
   content.innerHTML =
     '<div style="background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:18px;padding:44px 40px;margin-bottom:24px">' +
       '<div style="max-width:640px">' +

@@ -70,6 +70,7 @@
   .check-badge.ok { background: var(--success-light); color: var(--success); }
   .check-badge.warn { background: var(--warn-light); color: var(--warn); }
   .check-badge.fail { background: var(--error-light); color: var(--error); }
+  .check-badge.skip { background: #f4f4f5; color: #52525b; }
   .check-title { font-weight: 600; font-size: 13px; }
   .check-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
   .check-detail code { background: var(--bg); padding: 1px 4px; border-radius: 3px; font-family: SFMono-Regular, Consolas, monospace; font-size: 10px; }
@@ -161,6 +162,11 @@
   </div>
 
   <!-- Category groups — rendered by JS -->
+  <div id="viewer-notice" style="display:none;background:#f4f4f5;border:1px solid #d4d4d8;border-left:4px solid #71717a;border-radius:10px;padding:13px 16px;margin-bottom:16px;font-size:13px;color:#3f3f46;line-height:1.55">
+    <strong>👁 This computer is set to “Viewing only”.</strong>
+    The Chrome extension is not required here, so the extension and LinkedIn-session checks are skipped and no missing-extension warning is shown.
+    <a href="/account.html#collecting" style="color:var(--brand);font-weight:600">Turn collecting on for this computer →</a>
+  </div>
   <div id="cats"></div>
 
   <!-- Self-help -->
@@ -210,6 +216,21 @@
 function toast(m,ms=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._to);toast._to=setTimeout(()=>t.classList.remove('show'),ms)}
 // Extension ID — prefer whatever the installed extension actually reports via its sentinel
 // attribute (set by content-pair.js). Falls back to our stable signing-key ID.
+// This computer may be a VIEWER (My Account -> This computer -> Collecting
+// session OFF). A viewer is not supposed to run the extension, so extension /
+// LinkedIn-session checks are SKIPPED rather than failed. Skipped checks also
+// leave the health-score denominator, so the ring stays honest.
+function _isViewerComputer() {
+  // nav.js owns the helper; fall back to the raw key if it hasn't run yet.
+  try {
+    return window.LinalysisCollecting
+      ? window.LinalysisCollecting.isViewer()
+      : localStorage.getItem('linalysis_collecting_session') === 'off';
+  } catch (e) { return false; }
+}
+function _viewerSkip(what) {
+  return { status:'skip', detail:'Skipped — this computer is set to <strong>Viewing only</strong>, so ' + what + ' is not required here. Collection happens on whichever computer has the extension installed. <a href="/account.html#collecting" style="color:var(--brand);font-weight:600">Change this in My Account →</a>' };
+}
 const LINALYSIS_EXT_ID = document.documentElement.getAttribute('data-linalysis-ext-id') || 'eepopmbjjhmmgjehllmbcjpcncgkmcfb';
 
 // --- Diagnostic checks across categories ---
@@ -262,6 +283,13 @@ const CHECKS = [
         return { status:'fail', detail:'Running <strong>v'+v+'</strong> in this browser — <strong>out of date</strong>. Latest is <strong>v'+_latest+'</strong> and older versions can silently stop collecting. <a href="/account" style="color:var(--brand);font-weight:600">Download v'+_latest+'</a>, replace the unzipped folder\'s contents, then click ↻ reload on the extension card in <code>chrome://extensions</code>.' };
       }
       return { status:'ok', detail:'Installed in <strong>this</strong> browser — <strong>v'+v+'</strong>'+(_latest?', up to date (latest v'+_latest+')':'')+'.<br><span style="font-size:11px;color:var(--text-muted)">Verified locally via '+how+'.</span>' };
+    }
+
+    // Viewing-only computer: nothing to install here, so don't fail it.
+    // (If the extension IS running here we still report it, below.)
+    if (_isViewerComputer() && !_extVer()) {
+      await new Promise(function(r){ setTimeout(r, 800); });
+      if (!_extVer()) return _viewerSkip('the Chrome extension');
     }
 
     // ── LOCAL PROOF 1: the sentinel the content script stamps on <html>.
@@ -346,6 +374,9 @@ const CHECKS = [
     // linkedin.com/sales/ssi during sync — we don't need to grab the raw li_at value ourselves.
     // We just need to confirm you have an active LinkedIn session in this Chrome profile.
     var extInstalled = document.documentElement.getAttribute('data-linalysis-ext') === 'installed';
+    if (!extInstalled && _isViewerComputer()) {
+      return _viewerSkip('a LinkedIn session in this browser');
+    }
     if (!extInstalled) {
       return { status:'warn', detail:'Install the Linalysis Chrome extension first — it will use your existing LinkedIn login automatically. <a href="/account" style="color:var(--brand);font-weight:600">Download extension →</a>' };
     }
@@ -666,7 +697,7 @@ async function runCheck(c) {
   detail.textContent='Running…'; if(action) action.innerHTML='';
   try {
     const r = await c.run();
-    const icon={ok:'✓',warn:'!',fail:'✕',pending:'•'}[r.status]||'?';
+    const icon={ok:'✓',warn:'!',fail:'✕',skip:'–',pending:'•'}[r.status]||'?';
     badge.className='check-badge '+r.status; badge.textContent=icon;
     detail.innerHTML=r.detail||'';
     if(r.action && action) action.innerHTML=`<button class="check-action" onclick="${r.action.fn}()">${r.action.label}</button>`;
@@ -685,7 +716,10 @@ function updateHealth() {
   const ok=done.filter(r=>r.status==='ok').length;
   const warn=done.filter(r=>r.status==='warn').length;
   const fail=done.filter(r=>r.status==='fail').length;
-  const total=CHECKS.length;
+  const skip=done.filter(r=>r.status==='skip').length;
+  // Skipped checks (not applicable on a viewing-only computer) leave the
+  // denominator — they are neither passes nor failures.
+  const total=Math.max(1, CHECKS.length - skip);
   document.getElementById('stat-ok').textContent=ok;
   document.getElementById('stat-warn').textContent=warn;
   document.getElementById('stat-fail').textContent=fail;
@@ -702,13 +736,15 @@ function updateHealth() {
     const hereOk=here.filter(c=>state.results[c.id]?.status==='ok').length;
     const hereWarn=here.filter(c=>state.results[c.id]?.status==='warn').length;
     const hereFail=here.filter(c=>state.results[c.id]?.status==='fail').length;
+    const hereSkip=here.filter(c=>state.results[c.id]?.status==='skip').length;
     const el=document.getElementById(`count-${cat.key}`);
     if (!el) return;
     el.innerHTML=(hereOk?`<span class="pill ok">${hereOk} OK</span>`:'')+
                  (hereWarn?`<span class="pill warn">${hereWarn} !</span>`:'')+
-                 (hereFail?`<span class="pill fail">${hereFail} ✕</span>`:'');
+                 (hereFail?`<span class="pill fail">${hereFail} ✕</span>`:'')+
+                 (hereSkip?`<span class="pill pending">${hereSkip} n/a</span>`:'');
   });
-  if(done.length===total) {
+  if(done.length===CHECKS.length) {
     const title=document.getElementById('health-title');
     const sub=document.getElementById('health-subtitle');
     const lbl=document.getElementById('health-label');
@@ -723,10 +759,11 @@ function updateHealth() {
       lbl.textContent='Issues';
     }
     else if(warn>0){title.textContent='All core systems OK — some warnings.';sub.textContent='Nothing blocking, but review warnings below.';lbl.textContent='Healthy';}
-    else {title.textContent='Everything\'s working perfectly. 🎉';sub.textContent=`All ${total} checks passed. You're set.`;lbl.textContent='Perfect';}
+    else {title.textContent='Everything\'s working perfectly. 🎉';sub.textContent=`All ${total} applicable checks passed.`+(skip?` ${skip} skipped — this computer is viewing only.`:" You're set.");lbl.textContent='Perfect';}
   }
 }
 
+document.addEventListener('DOMContentLoaded', function(){ var n=document.getElementById('viewer-notice'); if(n && _isViewerComputer()) n.style.display=''; });
 (function(){ var el=document.getElementById('diag-blurb'); if(el) el.textContent = CHECKS.length+' automated checks across '+CATS.length+" categories. If something's broken, we'll tell you what and how to fix it."; })();
 
 async function runAll() {

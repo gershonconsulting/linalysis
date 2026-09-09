@@ -1,7 +1,57 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-08-28.1421-colinks';
+const LINALYSIS_BUILD = '2026-09-06.1140-collectmode';
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
+
+// ── "Collecting session" mode, per COMPUTER (per browser profile) ──────────
+// One Linalysis account is opened from several machines: the computer that
+// actually runs the Chrome extension and collects from LinkedIn, plus viewers
+// (a second laptop, the client). A viewer has no reason to install the
+// extension, so the red "extension not installed" bar is noise there.
+//
+// The choice therefore cannot live on the ACCOUNT — it would follow the login
+// to every machine and one viewer would silence the collecting computer. It is
+// kept in localStorage, which is per browser profile == per computer.
+//   'on'  (default) → this computer collects; extension required and policed.
+//   'off'           → viewing only; no extension needed, no extension warnings.
+// OFF never claims an extension IS installed: it only stops requiring one here.
+// The install-proof policy (local proof only, stale == red) is untouched on any
+// computer left ON. Set from My Account → This computer.
+(function (w) {
+  var KEY = 'linalysis_collecting_session';
+  function read() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function stamp(on) { try { document.documentElement.setAttribute('data-linalysis-collecting', on ? 'on' : 'off'); } catch (e) {} }
+  var API = {
+    KEY: KEY,
+    isOn:     function () { return read() !== 'off'; },
+    isViewer: function () { return read() === 'off'; },
+    isSet:    function () { var v = read(); return v === 'on' || v === 'off'; },
+    set: function (on) {
+      on = !!on;
+      try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
+      stamp(on);
+      try { w.dispatchEvent(new CustomEvent('linalysis-collecting-changed', { detail: { on: on } })); } catch (e) {}
+      return on;
+    },
+    label: function () { return API.isOn() ? 'Collecting session' : 'Viewing only'; },
+    deviceLabel: function () {
+      var ua = navigator.userAgent || '', b = 'this browser', o = '';
+      if (/Edg\//.test(ua)) b = 'Edge';
+      else if (/OPR\//.test(ua)) b = 'Opera';
+      else if (/Chrome\//.test(ua)) b = 'Chrome';
+      else if (/Firefox\//.test(ua)) b = 'Firefox';
+      else if (/Safari\//.test(ua)) b = 'Safari';
+      if (/Windows/.test(ua)) o = 'Windows';
+      else if (/Mac OS X/.test(ua)) o = 'macOS';
+      else if (/Android/.test(ua)) o = 'Android';
+      else if (/iPhone|iPad/.test(ua)) o = 'iOS';
+      else if (/Linux/.test(ua)) o = 'Linux';
+      return b + (o ? ' on ' + o : '');
+    }
+  };
+  w.LinalysisCollecting = API;
+  stamp(API.isOn());
+})(window);
 
 // ── Extension status banner (cross-app policy: Pulse / Radar / Linalysis) ──
 // One red bar, on every app page, whenever the extension is NOT installed in
@@ -20,6 +70,13 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
   var SUPPRESS = ['/troubleshooting', '/pricing'];
   var here = location.pathname.replace(/\/$/, '').replace(/\.html$/, '');
   for (var i = 0; i < SUPPRESS.length; i++) if (here === SUPPRESS[i]) return;
+
+  // Per-computer setting (My Account -> This computer). A machine set to
+  // "Viewing only" is not expected to run the extension, so the missing/stale
+  // extension warning is not shown here. It is silenced, never faked: the
+  // topbar carries a "Viewing only" chip so nobody mistakes this for collecting.
+  var COLLECTING = !(window.LinalysisCollecting && window.LinalysisCollecting.isViewer());
+  if (!COLLECTING) return;
 
   function cmpVer(a, b) {
     var A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
@@ -64,7 +121,8 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
         '<span style="font-size:16px">🧩</span>' +
         '<span>The Linalysis Chrome extension <u>is not installed in this browser</u> — nothing is being collected from this computer.</span>' +
         '<a href="' + zipUrl() + '" download style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Download it →</a>' +
-        '<a href="/troubleshooting.html" style="color:#fff;text-decoration:underline;font-weight:600;font-size:12px;margin-left:4px">install steps</a>'
+        '<a href="/troubleshooting.html" style="color:#fff;text-decoration:underline;font-weight:600;font-size:12px;margin-left:4px">install steps</a>' +
+        '<a href="/account.html#collecting" style="color:#fff;text-decoration:underline;font-weight:600;font-size:12px;margin-left:10px;opacity:.85">this computer only views →</a>'
       );
       return;
     }
@@ -189,6 +247,22 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
     avatar.parentElement.insertBefore(chip, avatar);
   }
 
+  function addViewerChip() {
+    var avatar = document.querySelector('.topbar .topbar-right .avatar');
+    if (!avatar) return;
+    var existing = avatar.parentElement.querySelector('.linalysis-viewer-chip');
+    var viewer = !!(window.LinalysisCollecting && window.LinalysisCollecting.isViewer());
+    if (!viewer) { if (existing) existing.remove(); return; }
+    if (existing) return;
+    var chip = document.createElement('a');
+    chip.className = 'linalysis-viewer-chip';
+    chip.href = '/account.html#collecting';
+    chip.style.cssText = 'padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700;margin-right:6px;text-decoration:none;border:1px solid #d4d4d8;background:#f4f4f5;color:#52525b;display:inline-flex;align-items:center;gap:4px';
+    chip.textContent = '\u{1F441} Viewing only';
+    chip.title = 'This computer does not collect — no Chrome extension needed here. Click to change.';
+    avatar.parentElement.insertBefore(chip, avatar);
+  }
+
   function addAuthChip() {
     var avatar = document.querySelector('.topbar .topbar-right .avatar');
     if (!avatar) return;
@@ -249,6 +323,7 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
     try { addBuildBadge(); } catch (e) { console.error('addBuildBadge', e); }
     try { addHealthBadge(); } catch (e) { console.error('addHealthBadge', e); }
     try { addPlanChip(); } catch (e) { console.error('addPlanChip', e); }
+    try { addViewerChip(); } catch (e) { console.error('addViewerChip', e); }
     try { addAuthChip(); } catch (e) { console.error('addAuthChip', e); }
   }
 
@@ -265,6 +340,16 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
 
   if (document.readyState !== 'loading') boot();
   else document.addEventListener('DOMContentLoaded', boot);
+
+  // Flipping the radio on My Account repaints the chip and clears the banner
+  // without a reload.
+  window.addEventListener('linalysis-collecting-changed', function (e) {
+    try { addViewerChip(); } catch (err) {}
+    if (e && e.detail && e.detail.on === false) {
+      var b = document.getElementById('lin-ext-banner');
+      if (b) { b.remove(); document.body.style.paddingTop = ''; }
+    }
+  });
 })();
 
 // build-stamp 1777420658

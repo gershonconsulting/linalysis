@@ -27,6 +27,40 @@
         <p>Your Linalysis account, subscription, and connected services.</p>
       </div>
 
+      <!-- ── This computer: collecting session ON / OFF ───────────── -->
+      <div class="card" id="collecting" style="margin-bottom:18px;padding:20px 24px;scroll-margin-top:70px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:18px">🖥</div>
+          <div>
+            <div style="font-size:14px;font-weight:800">This computer</div>
+            <div style="font-size:12px;color:var(--text-muted)">Is this machine collecting your LinkedIn data, or only looking at it?</div>
+          </div>
+          <span id="collect-mode-pill" style="margin-left:auto;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:#f1f1f3;color:#71717a">—</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px">
+          <label class="collect-opt" data-val="on" style="display:flex;gap:11px;align-items:flex-start;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer">
+            <input type="radio" name="collecting-session" value="on" style="margin-top:3px;accent-color:var(--brand);width:16px;height:16px;flex-shrink:0" />
+            <span>
+              <span style="display:block;font-size:13.5px;font-weight:800">Collecting session — ON</span>
+              <span style="display:block;font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">This computer runs the Chrome extension and captures your LinkedIn metrics. Linalysis will keep warning you here if the extension is missing or out of date.</span>
+            </span>
+          </label>
+          <label class="collect-opt" data-val="off" style="display:flex;gap:11px;align-items:flex-start;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer">
+            <input type="radio" name="collecting-session" value="off" style="margin-top:3px;accent-color:var(--brand);width:16px;height:16px;flex-shrink:0" />
+            <span>
+              <span style="display:block;font-size:13.5px;font-weight:800">Collecting session — OFF <span style="font-weight:600;color:var(--text-muted)">(viewing only)</span></span>
+              <span style="display:block;font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:3px">This computer only reads the dashboards. <strong>No Chrome extension needed</strong> — the “extension not installed” warnings are hidden here.</span>
+            </span>
+          </label>
+        </div>
+
+        <p style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.55">
+          This setting belongs to <strong id="collect-device-label">this browser</strong>, not to your account — so the collecting machine and every viewer (you, your client, a second laptop) can each be set independently, all on the same login.
+          Collection itself always happens on whichever computer actually runs the extension.
+        </p>
+      </div>
+
       <!-- ── Data collection schedule ─────────────────────────────── -->
       <div class="card" style="margin-bottom:18px;padding:20px 24px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
@@ -98,28 +132,143 @@
         </details>
       </div>
       <script>
+      // ── This computer: collecting session ON / OFF ─────────────────
+      // Stored per browser profile (== per computer) by nav.js, never on
+      // the account: the same login is opened from the collecting machine and
+      // from viewers, and each machine needs its own answer.
+      // nav.js (deferred) defines window.LinalysisCollecting, so wait for
+      // DOMContentLoaded — deferred scripts have run by then.
+      document.addEventListener('DOMContentLoaded', function () {
+        var C = window.LinalysisCollecting;
+        if (!C) return;
+        var pill = document.getElementById('collect-mode-pill');
+        var opts = Array.prototype.slice.call(document.querySelectorAll('.collect-opt'));
+        var lbl  = document.getElementById('collect-device-label');
+        if (lbl) lbl.textContent = C.deviceLabel();
+
+        function paint() {
+          var on = C.isOn();
+          opts.forEach(function (o) {
+            var mine = (o.dataset.val === 'on') === on;
+            o.querySelector('input').checked = mine;
+            o.style.borderColor = mine ? 'var(--brand)' : 'var(--border)';
+            o.style.background  = mine ? 'var(--brand-light)' : 'var(--bg)';
+          });
+          if (pill) {
+            if (on) { pill.textContent = '● Collecting'; pill.style.background = '#dcfce7'; pill.style.color = '#16a34a'; }
+            else    { pill.textContent = '👁 Viewing only'; pill.style.background = '#f4f4f5'; pill.style.color = '#52525b'; }
+          }
+          document.querySelectorAll('[data-collect-hide]').forEach(function (el) {
+            el.style.display = on ? '' : 'none';
+          });
+          var note = document.getElementById('viewer-note');
+          if (note) note.style.display = on ? 'none' : '';
+          paintService();
+        }
+
+        opts.forEach(function (o) {
+          o.querySelector('input').addEventListener('change', function () {
+            C.set(o.dataset.val === 'on');
+            paint();
+            if (window.repaintExtCards) window.repaintExtCards();
+            if (typeof toast === 'function') {
+              toast(C.isOn()
+                ? 'This computer is now a collecting session — the extension is required here.'
+                : 'This computer is viewing only — no Chrome extension needed, warnings hidden.');
+            }
+          });
+        });
+
+        function paintService() {
+          var verEl = document.getElementById('svc-ext-ver');
+          var stEl  = document.getElementById('svc-ext-state');
+          if (!verEl || !stEl) return;
+          var v = document.documentElement.getAttribute('data-linalysis-ext-version');
+          if (v) {
+            verEl.textContent = '· v' + v;
+            stEl.textContent = '✓ Installed here';
+            stEl.style.color = 'var(--success)';
+          } else if (C.isViewer()) {
+            verEl.textContent = '· not needed on this computer';
+            stEl.textContent = '👁 Viewing only';
+            stEl.style.color = 'var(--text-muted)';
+          } else {
+            verEl.textContent = '· not detected in this browser';
+            stEl.textContent = '⚠ Not installed';
+            stEl.style.color = 'var(--brand)';
+          }
+        }
+        window.addEventListener('linalysisDataReady', paintService);
+        setTimeout(paintService, 1200);
+        setTimeout(paintService, 3000);
+
+        paint();
+        if (location.hash === '#collecting') {
+          var card = document.getElementById('collecting');
+          if (card) setTimeout(function () { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120);
+        }
+      });
+      </script>
+      <script>
       // ── Extension version card ──────────────────────────────────
+      // Viewer-aware: on a computer set to "Viewing only" (see the card above)
+      // the extension is not expected here, so this card reports "Not required"
+      // in grey instead of the red "Not installed". It never claims an extension
+      // IS installed — that still needs local proof.
       (function () {
         function cmpVer(a, b) {
           var A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
           for (var i = 0; i < Math.max(A.length, B.length); i++) { var x = A[i]||0, y = B[i]||0; if (x<y) return -1; if (x>y) return 1; }
           return 0;
         }
+        function viewer() { return !!(window.LinalysisCollecting && window.LinalysisCollecting.isViewer()); }
         var pill = document.getElementById('ext-ver-pill');
         var latestEl = document.getElementById('ext-latest-ver');
         var installedEl = document.getElementById('ext-installed-ver');
         var installedSub = document.getElementById('ext-installed-sub');
         var dlBtn = document.getElementById('ext-download-btn');
-        // Read the latest version from the update manifest (source of truth).
+        var LATEST = null;
+
+        function setPill(text, bg, fg) { pill.textContent = text; pill.style.background = bg; pill.style.color = fg; }
+
+        function paintInstalled() {
+          var installed = document.documentElement.getAttribute('data-linalysis-ext-version');
+          if (!installed) return false;
+          installedEl.textContent = 'v' + installed;
+          if (LATEST && cmpVer(installed, LATEST) < 0) {
+            setPill('Update available', '#fef3c7', '#d97706');
+            installedSub.innerHTML = '<span style="color:#d97706">You have v' + installed + ' — download &amp; reload to update</span>';
+          } else {
+            setPill('Up to date', '#dcfce7', '#16a34a');
+            installedSub.textContent = 'You have the latest';
+          }
+          return true;
+        }
+
+        function paintMissing() {
+          if (viewer()) {
+            installedEl.textContent = 'Not required';
+            installedSub.textContent = 'This computer is set to viewing only';
+            setPill('Not required here', '#f4f4f5', '#52525b');
+          } else {
+            installedEl.textContent = 'Not detected';
+            installedSub.textContent = 'Install it below to start capturing';
+            setPill('Not installed', '#fee2e2', '#cc1016');
+          }
+        }
+
+        // Re-run after the ON/OFF radio changes, without a page reload.
+        window.repaintExtCards = function () { if (!paintInstalled()) paintMissing(); };
+
         fetch('/extension/updates.xml?cb=' + Date.now(), { cache: 'no-store' })
           .then(function (r) { return r.ok ? r.text() : ''; })
           .then(function (xml) {
-            var m = xml.match(/version="(0\.\d+\.\d+|\d+\.\d+)"/g) || [];
-            // pick the last version="x.y.z" that isn't the XML decl 1.0
             var latest = null;
             (xml.match(/updatecheck[^>]*version="([\d.]+)"/) || [])[1] && (latest = RegExp.$1);
             if (!latest) { var mm = xml.match(/version="([\d.]+)"[^>]*\/>/); if (mm) latest = mm[1]; }
-            latest = (typeof LINALYSIS_LATEST_EXT_VERSION !== 'undefined') ? LINALYSIS_LATEST_EXT_VERSION : (latest || '0.2.0');
+            // nav.js's constant wins when it is defined, so this card and the
+            // site-wide banner can never disagree about what "latest" is.
+            LATEST = latest = (typeof LINALYSIS_LATEST_EXT_VERSION !== 'undefined') ? LINALYSIS_LATEST_EXT_VERSION : (latest || '0.2.0');
             latestEl.textContent = 'v' + latest;
             // Point at the version-stamped file — the filename itself carries the version, so the
             // browser can never hand back a stale zip.
@@ -128,47 +277,29 @@
             dlBtn.textContent = '⬇ Download extension v' + latest;
             // Installed version is stamped on <html> by the extension's content script at
             // document_idle — which can be AFTER this code runs. So poll a few times before
-            // concluding "Not detected" (this is why the card and the top banner used to disagree).
-            function paintInstalled() {
-              var installed = document.documentElement.getAttribute('data-linalysis-ext-version');
-              if (installed) {
-                installedEl.textContent = 'v' + installed;
-                if (cmpVer(installed, latest) >= 0) {
-                  pill.textContent = 'Up to date'; pill.style.background = '#dcfce7'; pill.style.color = '#16a34a';
-                  installedSub.textContent = 'You have the latest';
-                } else {
-                  pill.textContent = 'Update available'; pill.style.background = '#fef3c7'; pill.style.color = '#d97706';
-                  installedSub.innerHTML = '<span style="color:#d97706">You have v' + installed + ' — download &amp; reload to update</span>';
-                }
-                return true;
+            // concluding anything (this is why the card and the top banner used to disagree).
+            if (paintInstalled()) return;
+            installedEl.textContent = 'Checking…';
+            installedSub.textContent = 'Detecting your installed version…';
+            setPill('Checking…', '#f1f1f3', '#71717a');
+            var tries = 0;
+            var iv = setInterval(function () {
+              tries++;
+              if (paintInstalled() || tries >= 10) {
+                clearInterval(iv);
+                if (!document.documentElement.getAttribute('data-linalysis-ext-version')) paintMissing();
               }
-              return false;
-            }
-            if (!paintInstalled()) {
-              installedEl.textContent = 'Checking…';
-              installedSub.textContent = 'Detecting your installed version…';
-              pill.textContent = 'Checking…'; pill.style.background = '#f1f1f3'; pill.style.color = '#71717a';
-              var tries = 0;
-              var iv = setInterval(function () {
-                tries++;
-                if (paintInstalled() || tries >= 10) {
-                  clearInterval(iv);
-                  if (tries >= 10 && !document.documentElement.getAttribute('data-linalysis-ext-version')) {
-                    installedEl.textContent = 'Not detected';
-                    installedSub.textContent = 'Install it below to start capturing';
-                    pill.textContent = 'Not installed'; pill.style.background = '#fee2e2'; pill.style.color = '#cc1016';
-                  }
-                }
-              }, 400);
-            }
+            }, 400);
           })
           .catch(function () {
             var latest = (typeof LINALYSIS_LATEST_EXT_VERSION !== 'undefined') ? LINALYSIS_LATEST_EXT_VERSION : '0.2.0';
+            LATEST = latest;
             latestEl.textContent = 'v' + latest;
             dlBtn.setAttribute('href', '/linalysis-extension-' + latest + '.zip?cb=' + Date.now());
             dlBtn.setAttribute('download', 'linalysis-extension-' + latest + '.zip');
             dlBtn.textContent = '⬇ Download extension v' + latest;
-            pill.textContent = '—';
+            setPill('—', '#f1f1f3', '#71717a');
+            window.repaintExtCards();
           });
       })();
       </script>
@@ -208,17 +339,22 @@
             lastSub.textContent = relTime(d);
           }
           // Extension status pill — is the extension detectable?
-          var extInstalled = document.documentElement.getAttribute('data-linalysis-ext') === 'installed';
+          var extInstalled = document.documentElement.getAttribute('data-linalysis-ext') === 'installed'
+            || !!document.documentElement.getAttribute('data-linalysis-ext-version');
+          var viewer = !!(window.LinalysisCollecting && window.LinalysisCollecting.isViewer());
           var pill = document.getElementById('ext-status-pill');
           if (pill) {
-            if (extInstalled) { pill.textContent = '✓ Extension installed'; pill.style.background = '#d1fae5'; pill.style.color = '#065f46'; }
+            if (viewer && !extInstalled) { pill.textContent = '👁 Viewing only · collected elsewhere'; pill.style.background = '#f4f4f5'; pill.style.color = '#52525b'; }
+            else if (extInstalled) { pill.textContent = '✓ Extension installed'; pill.style.background = '#d1fae5'; pill.style.color = '#065f46'; }
             else if (lastDate) { pill.textContent = 'Paired · not detected on this page'; pill.style.background = '#fef3c7'; pill.style.color = '#92400e'; }
             else { pill.textContent = '⚠ Extension not installed'; pill.style.background = '#fee2e2'; pill.style.color = '#991b1b'; }
           }
         }
         setTimeout(hydrate, 0);
         setTimeout(hydrate, 500);
+        document.addEventListener('DOMContentLoaded', hydrate);
         window.addEventListener('linalysisDataReady', hydrate);
+        window.addEventListener('linalysis-collecting-changed', hydrate);
       })();
       </script>
 
@@ -265,7 +401,7 @@
           <div class="card-header"><h3>Connected services</h3></div>
           <div style="display:grid;gap:8px">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>LinkedIn</strong> <span class="muted" style="font-size:12px">· oattia@gmail.com</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Connected</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Linalysis Chrome Extension</strong> <span class="muted" style="font-size:12px">· v1.x</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Installed</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Linalysis Chrome Extension</strong> <span class="muted" style="font-size:12px" id="svc-ext-ver">· checking…</span></span><span style="font-size:12px;font-weight:700" id="svc-ext-state">Checking…</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>CookieVerify API</strong> <span class="muted" style="font-size:12px">· api.cookieverify.com</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Healthy</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Gmail</strong> <span class="muted" style="font-size:12px">· report delivery</span></span><span style="color:var(--success);font-size:12px;font-weight:700">✓ Connected</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg);border-radius:8px"><span><strong>Google Drive</strong> <span class="muted" style="font-size:12px">· backup exports</span></span><span class="muted" style="font-size:12px;font-weight:700">Not connected</span></div>
