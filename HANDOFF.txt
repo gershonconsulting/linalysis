@@ -1,0 +1,109 @@
+================================================================
+HANDOFF.txt  -  linalysis
+Written by: Claude (Anthropic) - token-limit handoff protocol
+Date: 2026-09-09
+================================================================
+
+0. WHO YOU ARE READING THIS
+----------------------------------------------------------------
+You are an AI assistant taking over work on this repository for
+Olivier Attia, founder / CTO of Gershon Consulting LLC.
+
+Read the MASTER HANDOFF first:
+  github.com/gershonconsulting/memory -> HANDOFF.txt
+It carries the full operating rules, technical defaults and the
+index of all 33 repos.
+
+CRITICAL OPERATING RULES - do not break these:
+  * Olivier does NOT use a terminal, CLI, git or PowerShell. NEVER
+    give him commands, scripts, .bat files or 'just run this' steps.
+  * He does NOT upload, download, move or save files, and does not
+    click buttons an AI injected. If a file has to get somewhere,
+    YOU find the route and execute it.
+  * End every actionable reply with:
+      GREEN CHECK = ready for him to test (+ the link)
+      RED CROSS   = something still to do (+ exactly 3 options he
+                    can actually action - never a CLI step)
+  * Executors: Ariel = code and repo work. Charles = Chrome
+    extension and web admin panels (Cloudflare, GitHub settings,
+    DNS, publishing).
+
+1. WHAT THIS REPO IS
+----------------------------------------------------------------
+Product   : Linalysis
+Live URL  : linalysis.net
+Does      : AI-powered LinkedIn analytics SaaS - dashboards, benchmarks, SSI tracking, campaigns, goals and reports, fed by the Linalysis Chrome extension
+Users     : Linalysis customers (multi-account SaaS), plus Gershon Consulting internally
+
+2. STACK AND DEPLOY ROUTE
+----------------------------------------------------------------
+Front end     : flat static HTML per screen at repo root (dashboard,
+                insights, benchmarks, campaigns, goals, reports,
+                my-ssi, growth, messaging, emailing, account, admin...)
+                with shared common.css, nav.js, api.js, data.js,
+                live-data.js, plan.js, stats-helpers.js
+Back end      : functions/ (Cloudflare Pages Functions) + worker/
+                There is also a backend-java/ directory - check which
+                one is actually live before editing either.
+Extension     : linalysis-extension/ (source) plus versioned zips at
+                root, currently up to 0.2.9 - signed CRX and
+                updates.xml are what Chrome actually pulls.
+Default branch: main
+Deploy        : PUSH TO DEPLOY - GitHub Actions -> Cloudflare Pages.
+                One-time secret setup is a Charles task.
+Secrets       : 1Password. Never commit them.
+
+3. RECENTLY DONE  [DONE]
+----------------------------------------------------------------
+- Per-computer 'Collecting session ON/OFF' viewer mode added
+  (2026-09-09), verified live at My Account -> This computer.
+- Monthly report block: one-page PDF, estate level and per user.
+- Worker stores company_id from ingest and returns it on
+  /api/data/company.
+- Extension 0.2.9 ships the cached LinkedIn Page ID with every metrics
+  ingest; signed CRX + updates.xml published.
+
+4. PENDING  [TODO]
+----------------------------------------------------------------
+- The most recent commit is titled 'Add files via upload', which says
+  nothing about what changed. Diff it before building on top.
+
+5. MISSING / NOT BUILT YET
+----------------------------------------------------------------
+- Nothing recorded as missing at handoff time. Confirm scope with
+  Olivier before starting anything new.
+
+6. KNOWN BUGS / NEEDS FIXING
+----------------------------------------------------------------
+- No open bug recorded at handoff time.
+
+7. NEXT ACTION - START HERE
+----------------------------------------------------------------
+  -> Ask Olivier what he wants next here. Linalysis is stable; the
+     viewer-mode work closed cleanly and was verified live.
+
+8. GOTCHAS / HARD-WON LESSONS
+----------------------------------------------------------------
+- Deploy is push-to-deploy via GitHub Actions to Cloudflare Pages.
+  Do NOT hand Olivier a deploy step - he does not ship.
+- COLLECTING SESSION is PER COMPUTER, never per account. localStorage
+  key here is `linalysis_collecting_session`, card lives on My Account
+  at anchor #collecting. Default ON. An account-level flag would follow
+  the login to every machine and silence the collecting computer.
+- OFF stops REQUIRING an extension; it never claims one is installed.
+  Viewers still show a 'Viewing only' indicator, and staleness is still
+  shown (reworded to point at the collecting computer).
+- The repo root is crowded with extension zips 0.2.0 to 0.2.9. The
+  directory linalysis-extension/ is the source of truth; the zips are
+  build output. Do not edit a zip.
+- Two backends exist in-tree (functions/worker vs backend-java/).
+  Confirm which is live before changing server behaviour.
+
+9. CONTACT / ESCALATION
+----------------------------------------------------------------
+Olivier Attia - oattia@gmail.com
+Report mailbox - report@gershonconsulting.com
+
+================================================================
+END OF HANDOFF
+================================================================
