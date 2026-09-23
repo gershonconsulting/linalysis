@@ -1,6 +1,6 @@
 // Shared sidebar navigation for Linalysis — injects into <aside id="sidebar" data-active="{key}"></aside>
 // Also injects: bottom-right build badge + health score badge next to avatar + auth chip + plan-aware nav.
-const LINALYSIS_BUILD = '2026-09-06.1140-collectmode';
+const LINALYSIS_BUILD = '2026-09-22.1700-ext032-languages-alerts';
 console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:700');
 
 // ── "Collecting session" mode, per COMPUTER (per browser profile) ──────────
@@ -63,7 +63,7 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
 // at document_idle, so we poll for ~4s before declaring it missing (no red
 // flash for people who do have it). Latest version comes from the update
 // manifest so it can never drift from what actually shipped.
-const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is unreachable
+const LINALYSIS_LATEST_EXT_VERSION = '0.3.3'; // fallback only if updates.xml is unreachable
 (function extStatusBanner() {
   // Cloudflare Pages serves these extensionless (/troubleshooting, not
   // /troubleshooting.html) -- normalise before comparing or the list never matches.
@@ -136,9 +136,32 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
       );
       return;
     }
-    // Installed and current — no banner, and drop any padding a stale banner left.
+    // Installed and current. One more thing can still have stopped collection dead, and it is the
+    // one the product cannot fix for them: the browser being signed out of LinkedIn. The extension
+    // raises a desktop notification on the machine itself, but that only reaches whoever is sitting
+    // at it — someone checking their dashboard from a phone or a second laptop would otherwise see
+    // stats quietly stop with no explanation anywhere.
     var b = document.getElementById('lin-ext-banner');
     if (b) { b.remove(); document.body.style.paddingTop = ''; }
+    checkLinkedInConnection();
+  }
+
+  async function checkLinkedInConnection() {
+    if (typeof LinalysisAPI === 'undefined') return;
+    try {
+      var st = await LinalysisAPI.get('/api/user/linkedin-status');
+      if (!st || st.connected !== false) return;
+      var since = st.since ? new Date(st.since) : null;
+      var ago = since ? Math.max(0, Math.round((Date.now() - since.getTime()) / 3600000)) : null;
+      show(
+        '<span style="font-size:16px">\u{1F517}</span>' +
+        '<span>This browser is <u>signed out of LinkedIn</u>' +
+        (ago != null ? ' (since ' + (ago < 24 ? ago + 'h ago' : Math.round(ago / 24) + ' day(s) ago') + ')' : '') +
+        ' — Linalysis has stopped collecting your stats.</span>' +
+        '<a href="https://www.linkedin.com/feed/" target="_blank" rel="noopener" style="background:#fff;color:#cc1016;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:800;margin-left:8px">Sign in to LinkedIn →</a>' +
+        '<a href="/troubleshooting.html" style="color:#fff;text-decoration:underline;font-weight:600;font-size:12px;margin-left:4px">what this means</a>'
+      );
+    } catch (e) { /* never block the page on this */ }
   }
 
   if (document.readyState !== 'loading') decide();
@@ -274,19 +297,19 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
     chip.innerHTML = '<span style="opacity:.6">Checking...</span>';
     avatar.parentElement.insertBefore(chip, avatar);
     LinalysisAPI.me().then(function (d) {
-      // Impersonation banner \u2014 show on every page when this session is impersonated
+      // Impersonation banner — show on every page when this session is impersonated
       if (d.user.impersonator_email && !document.getElementById('linalysis-impersonate-banner')) {
         var banner = document.createElement('div');
         banner.id = 'linalysis-impersonate-banner';
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:300;background:#FE1B04;color:#fff;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.15)';
-        banner.innerHTML = '<span>\ud83d\udc41 Impersonating <strong>' + d.user.email + '</strong> as admin <strong>' + d.user.impersonator_email + '</strong></span><button id="exit-impersonate-btn" style="background:#fff;color:#FE1B04;border:none;padding:5px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Exit impersonation</button>';
+        banner.innerHTML = '<span>👁 Impersonating <strong>' + d.user.email + '</strong> as admin <strong>' + d.user.impersonator_email + '</strong></span><button id="exit-impersonate-btn" style="background:#fff;color:#FE1B04;border:none;padding:5px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">Exit impersonation</button>';
         document.body.insertBefore(banner, document.body.firstChild);
         document.body.style.paddingTop = banner.offsetHeight + 'px';
         document.getElementById('exit-impersonate-btn').onclick = function(){
           LinalysisAPI.post('/api/admin/exit-impersonate', {}).finally(function(){ location.href = '/admin.html'; });
         };
       }
-      // Admin link \u2014 only visible to admins (insert after sidebar render)
+      // Admin link — only visible to admins (insert after sidebar render)
       if (d.user.is_admin) {
         var sidebar = document.getElementById('sidebar');
         if (sidebar && !sidebar.querySelector('[href="/admin.html"]')) {
@@ -301,10 +324,26 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.2.9'; // fallback only if updates.xml is
           }
         }
       }
+      // The round avatar in every page's topbar was hardcoded markup ("O", title="Olivier"),
+      // so every signed-in user saw the owner's initial. Paint it from the session instead.
+      try {
+        var who = d.user.full_name || (d.user.email || '').split('@')[0] || '';
+        avatar.title = d.user.email || 'Your account';
+        if (d.user.linkedin_picture) {
+          avatar.textContent = '';
+          avatar.style.overflow = 'hidden';
+          var pic = document.createElement('img');
+          pic.src = d.user.linkedin_picture; pic.alt = ''; pic.referrerPolicy = 'no-referrer';
+          pic.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+          avatar.appendChild(pic);
+        } else {
+          avatar.textContent = (who.trim()[0] || '·').toUpperCase();
+        }
+      } catch (e) {}
       var liBadge = d.user.linkedin_sub
         ? '<span title="Signed in via LinkedIn" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:#e7f0fa;color:#0a66c2;border-radius:999px;font-size:10px;font-weight:700"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>LinkedIn</span>'
         : '';
-      chip.innerHTML = '<span style="color:#057642">\u25cf</span> <span>' + d.user.email + '</span>' + liBadge + '<a href="#" data-logout style="color:#6e6e73;text-decoration:none;margin-left:6px">Logout</a>';
+      chip.innerHTML = '<span style="color:#057642">●</span> <span>' + d.user.email + '</span>' + liBadge + '<a href="#" data-logout style="color:#6e6e73;text-decoration:none;margin-left:6px">Logout</a>';
       chip.querySelector('[data-logout]').onclick = function (e) {
         e.preventDefault();
         LinalysisAPI.logout().finally(function () { location.href = '/'; });
