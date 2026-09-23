@@ -1,24 +1,23 @@
 # Linalysis 0.3.3 release — for Charles (supersedes 0.3.2) ❌ NOT DEPLOYED
 
-## Step 1 — Worker (api.linalysis.net), ~1 minute
-Open dash.cloudflare.com (signed in), press F12 → Console, paste the whole of
-`deploy/charles-worker-deploy-2026-09-23-safe.js`, press Enter.
-It makes 6 edits to the LIVE script, and each anchor has been checked against production: the
-30,000-connection warning in the daily report, the premium fields saved at ingest, and page samples
-kept on failing pages. It checks that every edit matches exactly once, that the code still loads,
-keeps every binding and secret, and sets BUILD 2026-09-23.1600-conncap-premium. If anything does not
-match, it stops and deploys NOTHING — send the console output back to Olivier in that case.
-
-⚠ The bigger `deploy/charles-worker-deploy-2026-09-23.js` (languages, disconnection alerts, per-page
-diagnostics) was written against the LOCAL Worker copy, which differs from production. It has NOT been
-checked against the live script and will most likely stop safely at the first mismatch. Don't use it
-until someone re-bases those patches on the live code.
+## Step 1 — Worker (api.linalysis.net), ~1 minute — ALL server fixes
+Script: https://github.com/gershonconsulting/linalysis/blob/release-0.3.3/deploy/charles-worker-deploy-2026-09-23-full-rebased.js
+(branch `release-0.3.3`, NOT main). Open dash.cloudflare.com (signed in), F12 → Console, paste the whole
+script, Enter. 28 edits, every anchor checked against the LIVE script (build 2026-09-03.2005-monthly) on
+2026-09-23: premium fields saved, page samples kept, per-page diagnostics, "not published on this plan",
+never-set-up accounts out of the failure count, language label pack, LinkedIn disconnection alerts,
+30,000-connection warning. It aborts and deploys NOTHING if any edit does not match exactly once or the
+patched code does not load; keeps every binding and secret; sets BUILD 2026-09-23.1800-full-rebased.
+Verify: https://api.linalysis.net/api/health shows the new build; https://api.linalysis.net/api/labels (signed in) returns a pack.
+Fallback if it aborts: deploy/charles-worker-deploy-2026-09-23-safe.js on the same branch (6 edits only),
+and send the console output back to Olivier.
 
 ## Step 2 — Extension + site (GitHub web upload)
 
 Follow DEPLOY-0.3.2-for-Charles.md exactly, with these files instead of the 0.3.2 ones.
-The text files are on the `release-0.3.3` branch of gershonconsulting/linalysis; the two signed binaries
-(.crx and .zip) exist only in Olivier's Linalysis folder on his Surface (C:\Users\oatti\Documents\Claude\Projects\Linalysis).
+`nav.js` and `extension/updates.xml` are on the `release-0.3.3` branch. The two signed binaries (.crx and .zip)
+are NOT on GitHub yet — they exist only on Olivier's Surface in C:\Users\oatti\Documents\Claude\Projects\Linalysis.
+Do Step 2 only once they are on the branch: publishing updates.xml without the matching .crx breaks auto-update.
 
 - `linalysis-extension-0.3.3.zip` (sha256 34682a57fc87fd8340007a9f5651cfac96990ae946956c5ee6e7a92b74b424e6) + `linalysis-extension.zip` (same file)
 - `extension/linalysis.crx` (sha256 15ef45002191ac3ac77862255d4e0cc4ac6de346bb2638204bac4d580ff515cf, id eepopmbjjhmmgjehllmbcjpcncgkmcfb)
