@@ -2,15 +2,23 @@
 
 ## Step 1 — Worker (api.linalysis.net), ~1 minute
 Open dash.cloudflare.com (signed in), press F12 → Console, paste the whole of
-`deploy/charles-worker-deploy-2026-09-23.js`, press Enter.
-It applies ALL pending server fixes in one go (09-11 + 09-22 + 09-22b + the new 30,000-connection warning)
-to the LIVE script, checks every edit matches exactly once, checks the code loads, keeps every binding
-and secret, sets BUILD 2026-09-23.1500-invites-conncap. If anything does not match it stops and deploys NOTHING —
-send the console output back to Olivier in that case.
+`deploy/charles-worker-deploy-2026-09-23-safe.js`, press Enter.
+It makes 6 edits to the LIVE script, and each anchor has been checked against production: the
+30,000-connection warning in the daily report, the premium fields saved at ingest, and page samples
+kept on failing pages. It checks that every edit matches exactly once, that the code still loads,
+keeps every binding and secret, and sets BUILD 2026-09-23.1600-conncap-premium. If anything does not
+match, it stops and deploys NOTHING — send the console output back to Olivier in that case.
+
+⚠ The bigger `deploy/charles-worker-deploy-2026-09-23.js` (languages, disconnection alerts, per-page
+diagnostics) was written against the LOCAL Worker copy, which differs from production. It has NOT been
+checked against the live script and will most likely stop safely at the first mismatch. Don't use it
+until someone re-bases those patches on the live code.
 
 ## Step 2 — Extension + site (GitHub web upload)
 
-Follow DEPLOY-0.3.2-for-Charles.md exactly, with these files instead of the 0.3.2 ones:
+Follow DEPLOY-0.3.2-for-Charles.md exactly, with these files instead of the 0.3.2 ones.
+The text files are on the `release-0.3.3` branch of gershonconsulting/linalysis; the two signed binaries
+(.crx and .zip) exist only in Olivier's Linalysis folder on his Surface (C:\Users\oatti\Documents\Claude\Projects\Linalysis).
 
 - `linalysis-extension-0.3.3.zip` (sha256 34682a57fc87fd8340007a9f5651cfac96990ae946956c5ee6e7a92b74b424e6) + `linalysis-extension.zip` (same file)
 - `extension/linalysis.crx` (sha256 15ef45002191ac3ac77862255d4e0cc4ac6de346bb2638204bac4d580ff515cf, id eepopmbjjhmmgjehllmbcjpcncgkmcfb)
@@ -25,8 +33,7 @@ What 0.3.3 fixes — sent invitations (/mynetwork/invitation-manager/sent/), all
 
 Users on Load-unpacked installs must still reinstall by hand (Chrome ignores update_url for those).
 
-## Worker — also ship WORKER-PATCH-2026-09-23-connection-cap.diff
-Daily report now warns when an account reaches LinkedIn's 30,000-connection maximum (red block + subject tag)
-and when it is within 1,000 of it (amber block). All four anchors were checked against the DEPLOYED script
-(build 2026-09-03.2005-monthly): each occurs exactly once, so it applies to production as-is.
-Apply after the 09-11 / 09-22 / 09-22b patches. Olivier's account is at ~29,629 → the amber warning will show on day one.
+## 30,000-connection warning — included in Step 1
+The daily report shows a red block (and a subject-line tag) when an account reaches LinkedIn's
+30,000-connection maximum, and an amber block when it is within 1,000 of it. Olivier's account is at
+~29,629, so the amber warning shows on the first report after Step 1.
