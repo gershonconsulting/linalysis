@@ -1,0 +1,79 @@
+--- /sessions/rcw-01akt6bsn5vaj9zqskqpgveg/index.pre-cap.mjs	2026-09-23 13:00:00.106015692 +0000
++++ worker/src/index.mjs	2026-09-23 13:00:08.902230300 +0000
+@@ -1942,6 +1942,45 @@
+     </tr></thead><tbody>${rows}</tbody></table>`;
+ }
+ 
++// LinkedIn hard limit: an account cannot hold more than 30,000 1st-degree connections. At the cap
++// every new invitation it sends is wasted and people can no longer connect to it, so the report must
++// say so loudly — and say it BEFORE the cap, while there is still room to prune. (Olivier, 2026-09-23)
++const CONNECTION_CAP = 30000;
++const CONNECTION_CAP_WARN = 29000;
++
++function connectionCapState(n) {
++  n = Number(n);
++  if (!isFinite(n) || n <= 0) return null;
++  if (n >= CONNECTION_CAP) return 'reached';
++  if (n >= CONNECTION_CAP_WARN) return 'near';
++  return null;
++}
++
++function renderConnectionCapWarning(accounts) {
++  const hit  = accounts.filter(a => a.conn_cap === 'reached');
++  const near = accounts.filter(a => a.conn_cap === 'near');
++  if (!hit.length && !near.length) return '';
++  const n = v => Number(v).toLocaleString('en-US');
++  const line = a => `• <strong>${esc(a.email)}</strong> — ${n(a.connections)} connections` +
++    (a.conn_cap === 'reached' ? ' (LIMIT REACHED)' : ` (${n(CONNECTION_CAP - a.connections)} left before the limit)`);
++  const block = (bg, fg, tag, head, sub, list) => `<div style="background:${bg};color:${fg};padding:22px 24px;border-radius:12px;margin-bottom:18px">
++    <div style="font-size:13px;font-weight:700;letter-spacing:.14em;opacity:.85">${tag}</div>
++    <div style="font-size:22px;font-weight:800;line-height:1.25;margin:6px 0 8px">${head}</div>
++    <div style="font-size:13px;opacity:.95">${sub}</div>
++    <div style="margin-top:10px;font-size:13px;line-height:1.7">${list.map(line).join('<br>')}</div>
++  </div>`;
++  let out = '';
++  if (hit.length) out += block('#cc1016', '#fff', '🚨 CONNECTION LIMIT',
++    `${hit.length === 1 ? '1 ACCOUNT HAS' : hit.length + ' ACCOUNTS HAVE'} REACHED 30,000 CONNECTIONS`,
++    'LinkedIn allows a maximum of 30,000 connections. New invitations from these accounts cannot be accepted until connections are removed — outreach is blocked.',
++    hit);
++  if (near.length) out += block('#fff8e6', '#5c4a12', '⚠ CONNECTION LIMIT APPROACHING',
++    `${near.length === 1 ? '1 ACCOUNT IS' : near.length + ' ACCOUNTS ARE'} CLOSE TO THE 30,000 MAXIMUM`,
++    'LinkedIn allows a maximum of 30,000 connections. Plan a clean-up of inactive connections before the limit is hit.',
++    near);
++  return out;
++}
++
+ // The alarm the whole report exists for: a day went by and nothing was collected.
+ function renderBigWarning(didNotRun, accounts, reportDate) {
+   if (!didNotRun.length) return '';
+@@ -2117,6 +2156,10 @@
+       acct.fields_count = fieldCount(row);
+       acct.fields_prev  = fieldCount(prevRow);
+       acct.progress     = buildProgress(row, prevRow, weekRow);
++      if (fallbackRow.connections != null && fallbackRow.connections !== '') {
++        acct.connections = Number(fallbackRow.connections);
++        acct.conn_cap = connectionCapState(acct.connections);
++      }
+ 
+       for (const [label, key] of REQUIRED_COLS) {
+         const v = fallbackRow[key];
+@@ -2200,7 +2243,10 @@
+   await env.KV.put('audit:daily:latest', auditKey, { expirationTtl: 90 * 86400 });
+ 
+   const problems = counts.partial + counts.failed + counts.no_data;
+-  const extTag = staleExt.length ? ` · ⚠ ${staleExt.length} on old extension` : '';
++  const capHit  = accounts.filter(a => a.conn_cap === 'reached').length;
++  const capNear = accounts.filter(a => a.conn_cap === 'near').length;
++  const extTag = (staleExt.length ? ` · ⚠ ${staleExt.length} on old extension` : '')
++    + (capHit ? ` · 🚨 ${capHit} at 30,000-connection limit` : capNear ? ` · ⚠ ${capNear} near 30,000-connection limit` : '');
+   let subject;
+   if (didNotRun.length && didNotRun.length === accounts.length) {
+     subject = `[Linalysis] 🚨 NOTHING COLLECTED on ${reportDate} — the system did not do its daily job${extTag}`;
+@@ -2549,6 +2595,7 @@
+     <p style="color:#6e6e73;font-size:13px;margin:0 0 18px">Reporting on <strong>${esc(reportDate)}</strong> (compared with ${esc(priorDate)}) · generated ${new Date().toUTCString()} · build ${esc(ctx.build || 'dev')}</p>
+ 
+     ${renderBigWarning(ctx.didNotRun || [], accounts, reportDate)}
++    ${renderConnectionCapWarning(accounts)}
+     ${renderSuspectWarning(accounts, reportDate)}
+     ${renderExtWarning(ctx.staleExt || [], ctx.noCheckin || [], latest)}
+     ${banner}
