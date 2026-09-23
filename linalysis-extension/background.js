@@ -55,6 +55,16 @@ async function getPairing() {
 // The Page ID cached by content-metrics.js when the admin visits /company/{id}/admin/*.
 // Shipped with every metrics ingest so linalysis.net can deep-link each company card to the exact
 // analytics tab it came from instead of a dead /company/ URL (v0.2.9).
+// The company's NAME, cached by content-metrics.js from the page-admin header. Shipped with the
+// metrics so an alert can name the client rather than an email address.
+async function cachedCompanyName() {
+  try {
+    const s = await chrome.storage.local.get('linalysis_company_name');
+    const n = s && s.linalysis_company_name;
+    return (typeof n === 'string' && n.trim().length >= 2) ? n.trim().slice(0, 120) : null;
+  } catch (e) { return null; }
+}
+
 async function cachedCompanyId() {
   try {
     const s = await chrome.storage.local.get('linalysis_company_id');
@@ -84,6 +94,115 @@ function extVersion() {
   try { return (chrome.runtime.getManifest && chrome.runtime.getManifest().version) || ''; } catch (e) { return ''; }
 }
 
+// ─── LinkedIn connectivity ─────────────────────────────────
+//
+// This extension collects with the user's OWN LinkedIn session. When that session ends — a
+// sign-out, a checkpoint, an expired Sales Navigator seat — collection stops and NOTHING in the
+// product can restart it. Only a person signing back in can.
+//
+// So it has to be said out loud, to both people who can act: the user gets a desktop notification
+// on the machine that stopped collecting, and the server emails whoever runs the extension for
+// that client. Reporting it in a table the next morning, described as a selector problem, is how
+// one account sat disconnected for days.
+const CONN_REPORT_EVERY_MS = 6 * 60 * 60 * 1000;
+
+async function reportLinkedInStatus(connected, detail) {
+  try {
+    const p = await getPairing();
+    if (!p.token) return;
+    const st = await chrome.storage.local.get(['li_connected', 'li_reported_at']);
+    const changed = st.li_connected !== connected;
+    const stale = !st.li_reported_at || (Date.now() - st.li_reported_at) > CONN_REPORT_EVERY_MS;
+    // Post on any CHANGE, and periodically while disconnected so the server's daily re-alert has
+    // something to fire on. Never post the same "still fine" every few minutes.
+    if (!changed && (connected || !stale)) return;
+
+    await chrome.storage.local.set({ li_connected: connected, li_reported_at: Date.now() });
+    if (changed) await log(connected ? 'info' : 'error', 'linkedin:' + (connected ? 'reconnected' : 'disconnected'), detail || {});
+    if (!connected && changed) warnUserDisconnected(detail);
+
+    await fetch(API_BASE + '/api/user/linkedin-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + p.token },
+      body: JSON.stringify(Object.assign({ connected: connected, ext_version: extVersion() }, detail || {})),
+    });
+  } catch (e) { /* best-effort — never let this break a sync */ }
+}
+
+// The popup the user actually sees, on the machine that stopped collecting.
+function warnUserDisconnected(detail) {
+  try {
+    if (!chrome.notifications || !chrome.notifications.create) return;
+    chrome.notifications.create('linalysis-linkedin-disconnected', {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: 'Linalysis — LinkedIn disconnected',
+      message: 'This browser is signed out of LinkedIn, so Linalysis has stopped collecting your '
+             + 'stats. Sign in to LinkedIn in this Chrome profile to start collecting again.',
+      priority: 2,
+      requireInteraction: true,
+    });
+  } catch (e) {}
+}
+
+// Clicking the notification opens LinkedIn so signing back in is one step, not a hunt.
+try {
+  if (chrome.notifications && chrome.notifications.onClicked) {
+    chrome.notifications.onClicked.addListener((id) => {
+      if (id !== 'linalysis-linkedin-disconnected') return;
+      try { chrome.tabs.create({ url: 'https://www.linkedin.com/feed/' }); } catch (e) {}
+      try { chrome.notifications.clear(id); } catch (e) {}
+    });
+  }
+} catch (e) {}
+
+// ─── Language label pack ────────────────────────────────────
+//
+// ONE extension for every language. The collector reads LinkedIn by the labels LinkedIn prints,
+// and LinkedIn translates them — so the labels are DATA, served by Linalysis, not constants baked
+// into a build. That matters more here than it would anywhere else: these installs are
+// "Load unpacked", which Chrome never auto-updates, so a label shipped in a new build reaches
+// nobody until every user reinstalls by hand. Served, a new locale reaches everyone within
+// the hour and nobody touches anything.
+//
+// The extension's own built-in labels always remain as a floor, so a failed fetch, an expired
+// token or an offline laptop degrades to exactly today's behaviour — never to no collection.
+const LABELS_TTL_MS = 6 * 60 * 60 * 1000;
+const EMPTY_PACK = { version: 'builtin', common: {}, langs: {} };
+
+async function getLabelPack(force) {
+  const s = await chrome.storage.local.get(['labelPack', 'labelPackAt']);
+  const fresh = s.labelPackAt && (Date.now() - s.labelPackAt) < LABELS_TTL_MS;
+  if (!force && fresh && s.labelPack) return s.labelPack;
+  const p = await getPairing();
+  if (!p.token) return s.labelPack || null;
+  try {
+    const r = await fetch(API_BASE + '/api/labels', { headers: { 'Authorization': 'Bearer ' + p.token } });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.pack && j.pack.langs) {
+        await chrome.storage.local.set({ labelPack: j.pack, labelPackAt: Date.now() });
+        await log('info', 'labels:fetched', { version: j.pack.version, langs: Object.keys(j.pack.langs) });
+        return j.pack;
+      }
+    }
+  } catch (e) { /* offline — the cached pack below is still better than nothing */ }
+  return s.labelPack || null;   // a stale pack beats no pack
+}
+
+// The LinkedIn interface language this machine's pages actually render in, as observed by the
+// content scripts. Reported on check-in so the server, /admin and the daily report all know which
+// dictionary an account needs — instead of it being rediscovered from a diagnostic every time.
+async function noteLang(lang) {
+  try {
+    if (!/^[a-z]{2}$/.test(String(lang || ''))) return;
+    const s = await chrome.storage.local.get('linkedin_lang');
+    if (s.linkedin_lang === lang) return;
+    await chrome.storage.local.set({ linkedin_lang: lang, linkedin_lang_at: Date.now() });
+    await log('info', 'lang:observed', { lang });
+  } catch (e) {}
+}
+
 // ─── Server reporting ───────────────────────────────────────────────
 async function reportCheckin(event) {
   try {
@@ -92,7 +211,11 @@ async function reportCheckin(event) {
     await fetch(API_BASE + '/api/user/extension-checkin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + p.token },
-      body: JSON.stringify({ version: extVersion(), paired: true, event: event || 'heartbeat', last_sync_status: p.lastSyncStatus || null }),
+      body: JSON.stringify({
+        version: extVersion(), paired: true, event: event || 'heartbeat',
+        last_sync_status: p.lastSyncStatus || null,
+        linkedin_lang: (await chrome.storage.local.get('linkedin_lang')).linkedin_lang || null,
+      }),
     });
   } catch (e) { /* best-effort */ }
 }
@@ -251,6 +374,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse(await postMetrics(msg.page, msg.data));
         return;
       }
+      if (msg && msg.type === 'linalysis-get-labels') {
+        const pack = await getLabelPack(false);
+        sendResponse({ ok: true, pack: pack || EMPTY_PACK });
+        return;
+      }
+      if (msg && msg.type === 'linalysis-lang') {
+        await noteLang(msg.lang);
+        sendResponse({ ok: true });
+        return;
+      }
       if (msg && msg.type === 'get-status') {
         const p = await getPairing();
         const s = await chrome.storage.local.get('syncLog');
@@ -397,7 +530,7 @@ async function loadRendered(tabId, url, key, expectUrlRe) {
   return probe;
 }
 
-// ─── Sync ───────────────────────────────────────────────────────────
+// ─── Sync ─────────────────────────────────────────────────────────────
 async function runSync(trigger) {
   if (runSync._running) {
     await log('warn', 'sync:already_running', { trigger });
@@ -408,6 +541,10 @@ async function runSync(trigger) {
   try {
     await log('info', 'sync:start', { trigger, version: extVersion() });
     let p = await getPairing();
+    // Pull the current label pack before anything is scraped, so a locale fix published today is
+    // in force on today's run. Failure here is not fatal — the content scripts fall back to their
+    // built-in labels.
+    if (p.token) { try { await getLabelPack(true); } catch (e) {} }
     if (!p.token) {
       const pair = await autoPairFromLinalysisTab();
       if (!pair.ok) {
@@ -461,6 +598,9 @@ async function collectSSI(tabId) {
         : 'The SSI page did not load (landed on ' + landed.slice(0, 90) + ').';
       await recordSync('ssi_unavailable', why);
       await log('warn', 'ssi:not_available', { probe });
+      if (SIGNED_OUT_RE.test(landed)) {
+        await reportLinkedInStatus(false, { page: 'ssi', url: landed, reason: why });
+      }
       await reportCollect({ page: 'ssi', ok: false, error: why, url: landed, text_len: probe ? probe.len : null, visible: probe ? probe.vis === 'visible' : null });
       await reportStatus('running', 'SSI unavailable — continuing with growth + company metrics.');
       return;
@@ -549,6 +689,15 @@ async function collectMetrics(tabId, trigger) {
         continue;
       }
 
+      // v0.3.3: the sent-invitations list renders 10 rows and lazy-loads the rest through an
+      // IntersectionObserver, which never fires while Chrome is not painting the window (unfocused
+      // window covered by another one = no frames). Verified live 2026-09-23: 10 rows hidden, 20+
+      // after a real scroll. Bring the collection window forward for this one page only.
+      // 2026-09-23 decision (Olivier): the invitations number that matters is the PENDING People
+      // count (the "People (448)" tab), which renders without any scrolling. So we do NOT steal the
+      // user's focus for the sent-list scroll any more; "sent in 24h" stays best-effort.
+      const needsFrames = false;
+      if (needsFrames) await focusCollectionWindow();
       try {
         await chrome.tabs.sendMessage(tabId, { type: 'linalysis-scrape-metrics' });
       } catch (e) {
@@ -560,11 +709,13 @@ async function collectMetrics(tabId, trigger) {
           const why = 'Scraper could not run on this page: ' + String(e2.message || e2);
           await log('error', 'metrics:scrape_failed', { key: page.key, error: String(e2.message || e2) });
           await reportCollect({ page: page.key, ok: false, error: why, url: probe.url, text_len: probe.len, visible: probe.vis === 'visible' });
+          if (needsFrames) await restoreUserFocus();
           continue;
         }
       }
       // The invitations page self-scrolls its list to load a full day of sends — give it longer.
       await sleep(page.key === 'invitations' ? 30000 : 11000);
+      if (needsFrames) await restoreUserFocus();
 
       // NOTHING MAY FAIL SILENTLY. If the content script never reported for this page — which is what
       // happens whenever it cannot recognise the URL it ended up on — file the receipt ourselves, with
@@ -590,7 +741,7 @@ async function collectMetrics(tabId, trigger) {
   await log('info', 'metrics:done', { trigger });
 }
 
-// ─── Posting ────────────────────────────────────────────────────────
+// ─── Posting ────────────────────────────────────────────────────────────
 async function postMetrics(page, data) {
   const probe = _probes[page] || null;
   const p = await getPairing();
@@ -604,19 +755,36 @@ async function postMetrics(page, data) {
   const valueKeys = Object.keys(data).filter(k => k[0] !== '_');
   if (valueKeys.length === 0) {
     await log('warn', 'metrics:empty', { page, diag: data._diag || null });
+    // "LinkedIn moved this metric" is a CLAIM, and it has been wrong more often than right. Only
+    // say it when the page actually rendered and we have no better explanation; a signed-out
+    // redirect or an unpainted shell is a fact, and saying either of those sends the fix to the
+    // right place instead of to a selector nobody needed to change.
+    const landed = (probe && probe.url) || (data._diag && data._diag.url) || null;
+    const len    = probe ? probe.len : (data._diag ? data._diag.text_len : null);
+    const why = signedOutReason(landed, /\/sales\//.test(landed || ''))
+      || (len != null && len < MIN_RENDERED_TEXT
+            ? 'The page loaded but never rendered (' + len + ' characters of text) — nothing was on screen to read.'
+            : 'Page rendered but no values matched — LinkedIn likely moved this metric in the DOM.');
+    if (signedOutReason(landed, /\/sales\//.test(landed || ''))) {
+      await reportLinkedInStatus(false, { page, url: landed, reason: why });
+    }
     await reportCollect({
       page, ok: false,
-      error: 'Page rendered but no values matched — LinkedIn likely moved this metric in the DOM.',
-      url: (probe && probe.url) || (data._diag && data._diag.url) || null,
-      text_len: probe ? probe.len : (data._diag ? data._diag.text_len : null),
+      error: why,
+      url: landed,
+      text_len: len,
       visible: probe ? probe.vis === 'visible' : null,
       sample: (data._diag && data._diag.sample) || null,
+      not_exposed: Array.isArray(data._not_exposed) ? data._not_exposed : null,
     });
     return { ok: false, error: 'no_values', page };
   }
   try {
     const cid = await cachedCompanyId();
-    const payload = cid ? { rows: [row], company_id: cid } : { rows: [row] };
+    const cname = await cachedCompanyName();
+    const payload = { rows: [row] };
+    if (cid) payload.company_id = cid;
+    if (cname) payload.company_name = cname;
     const resp = await fetch(API_BASE + '/api/ingest/linkedin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + p.token },
@@ -631,6 +799,10 @@ async function postMetrics(page, data) {
     const json = await resp.json();
     await log('info', 'metrics:ok', { page, keys: valueKeys, inserted: json.inserted, updated: json.updated });
     await noteDataCaptured();
+    // A page that actually yielded values is proof the LinkedIn session is alive. Reporting the
+    // recovery matters as much as reporting the break — without it the server would keep
+    // re-alerting on a problem that fixed itself the moment someone signed back in.
+    await reportLinkedInStatus(true, { page, url: probe && probe.url });
     await reportCollect({
       page, ok: true, values: valueKeys,
       url: probe && probe.url, text_len: probe && probe.len,
@@ -638,6 +810,9 @@ async function postMetrics(page, data) {
       // Present only when the page's PRIMARY field did not resolve — a partial capture is still a
       // bug to fix, and without the sample it needs a live browser to diagnose.
       sample: (data._diag && data._diag.sample) || null,
+      // Fields LinkedIn does not publish on this account's plan. A field that is not offered is a
+      // different thing from a field we failed to read, and the report must not call it a failure.
+      not_exposed: Array.isArray(data._not_exposed) ? data._not_exposed : null,
     });
     return { ok: true, page, captured: valueKeys, response: json };
   } catch (e) {
@@ -676,6 +851,7 @@ async function postSSI(data) {
     const json = await resp.json();
     if (capturedCount === 4) {
       await noteDataCaptured();
+      await reportLinkedInStatus(true, { page: 'ssi', url: probe && probe.url });
       await recordSync('ok', 'Captured all 4 SSI sub-scores');
       await log('info', 'ingest:ok', { inserted: json.inserted, updated: json.updated, captured: capturedCount });
       await reportStatus('done', 'Captured all 4 SSI sub-scores', { captured_count: capturedCount, diag });
@@ -688,19 +864,44 @@ async function postSSI(data) {
         sample: (diag && diag.sample) || null,
       });
     } else {
-      const why = diag && diag.has_signin ? 'the browser is not signed in to LinkedIn'
+      // WHY THIS PAGE FAILED, in priority order. The content script classifies a sign-out or an
+      // unpainted app shell itself (_blocked); the orchestrator's probe sees the URL LinkedIn
+      // actually landed on. Either of those is a FACT. Only when both are silent is "the layout
+      // changed" an honest guess.
+      //
+      // This ordering is the fix for a real misdiagnosis: content-ssi.js also fires itself 5s
+      // after load, independently of the sync, so on a signed-out machine collectSSI() filed an
+      // accurate "did not render" receipt and this function then OVERWROTE it — same page key,
+      // last write wins — with "the SSI page did not show the four sub-scores". Every render and
+      // sign-in failure was being relabelled as a moved selector before anyone read the report.
+      const blockedMsg = (data && data._blocked_reason) || null;
+      const blockedCode = (data && data._blocked) || null;
+      if (blockedCode === 'signed_out' || blockedCode === 'sales_nav_signed_out') {
+        await reportLinkedInStatus(false, {
+          page: 'ssi', url: (diag && diag.url) || (probe && probe.url), reason: blockedMsg,
+        });
+      }
+      const probeMsg   = signedOutReason((probe && probe.url) || (diag && diag.url), true);
+      const definite   = blockedMsg || probeMsg;
+      const why = definite ? definite
+                : diag && diag.has_signin ? 'the browser is not signed in to LinkedIn'
                 : diag && !diag.has_establish ? 'the SSI page did not show the four sub-scores (layout change, or the page never rendered)'
                 : 'LinkedIn returned only ' + capturedCount + ' of 4 sub-scores';
-      await recordSync('partial', 'Only ' + capturedCount + '/4 sub-scores — ' + why);
-      await log('warn', 'ingest:partial', { captured: capturedCount, diag });
-      await reportStatus('error', 'Only ' + capturedCount + '/4 SSI sub-scores captured — ' + why, { captured_count: capturedCount, diag });
-      await reportCollect({
-        page: 'ssi', ok: false, values: captured,
-        error: 'Only ' + capturedCount + ' of 4 SSI sub-scores captured — ' + why + '.',
-        url: (probe && probe.url) || (diag && diag.url), text_len: probe ? probe.len : (diag && diag.text_len),
-        visible: probe ? probe.vis === 'visible' : null,
-        sample: (diag && diag.sample) || null,
-      });
+      const headline = definite ? why : 'Only ' + capturedCount + '/4 sub-scores — ' + why;
+      await recordSync('partial', headline);
+      await log('warn', 'ingest:partial', { captured: capturedCount, blocked: (data && data._blocked) || null, diag });
+      await reportStatus('error', headline, { captured_count: capturedCount, diag });
+      // Do not clobber a failure receipt the orchestrator already filed for this page in this run —
+      // it was written from the probe and knows more than the content script does.
+      if (!(definite && _reported && _reported.ssi)) {
+        await reportCollect({
+          page: 'ssi', ok: false, values: captured,
+          error: definite ? why : 'Only ' + capturedCount + ' of 4 SSI sub-scores captured — ' + why + '.',
+          url: (probe && probe.url) || (diag && diag.url), text_len: probe ? probe.len : (diag && diag.text_len),
+          visible: probe ? probe.vis === 'visible' : null,
+          sample: (diag && diag.sample) || null,
+        });
+      }
     }
     return { ok: true, response: json, captured_count: capturedCount };
   } catch (e) {
