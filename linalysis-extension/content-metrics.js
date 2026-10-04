@@ -1,4 +1,4 @@
-// Linalysis content script for LinkedIn "growth" metrics — v0.2.8
+// Linalysis content script for LinkedIn "growth" metrics — v0.3.2
 // Runs on: /mynetwork/*  (Connections + Sent invitations), /analytics/*  and /me/profile-views*
 //          (Profile views + Search/Profile appearances).
 //
@@ -15,11 +15,73 @@
 (function () {
   const READY_DELAY_MS = 5000;
 
+  // ── Language ─────────────────────────────────────────────────────
+  //
+  // ONE extension, every language. LinkedIn translates the labels this collector reads, so the
+  // labels come from a pack served by Linalysis and keyed by the language THIS page rendered in.
+  // The arrays below stay in the code as a floor: if the pack cannot be fetched, collection
+  // behaves exactly as it does today rather than stopping.
+  //
+  // The pack carries literal strings only — they are escaped before they go near a RegExp, and
+  // nothing from the server is ever compiled as a pattern.
+  let PACK = null;
+
+  async function ensurePack() {
+    if (PACK) return PACK;
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'linalysis-get-labels' });
+      if (r && r.ok && r.pack && r.pack.langs) PACK = r.pack;
+    } catch (e) {}
+    if (!PACK) PACK = { version: 'builtin', common: {}, langs: {} };
+    return PACK;
+  }
+
+  function pageLang() {
+    const v = (document.documentElement.getAttribute('lang') || navigator.language || '').toLowerCase();
+    const m = v.match(/^([a-z]{2})/);
+    return m ? m[1] : null;
+  }
+
+  // Tell the background which language this machine's LinkedIn renders in, so the server can hold
+  // it against the user and the daily report can say which dictionary an account needs.
+  function reportLang() {
+    try {
+      const l = pageLang();
+      if (l) chrome.runtime.sendMessage({ type: 'linalysis-lang', lang: l });
+    } catch (e) {}
+  }
+
+  // Effective labels for a field: this page's language first (metric() tries them in order and
+  // stops at the first that resolves, so the user's own language must be tried before English),
+  // then any cross-language additions, then the built-ins. Deduped, order preserved.
+  function labels(field, builtin) {
+    const lang = pageLang();
+    const pack = PACK || {};
+    const fromLang   = (lang && pack.langs && pack.langs[lang] && pack.langs[lang][field]) || [];
+    const fromCommon = (pack.common && pack.common[field]) || [];
+    const out = [];
+    for (const v of fromLang.concat(fromCommon, builtin || [])) {
+      if (typeof v === 'string' && v.length >= 2 && out.indexOf(v) === -1) out.push(v);
+    }
+    return out;
+  }
+
+
   // Cache the company ID whenever the admin is on any /company/{id}/admin/* page, so the daily
   // sync can build the analytics URLs without hardcoding it (works for any admin user).
   try {
     const cm = location.pathname.match(/\/company\/(\d+)\/admin/);
-    if (cm && chrome && chrome.storage) chrome.storage.local.set({ linalysis_company_id: cm[1] });
+    if (cm && chrome && chrome.storage) {
+      chrome.storage.local.set({ linalysis_company_id: cm[1] });
+      // Cache the company's NAME too. The page-admin title carries it
+      // ("Enzymicals AG: Administrator der Unternehmensseite"), and a disconnection alert that
+      // names the client reads very differently from one that only has an email address. Take the
+      // part before the first colon and only when it looks like a name, never a whole title.
+      const raw = (document.title || '').split(/\s[–—:|]\s|:/)[0].trim();
+      if (raw.length >= 2 && raw.length <= 120 && !/^\(\d+\)$/.test(raw)) {
+        chrome.storage.local.set({ linalysis_company_name: raw.replace(/^\(\d+\)\s*/, '') });
+      }
+    }
   } catch (e) {}
 
   setTimeout(scrapeAndSend, READY_DELAY_MS);
@@ -49,6 +111,8 @@
   async function scrapeAndSend() {
     const page = currentPage();
     if (!page) return { ok: false, error: 'unrecognized_page', path: location.pathname };
+    await ensurePack();
+    reportLang();
     try {
       let data = null;
       // Up to 3 attempts, 5s apart — break as soon as we captured the page's primary number.
@@ -61,7 +125,10 @@
       // content so the next fix can be made from the daily report instead of needing a live browser
       // session on the affected user's machine. Only on failure, and only the metric region — this
       // is diagnostic text, never stored as data.
-      if (!hasPrimary(page, data)) {
+      // v0.3.0: sample a PARTIAL capture too. A page returning 6 of 7 fields is a live selector
+      // bug as much as one returning none, and those shipped no evidence at all — which is exactly
+      // why the German account's missing industry rank and search appearances stayed unfixed.
+      if (!hasPrimary(page, data) || missingExpected(page, data)) {
         if (!data) data = {};
         data._diag = Object.assign(data._diag || {}, { sample: pageSample() });
       }
@@ -79,6 +146,25 @@
     }
   }
 
+  // Every field a page is SUPPOSED to return. Used only to decide whether to attach a diagnostic
+  // sample — never to fabricate a value.
+  const EXPECTED = {
+    connections:   ['Connections'],
+    invitations:   ['Invitations', 'Invitations Pages', 'Invitations Sent 24h'],
+    profile_views: ['Views'],
+    appearances:   ['Search Appearances', 'All Appearances'],
+    premium:       ['Premium Plan'],
+    co_followers:  ['Company Followers', 'Company New Followers'],
+    co_visitors:   ['Company Unique Visitors'],
+    co_updates:    ['Company Post Impressions'],
+    co_search:     ['Company Search Appearances'],
+  };
+  function missingExpected(page, d) {
+    const want = EXPECTED[page];
+    if (!want || !d) return false;
+    return want.some(function (k) { return d[k] == null; });
+  }
+
   // Did we get the field that makes this page worth posting?
   function hasPrimary(page, d) {
     if (!d) return false;
@@ -86,7 +172,7 @@
     if (page === 'invitations')   return d['Invitations'] != null;
     if (page === 'profile_views') return d['Views'] != null;
     if (page === 'appearances')   return d['All Appearances'] != null || d['Search Appearances'] != null;
-    if (page === 'premium')       return d['InMail Credits'] != null;
+    if (page === 'premium')       return d['InMail Credits'] != null || d['Premium Plan'] != null;
     if (page === 'co_followers')  return d['Company Followers'] != null;
     if (page === 'co_visitors')   return d['Company Unique Visitors'] != null;
     if (page === 'co_updates')    return d['Company Post Impressions'] != null;
@@ -137,14 +223,30 @@
   async function scrapeInvitations(attempt) {
     const out = {};
     const txt0 = document.body ? document.body.innerText : '';
-    const people = parenCount(txt0, ['People', 'Personen', 'Personnes', 'Personas', 'Persone', 'Pessoas', 'Personen']);
-    const pages  = parenCount(txt0, ['Pages', 'Seiten', 'Páginas', 'Pagine', "Pagina's"]);
+    // The tab LABEL is translated; the tab's href is not. Reading the count out of the tab found by
+    // href works in every locale — which the French account needs: its sent counts arrive every day
+    // while its pending counts have never arrived once, and that asymmetry is a label problem, not
+    // a page problem. Label match first (it works today for EN/DE), href second.
+    const people = parenCount(txt0, labels('Invitations People Tab', ['People', 'Personen', 'Personnes', 'Personas', 'Persone', 'Pessoas']))
+                ?? tabCountByHref(/invitation[-_]?manager\/sent\/(?:CONNECTION|PEOPLE)\b|invitationType=(?:CONNECTION|PEOPLE)/i);
+    const pages  = parenCount(txt0, labels('Invitations Pages Tab', ['Pages', 'Seiten', 'Páginas', 'Pagine', "Pagina's"]))
+                ?? tabCountByHref(/invitation[-_]?manager\/sent\/(?:ORGANIZATION|PAGE|COMPANY)\b|invitationType=(?:ORGANIZATION|PAGE|COMPANY)/i);
     if (people != null) out['Invitations'] = people;             // pending backlog (people)
     if (pages  != null) out['Invitations Pages'] = pages;        // pending backlog (pages)
+    // ZERO IS A VALUE. LinkedIn renders the Pages tab with no "(n)" when no page invitations are
+    // pending. Leaving the field null made the daily report call it a broken selector every single
+    // day on an account that simply has none.
+    else if (people != null && hasPagesTab(txt0)) out['Invitations Pages'] = 0;
 
     // Load a bit more of the list so a full day's sends are in the DOM, then bucket by age.
     await loadMoreSentList();
     const buckets = countSentByAge();
+    // Same rule for sends: LinkedIn's own empty state means zero sent, not a failed scrape. Only an
+    // EXPLICIT empty state counts — no rows and no empty state still reports nothing.
+    if (!buckets && isEmptySentList(txt0 + '\n' + (document.body ? document.body.innerText : ''))) {
+      out['Invitations Sent 24h'] = 0;
+      out['Invitations Sent 7d']  = 0;
+    }
     if (buckets) {
       out['Invitations Sent 24h'] = buckets.d1;
       out['Invitations Sent 7d']  = buckets.d7;   // best-effort — only accurate if the week fit on screen
@@ -156,6 +258,7 @@
       sent_rows_seen: buckets ? buckets.rows : 0,
       sent_oldest_days: buckets ? buckets.maxAge : null,
       full_week_loaded: buckets ? (buckets.maxAge != null && buckets.maxAge >= 7) : false,
+      visibility: document.visibilityState,
     });
     return out;
   }
@@ -163,18 +266,46 @@
   // Scroll the invitation list a bounded number of times to pull in more rows. In a real signed-in
   // browser this triggers LinkedIn's lazy-load; we stop early once a row older than 8 days appears
   // (we've covered the whole rolling week) or the row count stops growing.
+  // Is the "Pages" tab present at all? Present with no count means zero pending page invitations;
+  // absent means we cannot tell, and we leave the field null rather than invent a zero.
+  function hasPagesTab(text) {
+    const t = text || '';
+    if (/(^|\n)\s*(Pages|Seiten|P[áa]ginas|Pagine|Pagina's)\s*(\n|$)/i.test(t)) return true;
+    // A tab label the pack knows about, matched as a whole line — escaped here, never taken as a
+    // pattern from the server.
+    for (const v of labels('Invitations Pages Tab', [])) {
+      if (new RegExp('(^|\\n)\\s*' + escapeRe(v) + '\\s*(\\n|$)', 'i').test(t)) return true;
+    }
+    return false;
+  }
+
+  // LinkedIn's own empty state for the sent-invitations list. Built-in wordings first, then any
+  // the label pack adds — those are compared as plain substrings, never compiled into a pattern.
+  function isEmptySentList(text) {
+    const t = text || '';
+    if (/(No pending invitations|No sent invitations|You haven[’']?t sent any|Nothing to see here|Keine (?:ausstehenden |gesendeten )?Einladungen|Du hast keine .{0,30}Einladungen|Aucune invitation|Vous n[’']avez envoy[ée]|No hay invitaciones|Nessun invito)/i.test(t)) return true;
+    const lower = t.toLowerCase();
+    for (const v of labels('Sent Empty State', [])) {
+      if (lower.indexOf(v.toLowerCase()) !== -1) return true;
+    }
+    return false;
+  }
+
   async function loadMoreSentList() {
     const scroller = document.querySelector('main') || document.scrollingElement || document.body;
     let last = -1, stable = 0;
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 30; i++) {
       try {
         const btn = [...document.querySelectorAll('button')]
           .find(b => /show more|see more|mehr anzeigen|mehr ergebnisse|voir plus|plus de résultats/i.test(b.textContent || ''));
         if (btn) btn.click();
+        const rows = document.querySelectorAll('main li, main [role="listitem"]');
+        if (rows.length) rows[rows.length - 1].scrollIntoView({ block: 'end' });
         if (scroller) scroller.scrollTop = scroller.scrollHeight;
         window.scrollTo(0, document.body.scrollHeight);
+        window.dispatchEvent(new Event('scroll'));
       } catch (e) {}
-      await sleep(800);
+      await sleep(1200);
       const b = countSentByAge();
       const rows = b ? b.rows : 0;
       if (b && b.maxAge != null && b.maxAge > 8) break; // whole week is loaded
@@ -187,16 +318,23 @@
   // "<name>|<stamp>" so nested DOM nodes don't double-count.
   function countSentByAge() {
     const re = /(?:Sent|Gesendet|Envoy[ée])\s*(?:vor\s*)?(?:il y a\s*)?(\d+)\s*(second|Sekunde|seconde|minute|Minute|hour|Stunde|heure|day|Tag|jour|week|Woche|semaine|month|Monat|mois)s?\s*(?:ago|zuvor)?/i;
+    // v0.3.3: LinkedIn prints the newest rows as "Sent today" / "Sent yesterday" — no digit, so the
+    // numeric pattern above skipped exactly the rows the 24h count exists for. Verified live 2026-09-23.
+    const reWord = /(?:Sent|Gesendet|Envoy[ée]e?|Enviada?|Inviat[oa])\s*:?\s*(today|yesterday|heute|gestern|aujourd[’']hui|hier|hoy|ayer|oggi|ieri|hoje|ontem)\b/i;
     const seen = new Map();
     const nodes = document.querySelectorAll('li, div');
     for (const el of nodes) {
       const t = el.innerText || '';
       if (t.length > 320) continue;
       const m = t.match(re);
-      if (!m) continue;
+      const w = m ? null : t.match(reWord);
+      if (!m && !w) continue;
       const name = (t.split('\n')[0] || '').slice(0, 60).trim();
-      const key = name + '|' + m[0];
-      if (!seen.has(key)) seen.set(key, ageInDays(Number(m[1]), m[2]));
+      // The stamp's own small element ("Sent 6 days ago" alone) is not a row. Counting it added one
+      // phantom invitation per distinct stamp — verified live 2026-09-23 (23 counted for 20 rows).
+      if (!name || re.test(name) || reWord.test(name)) continue;
+      const key = name + '|' + (m ? m[0] : w[0]);
+      if (!seen.has(key)) seen.set(key, m ? ageInDays(Number(m[1]), m[2]) : (/yesterday|gestern|hier|ayer|ieri|ontem/i.test(w[1]) ? 1 : 0));
     }
     if (seen.size === 0) return null;
     let d1 = 0, d7 = 0, maxAge = 0;
@@ -222,10 +360,10 @@
   function scrapeProfileViews(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    const labels = ['profile viewers', 'profile views', 'Profilbesucher', 'Profil-Anzeigen', 'Profilaufrufe',
-                    'vues du profil', 'visites du profil', 'visualizzazioni del profilo', 'vistas de perfil'];
-    put(out, 'Views', metric(labels, text));
-    const chg = changeNear(text, labels);
+    const viewLabels = labels('Views', ['profile viewers', 'profile views', 'Profilbesucher', 'Profil-Anzeigen', 'Profilaufrufe',
+                    'vues du profil', 'visites du profil', 'visualizzazioni del profilo', 'vistas de perfil']);
+    put(out, 'Views', metric(viewLabels, text, [/profile[-_]?view(?:er)?/i, /profileViewer|viewerCount/i]));
+    const chg = changeNear(text, viewLabels);
     if (chg != null) out['Profile Views Change'] = chg;   // e.g. "+22%" / "-8%"
     out['_diag'] = baseDiag('profile_views', attempt);
     return out;
@@ -237,8 +375,8 @@
   function scrapeAppearances(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'All Appearances',    metric(['all appearances', 'alle Anzeigen', 'alle Erscheinungen', 'toutes les apparitions', 'todas las apariciones', 'tutte le comparse'], text));
-    put(out, 'Search Appearances', metric(['search appearances', 'Suchanzeigen', 'Sucherscheinungen', "apparitions dans les recherches", 'apariciones en búsquedas', 'comparse nelle ricerche'], text));
+    put(out, 'All Appearances',    metric(labels('All Appearances', ['all appearances', 'alle Anzeigen', 'alle Erscheinungen', 'Gesamtzahl der Anzeigen', 'Anzeigen insgesamt', 'alle Aufrufe', 'toutes les apparitions', 'apparitions totales', 'todas las apariciones', 'tutte le comparse']), text, [/all[-_]?appearance/i, /allAppearance|totalAppearance/]));
+    put(out, 'Search Appearances', metric(labels('Search Appearances', ['search appearances', 'Suchanzeigen', 'Sucherscheinungen', 'Suchanfragen', 'Erscheinen in Suchergebnissen', 'Erscheinungen in der Suche', 'Anzeigen in Suchergebnissen', 'in Suchergebnissen', "apparitions dans les recherches", 'apparitions dans les résultats de recherche', 'apariciones en búsquedas', 'comparse nelle ricerche']), text, [/search[-_]?appearance/i, /searchAppearance/]));
 
     // "Where you appeared" breakdown — capture label/percent pairs (Search 44.3%, Posts 34.5%, …).
     try {
@@ -269,27 +407,82 @@
   // The card is collapsed by default, so if the number isn't already in the DOM we expand it first.
   async function scrapePremium(attempt) {
     const out = {};
-    let credits = findInMailCredits();
-    if (credits == null) { expandInMailCard(); await sleep(1800); credits = findInMailCredits(); }
-    if (credits == null) { expandInMailCard(); await sleep(1800); credits = findInMailCredits(); }
-    if (credits != null) out['InMail Credits'] = credits;
 
-    const text = (document.body ? document.body.innerText : '') + '\n' + (document.body ? document.body.textContent : '');
-    const plan = findPlan(text);
+    // READ FIRST, CLICK LATER. The old order clicked an "InMail" element up to 6 times BEFORE
+    // reading anything. On LinkedIn's redesigned hub that element is the InMail feature card
+    // ("Start a message"), so the clicks navigated the tab away and the plan — sitting in plain
+    // text on the page the whole time — got scraped off whatever page we had landed on instead.
+    const text0 = (document.body ? document.body.innerText : '') + '\n' + (document.body ? document.body.textContent : '');
+    const plan = findPlan(text0);
     if (plan) out['Premium Plan'] = plan;
-    const ren = text.match(/Renews?\s+on\s+([A-Za-zÀ-ÿ]+\.?\s+\d{1,2},?\s+\d{4})/i);
+    // RENEWAL DATE. LinkedIn words this differently in every locale and has shipped several
+    // wordings per locale. The French hub says "Renouvelé le 1 octobre 2026" — a live capture of
+    // zeitount@'s page proved it — and not one of the three prefixes this used to match covered
+    // that, so the date was dropped on every French account while sitting in plain text on screen.
+    const RENEW_PREFIX = '(?:Renews?\\s+on|Renewed\\s+on|Next\\s+(?:billing|payment)(?:\\s+date)?\\s*:?'
+      + '|Verlängert\\s+sich\\s+am|Verlängert\\s+am|Wird\\s+am|Nächste\\s+(?:Zahlung|Abrechnung)\\s*:?\\s*(?:am\\s+)?'
+      + '|Se\\s+renouvelle\\s+le|Renouvelée?\\s+le|Prochaine\\s+facturation\\s*:?\\s*(?:le\\s+)?)';
+    // Month-first (EN "October 1, 2026") or day-first (FR "1 octobre 2026", DE "1. Oktober 2026").
+    const RENEW_DATE = '([A-Za-zÀ-ÿ]+\\.?\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\.?\\s+[A-Za-zÀ-ÿ]+\\.?\\s+\\d{4})';
+    // Any additional renewal wording the pack carries, escaped here — a new locale is a data
+    // change, not a new extension build.
+    const packRenew = labels('Premium Renews', []).map(escapeRe);
+    const prefix = packRenew.length
+      ? '(?:' + packRenew.join('|') + '|' + RENEW_PREFIX.slice(3)
+      : RENEW_PREFIX;
+    const ren = text0.match(new RegExp(prefix + '\\s*' + RENEW_DATE, 'i'));
     if (ren) out['Premium Renews'] = ren[1].replace(/\s+/g, ' ').trim();
 
-    out['_diag'] = Object.assign(baseDiag('premium', attempt), { credits_found: credits, plan: plan || null });
+    let credits = findInMailCredits();
+    // Only ever expand a real accordion, and only if the balance is not already on the page.
+    if (credits == null && expandInMailCard()) { await sleep(1800); credits = findInMailCredits(); }
+    if (credits != null) out['InMail Credits'] = credits;
+
+    // NOT EVERY PLAN PUBLISHES A BALANCE — and since LinkedIn's hub redesign, none of them do.
+    // A live French capture of this exact page contains no credit figure anywhere in its text, on
+    // a Sales Navigator Core subscription. The field is UNAVAILABLE, not missed, and the
+    // difference matters: it has been reported as a failed page for every account every day, which
+    // is the loudest false alarm in the daily report. _not_exposed tells the server to say "not
+    // published on this plan" instead of "LinkedIn likely moved this metric".
+    if (credits == null) out['_not_exposed'] = ['InMail Credits'];
+
+    out['_diag'] = Object.assign(baseDiag('premium', attempt), {
+      credits_found: credits, plan: plan || null,
+      credits_exposed: credits != null,
+      renews: out['Premium Renews'] || null,
+      // Always ship the hub's own text when the balance did not resolve. If LinkedIn ever prints it
+      // again — or prints it under a wording we do not match — the next daily report shows it,
+      // instead of another week of guessing at strings.
+      sample: credits == null ? pageSample() : null,
+    });
     return out;
   }
 
   // Search the whole DOM (textContent catches collapsed/hidden accordion content that innerText skips).
   function findInMailCredits() {
+    // LinkedIn has shipped several wordings for this balance and localises all of them. Match the
+    // number on either side of the label, EN/DE/FR, instead of one exact English phrase. NUM is the
+    // source's own digit class (it must keep the non-breaking and narrow-no-break spaces).
+    const NUM = "(\\d[\\d.,\\u00a0\\u202f ']*)";
+    const PATTERNS = [
+      new RegExp("Credits?\\s*available\\s*[:\\-\\u2013]?\\s*" + NUM, 'i'),
+      new RegExp(NUM + "\\s*(?:InMail\\s*)?credits?\\s*(?:available|remaining|left)", 'i'),
+      new RegExp("InMail\\s*credits?\\s*[:\\-\\u2013]?\\s*" + NUM, 'i'),
+      new RegExp("Verf[\\u00fcu]gbare[sn]?\\s*(?:InMail[- ]?)?Guthaben\\s*[:\\-\\u2013]?\\s*" + NUM, 'i'),
+      new RegExp(NUM + "\\s*(?:InMail[- ]?)?Guthaben\\s*(?:verf[\\u00fcu]gbar|[\\u00fcu]brig)", 'i'),
+      new RegExp("Cr[\\u00e9e]dits?\\s*(?:InMail\\s*)?disponibles?\\s*[:\\-\\u2013]?\\s*" + NUM, 'i'),
+    ];
     const scan = function (str) {
       if (!str) return null;
-      const m = str.match(/Credits?\s*available\s*[:\-–]?\s*(\d[\d.,  ']*)/i);
-      return m ? parseCount(m[1]) : null;
+      for (const re of PATTERNS) {
+        const m = str.match(re);
+        if (m) {
+          const n = parseCount(m[1]);
+          // A credit balance is a small number. Anything bigger is a follower count or an advert.
+          if (n != null && n >= 0 && n <= 10000) return n;
+        }
+      }
+      return null;
     };
     const a = scan(document.body ? document.body.textContent : '');
     if (a != null) return a;
@@ -299,10 +492,13 @@
   // Click the InMail card header to expand it (only needed if the balance isn't already in the DOM).
   function expandInMailCard() {
     try {
-      const els = document.querySelectorAll('button, [role="button"], [aria-expanded]');
+      // ONLY a collapsed accordion: aria-expanded="false", not a link, and named exactly for the
+      // credit balance. Clicking anything looser is what navigated the tab away and lost the plan.
+      const els = document.querySelectorAll('[aria-expanded="false"]');
       for (const el of els) {
+        if (el.tagName === 'A' || (el.closest && el.closest('a'))) continue;
         const t = (el.getAttribute('aria-label') || el.innerText || el.textContent || '').trim();
-        if (/^InMail\b/i.test(t) && t.length < 60) { el.click(); return true; }
+        if (/^InMail(\s*(credits?|Guthaben|cr[ée]dits?))?$/i.test(t)) { el.click(); return true; }
       }
     } catch (e) {}
     return false;
@@ -313,9 +509,21 @@
     const known = ['Sales Navigator Advanced Plus', 'Sales Navigator Advanced', 'Sales Navigator Core',
                    'Recruiter Lite', 'Recruiter Professional', 'Recruiter',
                    'Premium Career', 'Premium Business', 'Career', 'Business'];
-    for (const k of known) { if (new RegExp(escapeRe(k), 'i').test(text)) return k; }
-    const m = text.match(/Plan Details\s*\n?\s*([A-Za-z][A-Za-z .]{3,40})/i);
-    return m ? m[1].trim() : null;
+    // SCOPE TO THE PLAN DETAILS PANEL. The hub also ADVERTISES plans the user does not have —
+    // "Gift a 2-month free trial of Premium Business" sits a few lines above the real plan — so a
+    // whole-page match would happily record Premium Business for someone on Sales Navigator, or
+    // for someone with no subscription at all. Reading only the panel is the difference between a
+    // measurement and a guess, and a wrong value is worse than a missing one.
+    const packPanel = labels('Premium Panel', []).map(escapeRe);
+    const panelRe = '(?:Plan Details|Abo[- ]Details|Abodetails|D[ée]tails de l[\'’]abonnement'
+      + (packPanel.length ? '|' + packPanel.join('|') : '') + ')';
+    const panel = text.match(new RegExp(panelRe + '\\s*\\n?\\s*([\\s\\S]{0,140})', 'i'));
+    if (panel) {
+      for (const k of known) { if (new RegExp(escapeRe(k), 'i').test(panel[1])) return k; }
+      const m = panel[1].match(/^\s*([A-Za-z][A-Za-z .]{3,40})/);
+      if (m) return m[1].trim();
+    }
+    return null;
   }
 
   // ── 6) COMPANY ADMIN ANALYTICS  (/company/{id}/admin/analytics/*) ───
@@ -324,16 +532,16 @@
   function scrapeCoFollowers(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Followers',     metric(['Total followers', 'Follower insgesamt', 'Abonnenten insgesamt', "Nombre total d'abonnés", "Total d'abonnés"], text));
-    put(out, 'Company New Followers', metric(['New followers', 'Neue Follower', 'Neue Abonnenten', 'Nouveaux abonnés'], text));
+    put(out, 'Company Followers',     metric(labels('Company Followers', ['Total followers', 'Follower insgesamt', 'Abonnenten insgesamt', 'Gesamtzahl der Follower', 'Follower gesamt', "Nombre total d'abonnés", "Total d'abonnés", 'Abonnés au total']), text, [/total[-_]?follower/i, /follower[-_]?count|followerTotal/i]));
+    put(out, 'Company New Followers', metric(labels('Company New Followers', ['New followers', 'New followers in the last 30 days', 'Neue Follower', 'Neue Abonnenten', 'Neue Follower gewonnen', 'Nouveaux abonnés']), text, [/new[-_]?follower/i, /followerGain|newFollower/i]));
     out['_diag'] = baseDiag('co_followers', attempt);
     return out;
   }
   function scrapeCoVisitors(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Unique Visitors', metric(['Unique visitors', 'Eindeutige Besucher', 'Einzelne Besucher', 'Visiteurs uniques'], text));
-    put(out, 'Company Custom Clicks',   metric(['Custom button clicks', 'Klicks auf', 'Clics sur le bouton'], text));
+    put(out, 'Company Unique Visitors', metric(labels('Company Unique Visitors', ['Unique visitors', 'Eindeutige Besucher', 'Einzelne Besucher', 'Einzelbesucher', 'Einmalige Besucher', 'Visiteurs uniques', 'Visiteurs distincts']), text, [/unique[-_]?visitor/i, /uniqueVisitor/]));
+    put(out, 'Company Custom Clicks',   metric(labels('Company Custom Clicks', ['Custom button clicks', 'Klicks auf', 'Clics sur le bouton']), text));
     out['_diag'] = baseDiag('co_visitors', attempt);
     return out;
   }
@@ -344,18 +552,18 @@
     // round audience estimate is what the v0.2.7 text-walk kept returning (190,000 for a page doing
     // ~500/day). Prefer the fully-qualified tile label, fall back to the bare word, and let the
     // DOM reader's promo/chart exclusion do the rest.
-    put(out, 'Company Post Impressions', metric([
+    put(out, 'Company Post Impressions', metric(labels('Company Post Impressions', [
       'Impressions (organic)', 'Total impressions', 'Post impressions', 'Update impressions',
       'Impressionen insgesamt', 'Beitragsimpressionen', "Impressions totales", 'Impressions des posts',
       'Impressions', 'Impressionen',
-    ], text));
+    ]), text, [/(?:organic|total|post|update)[-_]?impression/i, /impressionCount/i]));
     out['_diag'] = baseDiag('co_updates', attempt);
     return out;
   }
   function scrapeCoSearch(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Search Appearances', metric(['Page searches', 'Seitensuchen', 'Recherches de page', 'Search appearances', 'Sucherscheinungen'], text));
+    put(out, 'Company Search Appearances', metric(labels('Company Search Appearances', ['Page searches', 'Seitensuchen', 'Recherches de page', 'Search appearances', 'Sucherscheinungen']), text, [/page[-_]?search/i, /pageSearch|searchAppearance/i]));
     out['_diag'] = baseDiag('co_search', attempt);
     return out;
   }
@@ -649,11 +857,65 @@
     return null;
   }
 
+  // ── Locale-proof attribute read ──────────────────────────────────────────
+  //
+  // Everything above matches the label LinkedIn PRINTS, and LinkedIn translates what it prints.
+  // That single fact is why one German account has been missing search appearances and company
+  // followers for over a month while every English account collects them, and why each attempt to
+  // fix it has been a guess at a German string nobody had ever seen on the real page.
+  //
+  // LinkedIn's MARKUP is not translated. The ids, test hooks and class tokens it ships are English
+  // in every locale. Reading those gives a route to the number that does not care what language
+  // the page is in. It runs LAST on purpose: the label readers already work for the accounts that
+  // work, and this must not be able to change a value they get right — it can only fill a gap they
+  // leave. Ambiguity still yields nothing; a wrong number is worse than a missing one.
+  const ATTR_KEYS = ['id', 'data-test-id', 'data-testid', 'data-view-name', 'data-control-name', 'class'];
+  const ATTR_SEL  = '[id],[data-test-id],[data-testid],[data-view-name],[data-control-name]';
+
+  function bareNumbersIn(txt) {
+    const out = [];
+    for (const line of splitLines(txt)) {
+      const n = bareNumber(line);
+      if (n != null) out.push(n);
+    }
+    return out;
+  }
+
+  function attrValue(patterns) {
+    if (!patterns || !patterns.length) return null;
+    let els;
+    try { els = document.querySelectorAll(ATTR_SEL); } catch (e) { return null; }
+    for (const re of patterns) {
+      const hits = [];
+      for (const el of els) {
+        let matched = false;
+        for (const k of ATTR_KEYS) {
+          const v = el.getAttribute && el.getAttribute(k);
+          if (v && re.test(v)) { matched = true; break; }
+        }
+        if (!matched) continue;
+        if (isExcluded(el) || isPromo(el)) continue;
+        const txt = el.innerText || '';
+        // A tile, not a whole section. Above this we are reading the page, not the metric.
+        if (!txt || txt.length > 240) continue;
+        const nums = bareNumbersIn(txt);
+        if (nums.length === 1) hits.push(nums[0]);
+      }
+      const uniq = hits.filter(function (v, i) { return hits.indexOf(v) === i; });
+      // Exactly one distinct number under this hook, or we learned nothing.
+      if (uniq.length === 1) return uniq[0];
+    }
+    return null;
+  }
+
   // The reader every scraper calls: DOM first, strict text second.
-  function metric(labels, text) {
+  function metric(labels, text, attrs) {
     const v = tileValue(labels);
     if (v != null) return v;
-    return countNearLabel(text == null ? (document.body ? document.body.innerText : '') : text, labels);
+    const t = countNearLabel(text == null ? (document.body ? document.body.innerText : '') : text, labels);
+    if (t != null) return t;
+    // Last resort, and only reachable when both translated-label readers found nothing.
+    return attrValue(attrs);
   }
 
   // Kept as named aliases so existing call sites read the same.
@@ -671,6 +933,23 @@
         return (down ? '-' : '+') + m[2] + '%';
       }
     }
+    return null;
+  }
+
+  // A tab's count read from the tab itself, located by href rather than by its translated label.
+  // Returns only a count that is unambiguous inside that one anchor's own short text.
+  function tabCountByHref(re) {
+    try {
+      for (const a of document.querySelectorAll('a[href]')) {
+        const h = a.getAttribute('href') || '';
+        if (!re.test(h)) continue;
+        const t = ((a.innerText || a.textContent || '') + '').trim();
+        if (!t || t.length > 60) continue;
+        let m = t.match(/\((\d[\d.,   ']*)\)/);        // "Personnes (12)"
+        if (!m) m = t.match(/(\d[\d.,   ']*)\s*$/);      // "Personnes 12"
+        if (m) { const n = parseCount(m[1]); if (n != null && n <= 100000) return n; }
+      }
+    } catch (e) {}
     return null;
   }
 
