@@ -128,6 +128,7 @@
               <th class="num" onclick="sortBy('stats_days')">Stats days</th>
               <th onclick="sortBy('ext_version')">Extension</th>
               <th>LinkedIn</th>
+              <th title="The LinkedIn Company Page that My Company is collected for">Company Page</th>
               <th>Action</th>
             </tr></thead>
             <tbody id="rows"></tbody>
@@ -378,13 +379,38 @@ function render(){
       '<td class="num">'+u.stats_days+'</td>' +
       '<td>'+extCell(u)+'</td>' +
       '<td>'+li+'</td>' +
+      '<td>'+companyCell(u)+'</td>' +
       '<td>' +
         '<button class="impersonate-btn" onclick="impersonate(\''+u.email.replace(/\'/g,"\\'")+'\')" style="margin-right:6px">View as user →</button>' +
         '<button class="impersonate-btn" style="background:#6b7280" onclick="triggerSync(\''+u.email.replace(/\'/g,"\\'")+'\', this)">⟳ Sync now</button>' +
         '<button class="danger-btn" onclick="askDelete(\''+u.email.replace(/\'/g,"\\'")+'\')" title="Permanently delete this account and all its data">Delete</button>' +
       '</td>' +
     '</tr>';
-  }).join('') || '<tr><td colspan="9" style="padding:30px;text-align:center;color:var(--text-muted)">No accounts match.</td></tr>';
+  }).join('') || '<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--text-muted)">No accounts match.</td></tr>';
+}
+
+// ── Company Page per user (2026-10-04) ─────────────────────────────
+// Which LinkedIn Company Page "My Company" is collected for. An admin can set it for any user:
+// paste the Page link (https://www.linkedin.com/company/altavia/ or any page under it) or its ID.
+// "set" = chosen here or on /account and never overwritten by browsing; "auto" = detected by the
+// extension from the admin screen the user last opened.
+function escHtml(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function companyCell(u){
+  var id = u.company_id;
+  var em = u.email.replace(/'/g, "\\'");
+  var link = id ? '<a href="https://www.linkedin.com/company/' + encodeURIComponent(id) + '/admin/" target="_blank" rel="noopener" style="font-weight:600">' + escHtml(u.company_name || id) + '</a>' : '<span style="color:var(--text-muted)">none</span>';
+  var tag = id ? ' <span style="font-size:10px;color:var(--text-muted)">' + (u.company_id_source === 'manual' ? 'set' : 'auto') + '</span>' : '';
+  return link + tag + ' <button class="impersonate-btn" style="background:#6b7280;padding:2px 8px;font-size:11px" onclick="editCompany(\'' + em + '\')">' + (id ? 'Change' : 'Set') + '</button>';
+}
+function editCompany(email){
+  var u = STATE.users.filter(function(x){ return x.email === email; })[0] || {};
+  var v = prompt('LinkedIn Company Page for ' + email + '\n\nPaste the Page link (e.g. https://www.linkedin.com/company/altavia/) or its numeric ID.\nLeave empty to go back to automatic detection.', u.company_id_source === 'manual' ? (u.company_id || '') : '');
+  if (v === null) return;
+  LinalysisAPI.post('/api/admin/user-company', { email: email, company: v.trim() }).then(function(r){
+    u.company_id = r.company_id; u.company_id_source = r.source; u.company_id_detected = r.detected;
+    render();
+    toast(r.company_id ? (email + ' → Company Page "' + r.company_id + '". Collected from their next sync (extension 0.3.4+).') : (email + ' → back to automatic detection.'), 5000);
+  }).catch(function(e){ toast('Could not save: ' + ((e && e.message) || e), 6000); });
 }
 
 var SYNC_POLLERS = {};

@@ -94,6 +94,59 @@
           You can trigger a sync manually anytime from the extension's popup.
         </p>
       </div>
+      <!-- ── Company Page (2026-10-04) — which LinkedIn Page "My Company" is collected for ── -->
+      <div class="card" id="company-page" style="margin-bottom:18px;padding:20px 24px;scroll-margin-top:70px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:18px">🏢</div>
+          <div><div style="font-weight:700;font-size:15px">Company Page</div>
+          <div style="font-size:12px;color:var(--text-muted)">The LinkedIn Company Page that <a href="/company">My Company</a> is collected for. You must be an admin of that Page on LinkedIn.</div></div>
+          <span id="co-pill" style="margin-left:auto;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:#f1f1f3;color:#71717a">Checking…</span>
+        </div>
+        <div id="co-current" style="font-size:13px;margin:6px 0 12px">&nbsp;</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="co-input" type="text" placeholder="https://www.linkedin.com/company/your-company/" style="flex:1;min-width:240px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+          <button id="co-save" class="btn primary">Save</button>
+          <button id="co-clear" class="btn" style="display:none">Use automatic detection</button>
+        </div>
+        <div id="co-msg" style="font-size:12px;margin-top:8px;color:var(--text-muted)">Paste the link to the Page (any page under linkedin.com/company/…) or its numeric ID. The extension collects it from its next sync (version 0.3.4 or later).</div>
+      </div>
+      <script>
+      (function(){
+        var BASE = location.hostname.endsWith('.pages.dev') ? 'https://linalysis-api.oattia.workers.dev' : 'https://api.linalysis.net';
+        function call(method, body){
+          var init = { method: method, credentials: 'include', headers: { 'Accept': 'application/json' } };
+          if (body) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
+          return fetch(BASE + '/api/user/company-id', init).then(function(r){
+            return r.json().catch(function(){ return {}; }).then(function(d){ if (!r.ok) throw new Error(d.message || ('HTTP ' + r.status)); return d; });
+          });
+        }
+        function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+        function paint(d){
+          var pill = document.getElementById('co-pill'), cur = document.getElementById('co-current');
+          document.getElementById('co-clear').style.display = d.source === 'manual' ? '' : 'none';
+          if (!d.company_id) {
+            pill.textContent = 'Not set'; pill.style.background = '#fff4e5'; pill.style.color = '#b76b00';
+            cur.innerHTML = 'No Company Page yet — My Company stays empty until one is set.';
+            return;
+          }
+          pill.textContent = d.source === 'manual' ? 'Chosen' : 'Detected'; pill.style.background = '#e6f4ea'; pill.style.color = '#057642';
+          cur.innerHTML = 'Collecting for <a href="' + esc(d.admin_url) + '" target="_blank" rel="noopener" style="font-weight:700">' + esc(d.company_name || d.company_id) + '</a>'
+            + (d.source === 'manual' ? ' · chosen' + (d.set_by && d.set_by.indexOf('admin:') === 0 ? ' by your Linalysis administrator' : '') : ' · detected by the extension');
+        }
+        function msg(t, bad){ var m = document.getElementById('co-msg'); m.textContent = t; m.style.color = bad ? '#cc1016' : 'var(--text-muted)'; }
+        function load(){ call('GET').then(paint).catch(function(e){ var p = document.getElementById('co-pill'); p.textContent = 'Unavailable'; msg('Could not load the Company Page setting: ' + e.message, true); }); }
+        document.getElementById('co-save').addEventListener('click', function(){
+          var v = document.getElementById('co-input').value.trim();
+          if (!v) { msg('Paste the link to your LinkedIn Company Page first.', true); return; }
+          call('POST', { company: v }).then(function(d){ paint(d); document.getElementById('co-input').value = ''; msg('Saved. Collected from the extension\'s next sync.'); })
+            .catch(function(e){ msg(e.message, true); });
+        });
+        document.getElementById('co-clear').addEventListener('click', function(){
+          call('DELETE').then(function(d){ paint(d); msg('Back to automatic detection.'); }).catch(function(e){ msg(e.message, true); });
+        });
+        load();
+      })();
+      </script>
       <!-- ── Chrome extension (download latest) ───────────────────── -->
       <div class="card" style="margin-bottom:18px;padding:20px 24px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
