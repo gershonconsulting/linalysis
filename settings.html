@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Linalysis — My Settings</title>
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="stylesheet" href="/common.css" />
+<style>
+  /* My Settings (2026-10-04): every setting that decides WHAT is collected, in one place, readable
+     at a glance. Each row shows the current value first, then how to change it. */
+  .set-grid { display: grid; gap: 18px; max-width: 920px; }
+  .set-card { background: var(--card, #fff); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; }
+  .set-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .set-ico { width: 38px; height: 38px; border-radius: 10px; background: var(--brand-light); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 19px; flex: none; }
+  .set-title { font-weight: 800; font-size: 16px; }
+  .set-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .pill { margin-left: auto; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #f1f1f3; color: #71717a; white-space: nowrap; }
+  .pill.ok { background: #e6f4ea; color: #057642; }
+  .pill.warn { background: #fff4e5; color: #b76b00; }
+  .pill.bad { background: #fdecea; color: #cc1016; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 16px; font-size: 13px; margin: 4px 0 14px; }
+  .kv .k { color: var(--text-muted); }
+  .kv .v { font-weight: 600; word-break: break-all; }
+  .kv a { color: #0a66c2; text-decoration: none; font-weight: 600; }
+  .kv a:hover { text-decoration: underline; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row input { flex: 1; min-width: 240px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+  .msg { font-size: 12px; margin-top: 8px; color: var(--text-muted); }
+  .msg.bad { color: #cc1016; }
+  @media (max-width: 640px) { .kv { grid-template-columns: 1fr; gap: 2px 0; } .kv .k { margin-top: 8px; } }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar" data-active="settings"></aside>
+<main>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
+    <h1>My Settings</h1>
+  </div>
+  <div class="topbar-right">
+    <span class="avatar" title="">·</span>
+  </div>
+</div>
+
+<div class="content">
+  <div class="page-header">
+    <h2>What Linalysis collects for you</h2>
+    <p id="who">Every setting that decides what is collected, in one place.</p>
+  </div>
+
+  <div class="set-grid">
+
+    <!-- ── Company Page ─────────────────────────────────────────── -->
+    <div class="set-card" id="company">
+      <div class="set-head">
+        <div class="set-ico">🏢</div>
+        <div><div class="set-title">Company Page</div>
+          <div class="set-sub">The LinkedIn Company Page that <a href="/company.html">My Company</a> is collected for. You must be an admin of that Page on LinkedIn.</div></div>
+        <span class="pill" id="co-pill">Checking…</span>
+      </div>
+      <div class="kv" id="co-kv"><div class="k">Company Page</div><div class="v">—</div></div>
+      <div class="row">
+        <input id="co-input" type="text" placeholder="Paste a Page link, e.g. https://www.linkedin.com/company/your-company/" />
+        <button id="co-save" class="btn primary">Save</button>
+        <button id="co-clear" class="btn" style="display:none">Use automatic detection</button>
+      </div>
+      <div class="msg" id="co-msg">Any link under linkedin.com/company/… works, or the Page's numeric ID. Collected from the extension's next sync (version 0.3.4 or later).</div>
+    </div>
+
+    <!-- ── LinkedIn connection ──────────────────────────────────── -->
+    <div class="set-card" id="linkedin">
+      <div class="set-head">
+        <div class="set-ico">🔗</div>
+        <div><div class="set-title">LinkedIn connection</div>
+          <div class="set-sub">Collection uses your own LinkedIn session in the Chrome profile that runs the extension.</div></div>
+        <span class="pill" id="li-pill">Checking…</span>
+      </div>
+      <div class="kv" id="li-kv"><div class="k">Status</div><div class="v">—</div></div>
+    </div>
+
+    <!-- ── Chrome extension ─────────────────────────────────────── -->
+    <div class="set-card" id="extension">
+      <div class="set-head">
+        <div class="set-ico">🧩</div>
+        <div><div class="set-title">Chrome extension</div>
+          <div class="set-sub">Collects your LinkedIn numbers from this browser and sends them to Linalysis.</div></div>
+        <span class="pill" id="ext-pill">Checking…</span>
+      </div>
+      <div class="kv" id="ext-kv"><div class="k">On this computer</div><div class="v">—</div></div>
+      <a id="ext-dl" class="btn primary" href="/linalysis-extension.zip" download>⬇ Download the latest extension</a>
+    </div>
+
+    <!-- ── This computer ───────────────────────────────────────── -->
+    <div class="set-card" id="computer">
+      <div class="set-head">
+        <div class="set-ico">💻</div>
+        <div><div class="set-title">This computer</div>
+          <div class="set-sub">Whether this computer collects, or only views your dashboards.</div></div>
+      </div>
+      <div class="kv"><div class="k">Collecting session</div><div class="v"><a href="/account.html#collecting">Change on My Account →</a></div></div>
+    </div>
+
+  </div>
+</div>
+</main></div>
+
+<div id="toast"></div>
+<script src="/api.js"></script>
+<script src="/nav.js" defer></script>
+<script>
+(function () {
+  var BASE = location.hostname.endsWith('.pages.dev') ? 'https://linalysis-api.oattia.workers.dev' : 'https://api.linalysis.net';
+  function api(method, path, body) {
+    var init = { method: method, credentials: 'include', headers: { 'Accept': 'application/json' } };
+    if (body) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
+    return fetch(BASE + path, init).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) { var e = new Error(d.message || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+        return d;
+      });
+    });
+  }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function $(id) { return document.getElementById(id); }
+  function pill(id, text, cls) { var p = $(id); p.textContent = text; p.className = 'pill' + (cls ? ' ' + cls : ''); }
+  function kv(id, rows) {
+    $(id).innerHTML = rows.map(function (r) { return '<div class="k">' + esc(r[0]) + '</div><div class="v">' + r[1] + '</div>'; }).join('');
+  }
+  function when(iso) { if (!iso) return '—'; var d = new Date(iso); return isNaN(d) ? esc(iso) : esc(d.toLocaleString()); }
+  function signIn(e) { if (e && e.status === 401) { location.href = '/login.html?next=' + encodeURIComponent('/settings.html'); return true; } return false; }
+
+  // ── Who ────────────────────────────────────────────────────────────
+  api('GET', '/api/account').then(function (d) {
+    var u = d && d.user;
+    if (u) $('who').textContent = 'Signed in as ' + (u.full_name ? u.full_name + ' · ' : '') + u.email + '. Every setting that decides what is collected, in one place.';
+  }).catch(signIn);
+
+  // ── Company Page ───────────────────────────────────────────────────
+  function paintCompany(d) {
+    $('co-clear').style.display = d.source === 'manual' ? '' : 'none';
+    if (!d.company_id) {
+      pill('co-pill', 'Not set', 'warn');
+      kv('co-kv', [['Company Page', '<span style="color:#b76b00">Not set — My Company stays empty until one is set.</span>']]);
+      return;
+    }
+    var id = d.company_id, enc = encodeURIComponent(id);
+    var label = d.company_name ? esc(d.company_name) : (/^\d+$/.test(id) ? 'Page ID ' + esc(id) : esc(id));
+    pill('co-pill', d.source === 'manual' ? 'Chosen' : 'Detected', 'ok');
+    var how = d.source === 'manual'
+      ? 'Chosen' + (d.set_by && d.set_by.indexOf('admin:') === 0 ? ' by your Linalysis administrator' : ' by you') + (d.set_at ? ' · ' + when(d.set_at) : '')
+      : 'Detected by the extension (the last Page admin screen opened in your collecting browser)';
+    var rows = [
+      ['Company Page', label],
+      ['LinkedIn page', '<a href="https://www.linkedin.com/company/' + enc + '/" target="_blank" rel="noopener">linkedin.com/company/' + esc(id) + '/ ↗</a>'],
+      ['Page analytics (admin)', '<a href="https://www.linkedin.com/company/' + enc + '/admin/analytics/followers/" target="_blank" rel="noopener">Open on LinkedIn ↗</a>'],
+      ['In Linalysis', '<a href="/company.html">My Company →</a>'],
+      ['How it was set', esc(how)]
+    ];
+    if (d.source === 'manual' && d.detected && d.detected !== id) rows.push(['Extension last saw', 'Page ID ' + esc(d.detected)]);
+    kv('co-kv', rows);
+  }
+  function coMsg(t, bad) { var m = $('co-msg'); m.textContent = t; m.className = 'msg' + (bad ? ' bad' : ''); }
+  api('GET', '/api/user/company-id').then(paintCompany).catch(function (e) {
+    if (signIn(e)) return;
+    pill('co-pill', 'Unavailable', 'bad'); coMsg('Could not load the Company Page setting: ' + e.message, true);
+  });
+  $('co-save').addEventListener('click', function () {
+    var v = $('co-input').value.trim();
+    if (!v) { coMsg('Paste the link to your LinkedIn Company Page first.', true); return; }
+    api('POST', '/api/user/company-id', { company: v }).then(function (d) {
+      paintCompany(d); $('co-input').value = ''; coMsg("Saved. Collected from the extension's next sync.");
+    }).catch(function (e) { coMsg(e.message, true); });
+  });
+  $('co-clear').addEventListener('click', function () {
+    api('DELETE', '/api/user/company-id').then(function (d) { paintCompany(d); coMsg('Back to automatic detection.'); })
+      .catch(function (e) { coMsg(e.message, true); });
+  });
+
+  // ── LinkedIn connection ────────────────────────────────────────────
+  api('GET', '/api/user/linkedin-status').then(function (d) {
+    if (d.connected === null || d.connected === undefined) {
+      pill('li-pill', 'No report yet');
+      kv('li-kv', [['Status', 'The extension has not reported a LinkedIn sign-in state yet (needs version 0.3.4).']]);
+      return;
+    }
+    var where = [d.city, d.country].filter(Boolean).join(', ');
+    if (d.connected) {
+      pill('li-pill', 'Connected', 'ok');
+      kv('li-kv', [['Status', 'Signed in to LinkedIn'], ['Since', when(d.since)], ['Collecting from', esc(where || '—')]]);
+    } else {
+      pill('li-pill', 'Signed out', 'bad');
+      kv('li-kv', [['Status', '<span style="color:#cc1016">Signed out of LinkedIn — collection has stopped.</span>'], ['Since', when(d.since)], ['Collecting from', esc(where || '—')], ['What to do', 'Sign back in to LinkedIn (and Sales Navigator) in the Chrome profile that runs the extension.']]);
+    }
+  }).catch(function (e) { if (!signIn(e)) { pill('li-pill', 'Unavailable'); kv('li-kv', [['Status', esc(e.message)]]); } });
+
+  // ── Extension ──────────────────────────────────────────────────────
+  var latest = null;
+  fetch('/extension/updates.xml?cb=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; })
+    .then(function (x) { var m = x.match(/updatecheck[^>]*version="([0-9.]+)"/); latest = m ? m[1] : null; })
+    .catch(function () {}).then(function () { return new Promise(function (r) { setTimeout(r, 1500); }); })
+    .then(function () {
+      var html = document.documentElement;
+      var v = html.getAttribute('data-linalysis-ext-version');
+      var present = !!v || html.getAttribute('data-linalysis-ext') === 'installed';
+      function cmp(a, b) { a = String(a).split('.').map(Number); b = String(b).split('.').map(Number); for (var i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) - (b[i] || 0); } return 0; }
+      if (latest) $('ext-dl').href = '/linalysis-extension-' + latest + '.zip';
+      var rows = [['On this computer', present ? (v ? 'v' + esc(v) : 'installed') : '<span style="color:#cc1016">Not installed in this browser</span>'], ['Latest version', latest ? 'v' + esc(latest) : '—']];
+      kv('ext-kv', rows);
+      if (!present) pill('ext-pill', 'Not installed', 'bad');
+      else if (v && latest && cmp(v, latest) < 0) pill('ext-pill', 'Update available', 'warn');
+      else pill('ext-pill', 'Up to date', 'ok');
+    });
+})();
+</script>
+</body>
+</html>

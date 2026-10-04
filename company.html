@@ -31,6 +31,25 @@
         <p id="co-subtitle">Live view of every metric we collect about your LinkedIn company page.</p>
       </div>
 
+      <!-- Which Page this is (2026-10-04): the Page is a setting, so say which one, link to it, and say where to change it. -->
+      <div id="co-which" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f5f8fc;border:1px solid #dbe7f3;border-radius:10px;padding:10px 14px;margin:0 0 16px;font-size:13px">
+        <span style="color:var(--text-muted)">Collecting for</span>
+        <strong id="co-which-name">…</strong>
+        <a id="co-which-link" href="#" target="_blank" rel="noopener" style="display:none;color:#0a66c2;font-weight:600;text-decoration:none">Open on LinkedIn ↗</a>
+        <a href="/settings.html#company" style="margin-left:auto;font-weight:700;color:var(--brand);text-decoration:none">Change in My Settings →</a>
+      </div>
+      <script>
+      (function(){
+        var BASE = location.hostname.endsWith('.pages.dev') ? 'https://linalysis-api.oattia.workers.dev' : 'https://api.linalysis.net';
+        fetch(BASE + '/api/user/company-id', { credentials: 'include' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+          var n = document.getElementById('co-which-name'), a = document.getElementById('co-which-link');
+          if (!d || !d.company_id) { n.textContent = 'no Company Page yet'; n.style.color = '#b76b00'; return; }
+          n.textContent = d.company_name || (/^\d+$/.test(d.company_id) ? 'Page ID ' + d.company_id : d.company_id);
+          a.href = 'https://www.linkedin.com/company/' + encodeURIComponent(d.company_id) + '/'; a.style.display = '';
+        }).catch(function(){ document.getElementById('co-which-name').textContent = '—'; });
+      })();
+      </script>
+
       <!-- KPI strip — wired from real data -->
       <div class="kpi-row" id="kpi-row"></div>
 
