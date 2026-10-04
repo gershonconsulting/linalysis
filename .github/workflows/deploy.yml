@@ -8,6 +8,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The extension zip is BUILT here from linalysis-extension/ (2026-10-04). Binary zips cannot be
+      # pushed through the text-only routes we have, so the release zip is assembled at deploy time:
+      # the 0.2.9 zip supplies the unchanged files (popup, content-pair.js, icons) and every file in
+      # linalysis-extension/ overrides it. Version comes from manifest.json, so it can never drift.
+      - name: Build extension zip from source
+        run: |
+          set -e
+          VER=$(python3 -c "import json;print(json.load(open('linalysis-extension/manifest.json'))['version'])")
+          if [ ! -f "linalysis-extension-$VER.zip" ]; then
+            rm -rf _ext && mkdir _ext
+            (cd _ext && unzip -q ../linalysis-extension-0.2.9.zip && cp ../linalysis-extension/*.js ../linalysis-extension/manifest.json . && zip -q -X -r "../linalysis-extension-$VER.zip" .)
+            rm -rf _ext
+            cp "linalysis-extension-$VER.zip" linalysis-extension.zip
+          fi
+          unzip -l "linalysis-extension-$VER.zip"
+          unzip -p "linalysis-extension-$VER.zip" manifest.json | grep '"version"'
       - name: Write .assetsignore (keep non-site files out of the upload)
         run: |
           printf '%s\n' '.git' '.github' 'backend' 'backend-java' 'worker' 'linalysis-extension' '.crx-signing' '_deploy' 'node_modules' '*.pem' '*.crx' '*.md' '.env' '.env.*' '.gitignore' '.assetsignore' 'deploy_site.py' 'redeploy_worker.py' 'release.ps1' 'AGENTS.md' > .assetsignore
