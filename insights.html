@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Linalysis — AI Insights</title>
+<title>Linalysis — Intelligence</title>
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -28,9 +28,6 @@
   .rec-body { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
   .rec-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .rec-tag { padding: 3px 9px; background: var(--bg); border-radius: 999px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .rec-actions { display: flex; gap: 4px; }
-  .rec-btn { padding: 6px 10px; background: #fff; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .rec-btn:hover { border-color: var(--brand); color: var(--brand); }
 
   .anomaly { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 12px; }
   .anomaly-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
@@ -39,6 +36,21 @@
   .anomaly-title { font-weight: 700; font-size: 13px; }
   .anomaly-body  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
   .anomaly-date  { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .in-tabs { display:flex; gap:6px; border-bottom:1px solid var(--border); margin-bottom:18px; flex-wrap:wrap; }
+  .in-tab { border:0; background:none; padding:10px 14px; font:inherit; font-weight:700; font-size:14px; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; }
+  .in-tab.on { color:var(--text, #1d1d1f); border-color:var(--brand); }
+  .in-md h4 { margin:14px 0 6px; font-size:15px; } .in-md h4:first-child { margin-top:0; }
+  .in-md ul { margin:4px 0 8px 18px; padding:0; } .in-md p { margin:6px 0; } .in-md { font-size:14px; line-height:1.6; }
+  .in-bar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  .in-btn { padding:8px 14px; background:var(--brand); color:#fff; border:0; border-radius:8px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .in-btn:disabled { opacity:.5; cursor:wait; }
+  .in-log { max-height:55vh; overflow:auto; display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .in-msg { padding:10px 14px; border-radius:12px; max-width:85%; font-size:14px; line-height:1.55; }
+  .in-msg.u { align-self:flex-end; background:var(--brand); color:#fff; } .in-msg.a { align-self:flex-start; background:var(--card); border:1px solid var(--border); }
+  .in-row { display:flex; gap:8px; } .in-row textarea { flex:1; border:1px solid var(--border); border-radius:8px; padding:10px; font:inherit; resize:vertical; min-height:44px; }
+  .in-chip { border:1px solid var(--border); background:var(--card); border-radius:999px; padding:5px 11px; font:inherit; font-size:12px; cursor:pointer; margin:0 6px 8px 0; }
+  .in-err { color:var(--error); }
 </style>
 </head>
 <body>
@@ -48,50 +60,54 @@
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:10px">
     <button class="menu-toggle btn" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">☰</button>
-    <h1>AI Insights</h1>
+    <h1>Intelligence</h1>
   </div>
-  <div class="topbar-right">
-    <span class="avatar" title="Olivier">O</span>
-  </div>
+  <div class="topbar-right"><span class="muted" style="font-size:12px;margin-right:8px">Powered by Cloudflare Workers AI</span><span class="avatar" title="Your account">·</span></div>
 </div>
 
 <div class="content">
   <div id="locked-wall" style="display:none"></div>
   <div id="insights-ui">
+    <div class="in-tabs">
+      <button class="in-tab on" data-t="analysis">AI Analysis</button>
+      <button class="in-tab" data-t="suggestions">AI Suggestions</button>
+      <button class="in-tab" data-t="chat">AI Chat</button>
+    </div>
 
-    <!-- AI Weekly Recap -->
-    <div class="ai-hero">
-      <div class="ai-hero-badge">
-        <span>✦</span> AI WEEKLY RECAP
+    <!-- 1. AI ANALYSIS -->
+    <div data-p="analysis">
+      <div class="ai-hero">
+        <div class="ai-hero-badge"><span>✦</span> AI WEEKLY RECAP</div>
+        <h2 id="ai-headline">Cloudflare AI is reading your data…</h2>
+        <p id="ai-para-1"></p><p id="ai-para-2"></p><p id="ai-para-3"></p>
+        <div class="meta" id="ai-meta"></div>
       </div>
-      <h2 id="ai-headline">Generating your weekly recap…</h2>
-      <p id="ai-para-1"></p>
-      <p id="ai-para-2"></p>
-      <p id="ai-para-3"></p>
-      <div class="meta" id="ai-meta"></div>
+      <div class="section-title in-bar"><span>Deeper analysis</span><button class="in-btn" id="run-analyze">Analyse my data</button></div>
+      <div class="card in-md" id="out-analyze" style="padding:20px 24px"><p class="muted">Click “Analyse my data” for a full read of your numbers.</p></div>
+      <div class="section-title" style="margin-top:30px">Statistical outliers (60-day window)</div>
+      <div id="anomaly-grid" style="display:grid;gap:10px"></div>
     </div>
 
-    <!-- Top recommendations -->
-    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>Personalized recommendations</span>
-      <span class="muted" id="rec-count">—</span>
-    </div>
-    <div class="rec-grid" id="rec-grid"></div>
-
-    <!-- Anomaly alerts -->
-    <div class="section-title" style="margin-top:30px">Anomaly alerts (60-day window)</div>
-    <div id="anomaly-grid" style="display:grid;gap:10px"></div>
-
-    <!-- Daily tip -->
-    <div class="section-title" style="margin-top:30px">Today's one-liner</div>
-    <div class="card" style="padding:20px 24px;background:linear-gradient(180deg,#fff,#fff9f9);border-left:4px solid var(--brand)">
-      <div style="font-weight:800;font-size:15px;margin-bottom:6px" id="tip-title">—</div>
-      <div style="font-size:13px;color:var(--text-muted);line-height:1.6" id="tip-body">—</div>
+    <!-- 2. AI SUGGESTIONS -->
+    <div data-p="suggestions" hidden>
+      <div class="section-title in-bar"><span>Improvements, ranked by impact</span>
+        <span><span class="muted" id="rec-count">—</span> &nbsp;<button class="in-btn" id="run-refresh">Regenerate</button></span></div>
+      <div class="rec-grid" id="rec-grid"></div>
+      <div class="section-title" style="margin-top:30px">Today’s one-liner</div>
+      <div class="card" style="padding:20px 24px;border-left:4px solid var(--brand)">
+        <div style="font-weight:800;font-size:15px;margin-bottom:6px" id="tip-title">—</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6" id="tip-body"></div>
+      </div>
     </div>
 
+    <!-- 3. AI CHAT -->
+    <div data-p="chat" hidden>
+      <div id="chips"></div>
+      <div class="in-log" id="chat-log"></div>
+      <div class="in-row"><textarea id="chat-in" placeholder="Ask about your LinkedIn data or the suggested improvements…"></textarea><button class="in-btn" id="chat-send">Send</button></div>
+    </div>
   </div>
 </div>
-
 </main>
 </div>
 
@@ -104,85 +120,95 @@
 <script src="/api.js"></script>
 <script src="/nav.js" defer></script>
 <script>
-(function() {
-  // Gate check — Gold only
-  function renderLocked() {
-    document.getElementById('insights-ui').style.display = 'none';
-    const wall = document.getElementById('locked-wall');
-    wall.style.display = 'block';
-    wall.innerHTML = `
-      <div style="background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:18px;padding:60px 40px;text-align:center;margin-top:20px">
-        <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);border-radius:999px;color:#D4AF37;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:20px">
-          ✦ Gold feature
-        </div>
-        <h2 style="font-size:32px;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px">AI insights + weekly recap</h2>
-        <p style="font-size:16px;opacity:0.75;max-width:520px;margin:0 auto 24px;line-height:1.6">
-          Upgrade to Gold to get AI-generated weekly narratives, personalized recommendations ranked by urgency, and anomaly alerts across every metric.
-        </p>
-        <a href="/pricing.html" style="display:inline-block;padding:14px 32px;background:#FE1B04;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Upgrade to Gold — $19.95/mo</a>
-        <div style="margin-top:36px;opacity:0.4;font-size:11px">Or click the plan switcher in the bottom-left to preview.</div>
-      </div>`;
+(function () {
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function md(s) {
+    return esc(s).split('\n').map(function (l) {
+      l = l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      if (/^#{1,3} /.test(l)) return '<h4>' + l.replace(/^#+ /, '') + '</h4>';
+      if (/^\s*([-*•]|\d+[.)]) /.test(l)) return '<li>' + l.replace(/^\s*([-*•]|\d+[.)]) /, '') + '</li>';
+      return l.trim() ? '<p>' + l + '</p>' : '';
+    }).join('').replace(/(<li>.*?<\/li>)+/g, function (m) { return '<ul>' + m + '</ul>'; });
   }
 
-  if (!Plan.allows('ai_insights')) { renderLocked(); return; }
+  if (!Plan.allows('ai_insights')) {
+    document.getElementById('insights-ui').style.display = 'none';
+    var wall = document.getElementById('locked-wall'); wall.style.display = 'block';
+    wall.innerHTML = '<div style="background:linear-gradient(135deg,#1d1d1f,#2d1f2f);color:#fff;border-radius:18px;padding:60px 40px;text-align:center;margin-top:20px">' +
+      '<div style="display:inline-flex;padding:6px 14px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);border-radius:999px;color:#D4AF37;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:20px">✦ Gold feature</div>' +
+      '<h2 style="font-size:32px;font-weight:800;margin-bottom:12px">Intelligence</h2>' +
+      '<p style="font-size:16px;opacity:0.75;max-width:520px;margin:0 auto 24px;line-height:1.6">AI analysis of your LinkedIn data, ranked improvement suggestions, and a chat to dig into both.</p>' +
+      '<a href="/pricing.html" style="display:inline-block;padding:14px 32px;background:#FE1B04;color:#fff;border-radius:10px;text-decoration:none;font-weight:700">Upgrade to Gold — $19.95/mo</a></div>';
+    return;
+  }
 
-  // Render AI recap
-  try {
-    const r = AI.recap();
+  // Tabs
+  document.querySelectorAll('.in-tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('.in-tab').forEach(function (x) { x.classList.toggle('on', x === t); });
+      document.querySelectorAll('[data-p]').forEach(function (p) { p.hidden = p.getAttribute('data-p') !== t.dataset.t; });
+    });
+  });
+
+  // 1. Recap + suggestions (Workers AI, cached per day of data)
+  function paint() {
+    var r = AI.recap();
     document.getElementById('ai-headline').textContent = r.headline;
-    document.getElementById('ai-para-1').textContent = r.paragraphs[0];
-    document.getElementById('ai-para-2').textContent = r.paragraphs[1];
-    document.getElementById('ai-para-3').textContent = r.paragraphs[2];
-    document.getElementById('ai-meta').textContent = 'Generated ' + new Date(r.generated_at).toLocaleString() + ' · Current connection streak: ' + r.streak.days + ' days (since ' + new Date(r.streak.from + 'T00:00:00Z').toLocaleDateString() + ')';
-  } catch (e) { console.error(e); }
-
-  // Render recommendations
-  try {
-    const recs = AI.recommendations(8);
-    document.getElementById('rec-count').textContent = recs.length + ' active';
-    const grid = document.getElementById('rec-grid');
-    grid.innerHTML = recs.map((r, i) => `
-      <div class="rec">
-        <div class="rec-prio p${r.priority}">${i + 1}</div>
-        <div>
-          <div class="rec-title">${r.title}</div>
-          <div class="rec-body">${r.body}</div>
-          <div class="rec-tags">${r.tags.map(t => `<span class="rec-tag">${t}</span>`).join('')}</div>
-        </div>
-        <div class="rec-actions">
-          <button class="rec-btn" onclick="alert('Marking applied. (In v1.1: this dismisses + tracks effectiveness.)')">Applied</button>
-          <button class="rec-btn" onclick="alert('Snoozed for 7 days.')">Snooze</button>
-        </div>
-      </div>
-    `).join('') || '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted)">No active recommendations — you\'re running smoothly.</div>';
-  } catch (e) { console.error(e); }
-
-  // Anomalies
-  try {
-    const anoms = AI.anomalyAlerts(60);
-    const grid = document.getElementById('anomaly-grid');
-    if (!anoms.length) {
-      grid.innerHTML = '<div class="card" style="padding:20px 24px;color:var(--text-muted);font-size:13px">✓ No anomalies in the last 60 days. Your metrics are moving within normal bounds.</div>';
-    } else {
-      grid.innerHTML = anoms.map(a => `
-        <div class="anomaly">
-          <div class="anomaly-icon ${a.direction}">${a.direction === 'up' ? '▲' : '▼'}</div>
-          <div>
-            <div class="anomaly-title">${a.label}</div>
-            <div class="anomaly-body">${a.message}</div>
-          </div>
-          <div class="anomaly-date">${new Date(a.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}</div>
-        </div>
-      `).join('');
-    }
-  } catch (e) { console.error(e); }
-
-  // Daily tip
-  try {
-    const t = AI.dailyTip();
+    for (var i = 0; i < 3; i++) document.getElementById('ai-para-' + (i + 1)).textContent = r.paragraphs[i];
+    document.getElementById('ai-meta').textContent = (r.ready ? 'Generated ' + new Date(r.generated_at).toLocaleString() + ' by Cloudflare Workers AI · ' : '') +
+      'Current connection streak: ' + r.streak.days + ' days';
+    var recs = AI.recommendations(8);
+    document.getElementById('rec-count').textContent = recs.length ? recs.length + ' active' : '—';
+    document.getElementById('rec-grid').innerHTML = recs.map(function (x, i) {
+      return '<div class="rec"><div class="rec-prio p' + x.priority + '">' + (i + 1) + '</div><div><div class="rec-title">' + esc(x.title) + '</div><div class="rec-body">' + esc(x.body) +
+        '</div><div class="rec-tags">' + x.tags.map(function (t) { return '<span class="rec-tag">' + esc(t) + '</span>'; }).join('') + '</div></div><div></div></div>';
+    }).join('') || '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted)">' + (window.__intelError ? '<span class="in-err">' + esc(window.__intelError) + '</span>' : 'Cloudflare AI is preparing your suggestions…') + '</div>';
+    var t = AI.dailyTip();
     document.getElementById('tip-title').textContent = t.title;
     document.getElementById('tip-body').textContent = t.body;
-  } catch (e) { console.error(e); }
+  }
+  paint();
+  window.addEventListener('linalysis:intel', paint);
+  window.addEventListener('linalysis:intel-error', paint);
+  document.getElementById('run-refresh').addEventListener('click', function () {
+    var b = this; b.disabled = true; localStorage.removeItem('linalysis_intel_v2');
+    AI.refresh().then(function () { b.disabled = false; paint(); });
+  });
+
+  // Deeper analysis (markdown)
+  document.getElementById('run-analyze').addEventListener('click', function () {
+    var b = this, out = document.getElementById('out-analyze');
+    b.disabled = true; out.innerHTML = '<p class="muted">Cloudflare AI is analysing…</p>';
+    AI.ask('analyze').then(function (txt) { out.innerHTML = md(txt); })
+      .catch(function (e) { out.innerHTML = '<p class="in-err">' + esc(e.message) + '</p>'; })
+      .then(function () { b.disabled = false; });
+  });
+
+  // Statistical outliers
+  var anoms = AI.anomalyAlerts(60), grid = document.getElementById('anomaly-grid');
+  grid.innerHTML = anoms.length ? anoms.map(function (a) {
+    return '<div class="anomaly"><div class="anomaly-icon ' + a.direction + '">' + (a.direction === 'up' ? '▲' : '▼') + '</div><div><div class="anomaly-title">' + esc(a.label) +
+      '</div><div class="anomaly-body">' + esc(a.message) + '</div></div><div class="anomaly-date">' + new Date(a.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) + '</div></div>';
+  }).join('') : '<div class="card" style="padding:20px 24px;color:var(--text-muted);font-size:13px">✓ No outliers in the last 60 days.</div>';
+
+  // 3. Chat
+  var chat = [], busy = false, log = document.getElementById('chat-log'), input = document.getElementById('chat-in');
+  ['Why is my growth slowing?', 'How do I raise my SSI?', 'What should I do this week?'].forEach(function (q) {
+    var c = document.createElement('button'); c.className = 'in-chip'; c.textContent = q;
+    c.onclick = function () { input.value = q; send(); }; document.getElementById('chips').appendChild(c);
+  });
+  function bubble(cls, html) { var d = document.createElement('div'); d.className = 'in-msg ' + cls; d.innerHTML = html; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+  function send() {
+    var q = input.value.trim(); if (!q || busy) return;
+    input.value = ''; busy = true; chat.push({ role: 'user', content: q }); bubble('u', esc(q));
+    var recs = AI.recommendations(8), ctx = recs.length ? [{ role: 'assistant', content: 'Suggestions I gave you: ' + recs.map(function (r) { return r.title; }).join('; ') }] : [];
+    var p = bubble('a in-md', '<span class="muted">Thinking…</span>');
+    AI.ask('chat', ctx.concat(chat)).then(function (a) { chat.push({ role: 'assistant', content: a }); p.innerHTML = md(a); })
+      .catch(function (e) { chat.pop(); p.innerHTML = '<span class="in-err">' + esc(e.message) + '</span>'; })
+      .then(function () { busy = false; });
+  }
+  document.getElementById('chat-send').addEventListener('click', send);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 })();
 </script>
 </body>

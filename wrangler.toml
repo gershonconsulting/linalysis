@@ -1,0 +1,9 @@
+# Cloudflare Pages config for linalysis.net (added 2026-10-05).
+# Declares the Workers AI binding used by functions/api/intelligence.js (Intelligence menu).
+# No Anthropic / OpenAI key is used anywhere in Linalysis.
+name = "linalysis"
+pages_build_output_dir = "."
+compatibility_date = "2026-01-01"
+
+[ai]
+binding = "AI"
