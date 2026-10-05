@@ -1,10 +1,11 @@
-// functions/api/intelligence.js — Gershon "Intelligence" menu, server side (v1.0, 2026-10-05)
+// functions/api/intelligence.js — Gershon "Intelligence" menu, server side (v1.1, 2026-10-05)
 //
 // One endpoint, four modes, all on Cloudflare Workers AI (env.AI binding).
 // No Anthropic / OpenAI key anywhere — the model runs inside our own Cloudflare account.
 //
 //   POST /api/intelligence  { mode: 'analyze' | 'suggest' | 'chat' | 'insights', app, data, messages? }
 //   GET  /api/intelligence  -> { ok, ai }   (health: is the AI binding attached?)
+// 'insights' uses Workers AI JSON mode (response_format json_schema) for reliable structure.
 //
 // Linalysis: the session cookie lives on api.linalysis.net, so this Pages route cannot
 // see it. Guard = same-origin requests only (linalysis.net / *.linalysis.pages.dev) and
@@ -45,12 +46,34 @@ function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 }
 
-async function run(env, messages, maxTokens) {
+const INSIGHTS_SCHEMA = {
+  type: 'object',
+  properties: {
+    headline: { type: 'string' },
+    paragraphs: { type: 'array', items: { type: 'string' } },
+    recommendations: { type: 'array', items: { type: 'object', properties: {
+      title: { type: 'string' }, body: { type: 'string' }, priority: { type: 'integer' }, tags: { type: 'array', items: { type: 'string' } } },
+      required: ['title', 'body', 'priority'] } },
+    tip: { type: 'object', properties: { title: { type: 'string' }, body: { type: 'string' } }, required: ['title', 'body'] },
+  },
+  required: ['headline', 'paragraphs', 'recommendations', 'tip'],
+};
+
+function parseJson(text) {
+  if (text && typeof text === 'object') return text;
+  const m = String(text || '').match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch (e) {}
+  try { return JSON.parse(m[0].replace(/,\s*([}\]])/g, '$1')); } catch (e) { return null; }
+}
+
+async function run(env, messages, maxTokens, extra) {
   let lastErr = 'no model answered';
   for (const model of MODELS) {
     try {
-      const r = await env.AI.run(model, { messages, max_tokens: maxTokens, temperature: 0.3 });
-      const text = r && (typeof r.response === 'string' ? r.response : (r.result && r.result.response) || '');
+      const r = await env.AI.run(model, Object.assign({ messages, max_tokens: maxTokens, temperature: 0.3 }, extra || {}));
+      let text = r && (r.response !== undefined ? r.response : (r.result && r.result.response));
+      if (text && typeof text === 'object') text = JSON.stringify(text);
       if (text && text.trim()) return { text: text.trim(), model };
       lastErr = 'empty answer from ' + model;
     } catch (e) { lastErr = String(e && e.message || e); }
@@ -86,16 +109,19 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    const out = await run(env, messages, mode === 'chat' ? 700 : mode === 'insights' ? 1400 : 900);
     if (mode === 'insights') {
-      const m = out.text.match(/\{[\s\S]*\}/);
-      let parsed = null;
-      try { parsed = m && JSON.parse(m[0]); } catch (e) { parsed = null; }
-      if (!parsed || !parsed.headline) return json({ error: 'AI returned an unreadable answer, retry' }, 502);
-      return json({ mode, insights: parsed, model: out.model, engine: 'cloudflare-workers-ai' });
+      // JSON mode first (structured output), plain prompt as fallback.
+      let parsed = null, model = null;
+      for (const extra of [{ response_format: { type: 'json_schema', json_schema: INSIGHTS_SCHEMA } }, null]) {
+        try { const o = await run(env, messages, 1400, extra); parsed = parseJson(o.text); model = o.model; } catch (e) { parsed = null; }
+        if (parsed && parsed.headline) break;
+      }
+      if (!parsed || !parsed.headline) return json({ error: 'Cloudflare AI returned an unreadable answer — click Regenerate' }, 422);
+      return json({ mode, insights: parsed, model, engine: 'cloudflare-workers-ai' });
     }
+    const out = await run(env, messages, mode === 'chat' ? 700 : 900);
     return json({ mode, text: out.text, model: out.model, engine: 'cloudflare-workers-ai' });
   } catch (e) {
-    return json({ error: 'AI unavailable: ' + e.message }, 502);
+    return json({ error: 'AI unavailable: ' + e.message }, 503);
   }
 }
