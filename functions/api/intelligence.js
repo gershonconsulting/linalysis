@@ -1,4 +1,4 @@
-// functions/api/intelligence.js — Gershon "Intelligence" menu, server side (v1.1, 2026-10-05)
+// functions/api/intelligence.js — Gershon "Intelligence" menu, server side (v1.2, 2026-10-05)
 //
 // One endpoint, four modes, all on Cloudflare Workers AI (env.AI binding).
 // No Anthropic / OpenAI key anywhere — the model runs inside our own Cloudflare account.
@@ -33,10 +33,12 @@ const TASK = {
     'For each: "- **Action** — why (cite the figure from the data) — expected effect". ' +
     'Then "## Quick win today" with one action that takes under 15 minutes. Max ~300 words.',
   insights:
-    'Return ONLY valid JSON, no markdown fences, no prose around it, exactly this shape: ' +
-    '{"headline":"one short sentence starting with an emoji","paragraphs":["growth (connections, pace)","SSI and visibility","what to watch next"],' +
-    '"recommendations":[{"title":"short imperative","body":"1-2 sentences citing a figure","priority":1-9,"tags":["connections"]}],' +
-    '"tip":{"title":"short","body":"one sentence"}}. Give 5 to 8 recommendations, priority 9 = most urgent. Address the user as you.',
+    'Return ONLY valid JSON (no markdown, no text around it) with keys: ' +
+    'headline = one short sentence starting with an emoji that sums up the period; ' +
+    'paragraphs = exactly 3 written paragraphs of 2-3 sentences each, citing real figures from the data: ' +
+    '(1) connection growth and pace, (2) SSI and profile visibility, (3) what to watch next. Write the actual paragraphs, never these labels; ' +
+    'recommendations = 5 to 8 objects {title: short imperative, body: 1-2 sentences citing a figure, priority: integer 1-9 where 9 is most urgent, tags: array of 1-2 metric words}; ' +
+    'tip = {title, body} with one concrete action for today. Address the user as you.',
   chat:
     'Answer the user\'s question about the data and possible improvements. Be direct; cite figures from the data. ' +
     'If the question cannot be answered from the data, say what is missing.',
