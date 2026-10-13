@@ -125,8 +125,20 @@
     out['SSI']              = null;
     // Industry / Network percentile. Layout differs by language: German shows "Top 14 %\n<label>"
     // (number BEFORE label); English shows "<label>\nTop 14%" (number AFTER label). Handle each.
-    out['SSI Industry']     = pctForLabel(text, labels('SSI Industry', ['Branche', 'Branchenrang', 'Ihrer Branche', 'secteur', 'sector', 'settore', 'setor']), ['industry', 'industry rank', 'in your industry']);
-    out['SSI Network']      = pctForLabel(text, labels('SSI Network', ['Netzwerk', 'réseau', 'rete', 'rede', 'netwerk']), ['network', 'red']);
+    // v0.3.5 — read the two ranks STRUCTURALLY. Verified live 2026-10-13 on German and French
+    // pages: every language prints "<label>\nTop N %" (label FIRST), e.g. "SSI-Ranking der Branche
+    // / Top 3 % / SSI-Ranking des Netzwerks / Top 12 %". The old number-BEFORE-label reader for
+    // non-English keywords therefore never found the industry rank AND handed the network rank the
+    // INDUSTRY percentile sitting just above it (zeitount stored 1 instead of 6, David 3 instead of
+    // 12). ranksFromLines() works out the layout from both labels together and returns null rather
+    // than a neighbour's number when the layout is ambiguous.
+    const indKw = labels('SSI Industry', ['Branche', 'Branchenrang', 'secteur', 'sector', 'settore', 'setor', 'industry', 'branche']);
+    const netKw = labels('SSI Network', ['Netzwerk', 'réseau', 'rete', 'rede', 'netwerk', 'network', 'red']);
+    const ranks = ranksFromLines(text, indKw, netKw);
+    out['SSI Industry']     = ranks.industry != null ? ranks.industry
+                            : pctAfterLabel(text, ['industry rank', 'industry ssi rank', 'in your industry']);
+    out['SSI Network']      = ranks.network != null ? ranks.network
+                            : pctAfterLabel(text, ['network rank', 'network ssi rank']);
     // Detected LinkedIn UI language (helps debugging locale-specific scrapes).
     out['_lang'] = (document.documentElement.getAttribute('lang') || navigator.language || '').slice(0, 5).toLowerCase() || null;
 
@@ -268,6 +280,57 @@
   // Find a "Top XX %" percentile (0..100) for a ranking label. deKeywords use the German layout
   // ("Top 14 %\n<label>", number before) and enKeywords use the English layout ("<label>\nTop 14%",
   // number after). The [^%] gap stops the match from jumping past a neighbouring percentile.
+  // ── SSI ranks (v0.3.5) ──────────────────────────────────────────
+  // A percentile line: "Top 3 %", "Top 1%", "3 %", "Les 5 % premiers". Short lines only.
+  function pctLine(line) {
+    if (!line || line.length > 24) return null;
+    const m = line.match(/(\d{1,3})\s*%/);
+    if (!m) return null;
+    const n = parseInt(m[1], 10);
+    return n >= 0 && n <= 100 ? n : null;
+  }
+  function isRankLabel(line, kws) {
+    if (!line || line.length > 70 || /\d\s*%/.test(line)) return false;
+    for (const kw of kws) if (new RegExp(wordRe(kw), 'i').test(line)) return true;
+    return false;
+  }
+  function ranksFromLines(text, indKw, netKw) {
+    const lines = String(text || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    const find = function (kws) {
+      const hits = [];
+      for (let i = 0; i < lines.length; i++) if (isRankLabel(lines[i], kws)) hits.push(i);
+      return hits;
+    };
+    const ind = find(indKw), net = find(netKw);
+    const pick = function (hits, dir) {
+      for (const i of hits) { const v = pctLine(lines[i + dir]); if (v != null) return { i: i + dir, v: v }; }
+      return null;
+    };
+    for (const dir of [1, -1]) {
+      const a = pick(ind, dir), b = pick(net, dir);
+      if (a && b && a.i !== b.i) return { industry: a.v, network: b.v, layout: dir === 1 ? 'after' : 'before' };
+    }
+    // Only one of the two labels resolved: accept it only when the other side of the label is
+    // not ALSO a percentile, i.e. when there is no doubt which number belongs to it.
+    const lone = function (hits) {
+      for (const i of hits) {
+        const nx = pctLine(lines[i + 1]), pv = pctLine(lines[i - 1]);
+        if (nx != null && pv == null) return nx;
+        if (pv != null && nx == null) return pv;
+      }
+      return null;
+    };
+    return { industry: lone(ind), network: lone(net), layout: 'single' };
+  }
+  // English-only fallback: label then number on the same run of text.
+  function pctAfterLabel(text, kws) {
+    for (const kw of kws) {
+      const m = String(text || '').match(new RegExp(escapeRe(kw) + '[^%\\n]{0,10}\\n?\\s*(?:top\\s*)?(\\d{1,3})\\s*%', 'i'));
+      if (m) { const n = parseInt(m[1], 10); if (n >= 0 && n <= 100) return n; }
+    }
+    return null;
+  }
+
   function pctForLabel(text, deKeywords, enKeywords) {
     for (var i = 0; i < deKeywords.length; i++) {
       var m = text.match(new RegExp('(\\d{1,3})\\s*%\\s*\\n?\\s*[^%]{0,60}?' + wordRe(deKeywords[i]), 'i'));
