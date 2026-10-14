@@ -1,4 +1,4 @@
-// Linalysis — network & credits reader (v0.3.5, 2026-10-13)
+// Linalysis — network & credits reader (v0.3.6, 2026-10-13)
 //
 // WHY THIS EXISTS. The Credits page was built on numbers read off rendered pages, and three of them
 // were wrong in ways no selector fix could cure:

@@ -63,7 +63,7 @@ console.log('%cLinalysis build ' + LINALYSIS_BUILD, 'color:#FE1B04;font-weight:7
 // at document_idle, so we poll for ~4s before declaring it missing (no red
 // flash for people who do have it). Latest version comes from the update
 // manifest so it can never drift from what actually shipped.
-const LINALYSIS_LATEST_EXT_VERSION = '0.3.5'; // fallback only if updates.xml is unreachable
+const LINALYSIS_LATEST_EXT_VERSION = '0.3.6'; // fallback only if updates.xml is unreachable
 (function extStatusBanner() {
   // Cloudflare Pages serves these extensionless (/troubleshooting, not
   // /troubleshooting.html) -- normalise before comparing or the list never matches.

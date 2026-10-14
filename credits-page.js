@@ -38,7 +38,7 @@
     var anyNew = rows.some(function (r) { return num(r.connections_new) != null || num(r.invitations_sent_day) != null; });
     if (!anyNew) {
       var b = $('cred-banner');
-      b.innerHTML = '<strong>Waiting for the first reading.</strong> New connections, removals and invitations sent per day are read by Linalysis extension <strong>0.3.5</strong> or later. They appear here after its next daily sync.';
+      b.innerHTML = '<strong>Waiting for the first reading.</strong> New connections, removals and invitations sent per day are read by Linalysis extension <strong>0.3.6</strong> or later. They appear here after its next daily sync.';
       b.style.display = 'block';
     }
 
@@ -75,7 +75,7 @@
       set('inmail-30', pairs ? fmt(sent) + (pairs < 20 ? ' (' + (pairs + 1) + ' readings)' : '') : 'needs 2 readings');
     } else {
       set('inmail-left', 'not read yet');
-      $('inmail-note').innerHTML = '<strong>Not read yet.</strong> The balance is read from Sales Navigator (or LinkedIn Premium) by extension 0.3.5 at its next daily sync. Nothing is estimated.';
+      $('inmail-note').innerHTML = '<strong>Not read yet.</strong> The balance is read from Sales Navigator (or LinkedIn Premium) by extension 0.3.6 at its next daily sync. Nothing is estimated.';
     }
 
     // ─── Connections ─────────────────────────────────────────
