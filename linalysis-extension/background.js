@@ -27,6 +27,8 @@
 //   3. CATCH-UP. If more than ~20h have passed with no captured data, the next heartbeat runs a sync
 //      instead of waiting for tomorrow's 09:00 alarm. A closed laptop no longer costs a whole day.
 
+import { linkedinNetworkProbe, foldNetwork } from './network-api.js';
+
 const API_BASE = 'https://api.linalysis.net';
 const ALARM_NAME = 'linalysisDailySync';
 const SYNC_POLL_ALARM = 'linalysisSyncPoll';
@@ -812,7 +814,52 @@ async function collectMetrics(tabId, trigger) {
       await reportCollect({ page: page.key, ok: false, error: String(e.message || e), url: page.url });
     }
   }
+  // v0.3.5 — connections gained/removed, invitations sent per day and the InMail balance, read
+  // from LinkedIn's own JSON endpoints in this same tab. See network-api.js for why.
+  try { await collectNetworkApi(tabId); }
+  catch (e) { await log('error', 'network:failed', { error: String(e.message || e) }); }
   await log('info', 'metrics:done', { trigger });
+}
+
+async function collectNetworkApi(tabId) {
+  let res = null;
+  try {
+    const [r] = await chrome.scripting.executeScript({ target: { tabId }, func: linkedinNetworkProbe, args: [{ days: 8 }] });
+    res = r && r.result;
+  } catch (e) {
+    await reportCollect({ page: 'network_api', ok: false, error: 'Could not run the network reader: ' + String(e.message || e) });
+    return;
+  }
+  if (!res || !res.ok) {
+    await reportCollect({ page: 'network_api', ok: false, error: (res && res.error === 'no_session') ? 'Signed out of LinkedIn in the collecting browser.' : 'Network reader returned nothing.' });
+    return;
+  }
+  const key = 'linalysis_netlog';
+  const st = (await chrome.storage.local.get(key))[key] || null;
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return undefined; } })();
+  const folded = foldNetwork(st, res, { now: res.at, tz });
+  const p = await getPairing();
+  if (!p.token || !p.email) return;
+  if (!folded.rows.length) {
+    await reportCollect({ page: 'network_api', ok: false, error: 'Nothing readable: ' + res.errors.join('; ').slice(0, 300) });
+    return;
+  }
+  const resp = await fetch(API_BASE + '/api/ingest/linkedin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + p.token },
+    body: JSON.stringify({ rows: folded.rows }),
+  });
+  if (!resp.ok) {
+    await reportCollect({ page: 'network_api', ok: false, error: 'Linalysis rejected the network data (HTTP ' + resp.status + ').' });
+    return;
+  }
+  // Only remember the snapshot once the server has it — otherwise a failed post would make the next
+  // "removed since last capture" span two days while claiming one.
+  await chrome.storage.local.set({ [key]: folded.st });
+  await noteDataCaptured();
+  const values = Object.keys(folded.rows[folded.rows.length - 1]).filter(k => k !== 'Date');
+  await reportCollect({ page: 'network_api', ok: true, values, error: res.errors.length ? res.errors.join('; ').slice(0, 300) : undefined });
+  await log('info', 'network:ok', { rows: folded.rows.length, errors: res.errors });
 }
 
 // ─── Posting ────────────────────────────────────────────────────────────
