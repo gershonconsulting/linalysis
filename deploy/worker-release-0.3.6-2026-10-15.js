@@ -89,8 +89,9 @@ async function adminFixSsiRanks(req, env) {
     // helpers, placed before computePages (top level)
     ["function computePages(", HELPERS.trimStart() + "function computePages("],
     // admin route
-    ["return adminLabelsPut(req, env);",
-     "return adminLabelsPut(req, env);\n  if (r('POST', '/api/admin/fix-ssi-ranks')) return adminFixSsiRanks(req, env);"],
+    // (live script has two adminLabelsPut routes, PUT + POST; anchor on the POST one, which is unique)
+    ["if (r('POST', '/api/admin/labels'))          return adminLabelsPut(req, env);",
+     "if (r('POST', '/api/admin/labels'))          return adminLabelsPut(req, env);\n  if (r('POST', '/api/admin/fix-ssi-ranks')) return adminFixSsiRanks(req, env);"],
     // daily: correct yesterday's ranks before the audit reads the row
     ["const bf = await backfillInvitations(env, email, reportDate,",
      "try { await fixSsiRanks(env, email, reportDate); } catch (e) {}\n      const bf = await backfillInvitations(env, email, reportDate,"],
