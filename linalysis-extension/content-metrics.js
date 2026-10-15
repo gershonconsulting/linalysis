@@ -78,7 +78,7 @@
       // names the client reads very differently from one that only has an email address. Take the
       // part before the first colon and only when it looks like a name, never a whole title.
       const raw = (document.title || '').split(/\s[–—:|]\s|:/)[0].trim();
-      if (raw.length >= 2 && raw.length <= 120 && !/^\(\d+\)$/.test(raw)) {
+      if (raw.length >= 2 && raw.length <= 120 && !/^\(\d+\)$/.test(raw) && !/^(\(\d+\)\s*)?LinkedIn$/i.test(raw)) {
         chrome.storage.local.set({ linalysis_company_name: raw.replace(/^\(\d+\)\s*/, '') });
       }
     }
@@ -375,8 +375,8 @@
   function scrapeAppearances(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'All Appearances',    metric(labels('All Appearances', ['all appearances', 'alle Anzeigen', 'alle Erscheinungen', 'Gesamtzahl der Anzeigen', 'Anzeigen insgesamt', 'alle Aufrufe', 'toutes les apparitions', 'apparitions totales', 'todas las apariciones', 'tutte le comparse']), text, [/all[-_]?appearance/i, /allAppearance|totalAppearance/]));
-    put(out, 'Search Appearances', metric(labels('Search Appearances', ['search appearances', 'Suchanzeigen', 'Sucherscheinungen', 'Suchanfragen', 'Erscheinen in Suchergebnissen', 'Erscheinungen in der Suche', 'Anzeigen in Suchergebnissen', 'in Suchergebnissen', "apparitions dans les recherches", 'apparitions dans les résultats de recherche', 'apariciones en búsquedas', 'comparse nelle ricerche']), text, [/search[-_]?appearance/i, /searchAppearance/]));
+    put(out, 'All Appearances',    metric(labels('All Appearances', ['all appearances', 'Alle Ansichten', 'alle Anzeigen', 'alle Erscheinungen', 'Gesamtzahl der Anzeigen', 'Anzeigen insgesamt', 'alle Aufrufe', 'toutes les apparitions', 'apparitions totales', 'todas las apariciones', 'tutte le comparse']), text, [/all[-_]?appearance/i, /allAppearance|totalAppearance/]));
+    put(out, 'Search Appearances', metric(labels('Search Appearances', ['search appearances', 'In Suchen erschienen', 'Suchanzeigen', 'Sucherscheinungen', 'Suchanfragen', 'Erscheinen in Suchergebnissen', 'Erscheinungen in der Suche', 'Anzeigen in Suchergebnissen', 'in Suchergebnissen', "apparitions dans les recherches", 'apparitions dans les résultats de recherche', 'apariciones en búsquedas', 'comparse nelle ricerche']), text, [/search[-_]?appearance/i, /searchAppearance/]));
 
     // "Where you appeared" breakdown — capture label/percent pairs (Search 44.3%, Posts 34.5%, …).
     try {
@@ -563,7 +563,7 @@
   function scrapeCoSearch(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Search Appearances', metric(labels('Company Search Appearances', ['Page searches', 'Seitensuchen', 'Recherches de page', 'Search appearances', 'Sucherscheinungen']), text, [/page[-_]?search/i, /pageSearch|searchAppearance/i]));
+    put(out, 'Company Search Appearances', metric(labels('Company Search Appearances', ['Page searches', 'Seitensuchen', 'Recherches de la Page', 'Recherches de page', 'Search appearances', 'Sucherscheinungen']), text, [/page[-_]?search/i, /pageSearch|searchAppearance/i]));
     out['_diag'] = baseDiag('co_search', attempt);
     return out;
   }
