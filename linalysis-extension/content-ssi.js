@@ -125,8 +125,24 @@
     out['SSI']              = null;
     // Industry / Network percentile. Layout differs by language: German shows "Top 14 %\n<label>"
     // (number BEFORE label); English shows "<label>\nTop 14%" (number AFTER label). Handle each.
-    out['SSI Industry']     = pctForLabel(text, labels('SSI Industry', ['Branche', 'Branchenrang', 'Ihrer Branche', 'secteur', 'sector', 'settore', 'setor']), ['industry', 'industry rank', 'in your industry']);
-    out['SSI Network']      = pctForLabel(text, labels('SSI Network', ['Netzwerk', 'réseau', 'rete', 'rede', 'netwerk']), ['network', 'red']);
+    // v0.3.5 — read the two ranks STRUCTURALLY. Verified live 2026-10-13 on German and French
+    // pages: every language prints "<label>\nTop N %" (label FIRST), e.g. "SSI-Ranking der Branche
+    // / Top 3 % / SSI-Ranking des Netzwerks / Top 12 %". The old number-BEFORE-label reader for
+    // non-English keywords therefore never found the industry rank AND handed the network rank the
+    // INDUSTRY percentile sitting just above it (zeitount stored 1 instead of 6, David 3 instead of
+    // 12). ranksFromLines() works out the layout from both labels together and returns null rather
+    // than a neighbour's number when the layout is ambiguous.
+    const indKw = labels('SSI Industry', ['Branche', 'Branchenrang', 'secteur', 'sector', 'settore', 'setor', 'industry', 'branche']);
+    const netKw = labels('SSI Network', ['Netzwerk', 'réseau', 'rete', 'rede', 'netwerk', 'network', 'red']);
+    // v0.3.7 — STRUCTURE first. The rank strip is `.ssi-ranks > .ssi-rank` in every language
+    // (verified live 2026-10-18): [Team "1 of 1"], Industry "Top N %", Network "Top N %". The
+    // class names are not translated and the order is fixed, so the language never matters.
+    const dom = ranksFromDom();
+    const ranks = (dom.industry != null && dom.network != null) ? dom : ranksFromLines(text, indKw, netKw);
+    out['SSI Industry']     = ranks.industry != null ? ranks.industry
+                            : pctAfterLabel(text, ['industry rank', 'industry ssi rank', 'in your industry']);
+    out['SSI Network']      = ranks.network != null ? ranks.network
+                            : pctAfterLabel(text, ['network rank', 'network ssi rank']);
     // Detected LinkedIn UI language (helps debugging locale-specific scrapes).
     out['_lang'] = (document.documentElement.getAttribute('lang') || navigator.language || '').slice(0, 5).toLowerCase() || null;
 
@@ -268,6 +284,79 @@
   // Find a "Top XX %" percentile (0..100) for a ranking label. deKeywords use the German layout
   // ("Top 14 %\n<label>", number before) and enKeywords use the English layout ("<label>\nTop 14%",
   // number after). The [^%] gap stops the match from jumping past a neighbouring percentile.
+  // ── SSI ranks (v0.3.5) ──────────────────────────────────────────
+  // A percentile line: "Top 3 %", "Top 1%", "3 %", "Les 5 % premiers". Short lines only.
+  function pctLine(line) {
+    if (!line || line.length > 24) return null;
+    const m = line.match(/(\d{1,3})\s*%/);
+    if (!m) return null;
+    const n = parseInt(m[1], 10);
+    return n >= 0 && n <= 100 ? n : null;
+  }
+  function isRankLabel(line, kws) {
+    if (!line || line.length > 70 || /\d\s*%/.test(line)) return false;
+    for (const kw of kws) if (new RegExp(wordRe(kw), 'i').test(line)) return true;
+    return false;
+  }
+  function ranksFromLines(text, indKw, netKw) {
+    const lines = String(text || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    const find = function (kws) {
+      const hits = [];
+      for (let i = 0; i < lines.length; i++) if (isRankLabel(lines[i], kws)) hits.push(i);
+      return hits;
+    };
+    const ind = find(indKw), net = find(netKw);
+    const pick = function (hits, dir) {
+      for (const i of hits) { const v = pctLine(lines[i + dir]); if (v != null) return { i: i + dir, v: v }; }
+      return null;
+    };
+    for (const dir of [1, -1]) {
+      const a = pick(ind, dir), b = pick(net, dir);
+      if (a && b && a.i !== b.i) return { industry: a.v, network: b.v, layout: dir === 1 ? 'after' : 'before' };
+    }
+    // Only one of the two labels resolved: accept it only when the other side of the label is
+    // not ALSO a percentile, i.e. when there is no doubt which number belongs to it.
+    const lone = function (hits) {
+      for (const i of hits) {
+        const nx = pctLine(lines[i + 1]), pv = pctLine(lines[i - 1]);
+        if (nx != null && pv == null) return nx;
+        if (pv != null && nx == null) return pv;
+      }
+      return null;
+    };
+    return { industry: lone(ind), network: lone(net), layout: 'single' };
+  }
+  // Structural rank reader. Each .ssi-rank box holds a category name and a category score. The
+  // TEAM box scores "1 of 1" (no %), the other two are percentiles. We take the percentile boxes
+  // in DOM order and only answer when there are exactly two of them — Industry, then Network.
+  function ranksFromDom() {
+    try {
+      const boxes = document.querySelectorAll('.ssi-ranks .ssi-rank, .ssi-rank');
+      const pcts = [];
+      const seen = [];
+      for (const b of boxes) {
+        if (seen.indexOf(b) > -1) continue; seen.push(b);
+        const sc = b.querySelector('[class*="category-score"]');
+        const t = ((sc && (sc.innerText || sc.textContent)) || '').replace(/\s+/g, ' ').trim();
+        if (!/%/.test(t)) continue;
+        const m = t.match(/(\d{1,3})\s*%/) || t.match(/(\d{1,3})/);
+        const n = m ? parseInt(m[1], 10) : NaN;
+        if (n >= 0 && n <= 100) pcts.push(n);
+      }
+      if (pcts.length === 2) return { industry: pcts[0], network: pcts[1], layout: 'dom' };
+    } catch (e) {}
+    return { industry: null, network: null, layout: 'dom-miss' };
+  }
+
+  // English-only fallback: label then number on the same run of text.
+  function pctAfterLabel(text, kws) {
+    for (const kw of kws) {
+      const m = String(text || '').match(new RegExp(escapeRe(kw) + '[^%\\n]{0,10}\\n?\\s*(?:top\\s*)?(\\d{1,3})\\s*%', 'i'));
+      if (m) { const n = parseInt(m[1], 10); if (n >= 0 && n <= 100) return n; }
+    }
+    return null;
+  }
+
   function pctForLabel(text, deKeywords, enKeywords) {
     for (var i = 0; i < deKeywords.length; i++) {
       var m = text.match(new RegExp('(\\d{1,3})\\s*%\\s*\\n?\\s*[^%]{0,60}?' + wordRe(deKeywords[i]), 'i'));
@@ -305,6 +394,7 @@
   // page that loaded but never painted (we can). The daily report could tell neither apart before
   // and called both "LinkedIn likely moved this metric in the DOM", which sent every investigation
   // to the wrong layer.
+  const SSI_DISCONTINUED_RE = /(do not have access to SSI|access to the Social Selling Index[^\n]{0,20}discontinued|has been discontinued|keinen Zugriff auf (?:den )?SSI|Zugriff auf den Social Selling Index[^\n]{0,40}eingestellt|wurde eingestellt|n['’]avez pas acc[eè]s (?:au|à l['’]) ?SSI|acc[eè]s au Social Selling Index[^\n]{0,40}(?:interrompu|supprim|arr[eê]t)|a [ée]t[ée] (?:interrompu|supprim[ée]))/i;
   function blockedReason(text) {
     const p = location.pathname || '';
     const t = text || '';
@@ -320,6 +410,14 @@
         /no longer have access|subscription has ended|reactivate|kein Zugriff mehr|abgelaufen|acc[èe]s a expir|abonnement a pris fin/i.test(t)) {
       return { code: 'sales_nav_expired',
                message: 'The Sales Navigator subscription on this account is not active — LinkedIn does not serve an SSI score without a seat.' };
+    }
+    // v0.3.7 — LinkedIn is RETIRING SSI account by account. vincent.puard@ collected SSI daily
+    // until 2026-10-16; on 2026-10-17 his page read "You do not have access to SSI / Your access to
+    // the Social Selling Index (SSI) has been discontinued." That is not a render failure and not a
+    // selector: no code can bring it back. Say so, so the report stops blaming the hidden tab.
+    if (SSI_DISCONTINUED_RE.test(t)) {
+      return { code: 'ssi_discontinued',
+               message: 'LinkedIn has discontinued the Social Selling Index for this account — the SSI page says access to SSI has been discontinued. Nothing can be collected; this is a LinkedIn change, not a Linalysis failure.' };
     }
     // A rendered SSI dashboard is thousands of characters. Below this LinkedIn served the empty
     // app shell: a render failure on this machine, never a changed selector.
