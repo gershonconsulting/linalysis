@@ -34,6 +34,8 @@ const ALARM_NAME = 'linalysisDailySync';
 const SYNC_POLL_ALARM = 'linalysisSyncPoll';
 const CHECKIN_ALARM = 'linalysisCheckin';
 const SSI_URL = 'https://www.linkedin.com/sales/ssi';
+// LinkedIn's SSI retirement notice, EN/DE/FR (see content-ssi.js blockedReason).
+const SSI_DISCONTINUED_RE = /(do not have access to SSI|access to the Social Selling Index[^\n]{0,20}discontinued|has been discontinued|keinen Zugriff auf (?:den )?SSI|wurde eingestellt|n['’]avez pas acc[eè]s (?:au|à l['’]) ?SSI|a [ée]t[ée] (?:interrompu|supprim[ée]))/i;
 const MAX_LOG = 60;
 
 // A rendered LinkedIn page has thousands of characters. Below this the page did not hydrate.
@@ -608,9 +610,19 @@ async function collectSSI(tabId) {
       return;
     }
     if (probe.len < MIN_RENDERED_TEXT) {
+      const sample = await samplePage(tabId);
+      // v0.3.7 — a short page is not always an unpainted one. LinkedIn is retiring SSI account by
+      // account, and the retirement notice itself is ~190 characters. Tell the two apart.
+      if (SSI_DISCONTINUED_RE.test(String(sample || ''))) {
+        const why = 'LinkedIn has discontinued the Social Selling Index for this account (the SSI page says access to SSI has been discontinued). This is a LinkedIn change — nothing to fix on this computer.';
+        await recordSync('ssi_discontinued', why);
+        await reportCollect({ page: 'ssi', ok: false, error: why, code: 'ssi_discontinued', not_exposed: ['SSI', 'SSI Industry', 'SSI Network'], url: probe.url, text_len: probe.len, visible: probe.vis === 'visible', sample });
+        await reportStatus('running', 'SSI discontinued by LinkedIn for this account — continuing with growth + company metrics.');
+        return;
+      }
       const why = 'The SSI page loaded but never rendered (' + probe.len + ' characters of text). Sales Navigator does not render in a hidden tab.';
       await recordSync('ssi_empty', why);
-      await reportCollect({ page: 'ssi', ok: false, error: why, url: probe.url, text_len: probe.len, visible: probe.vis === 'visible', sample: await samplePage(tabId) });
+      await reportCollect({ page: 'ssi', ok: false, error: why, url: probe.url, text_len: probe.len, visible: probe.vis === 'visible', sample });
       await reportStatus('running', 'SSI page did not render — continuing with growth + company metrics.');
       return;
     }

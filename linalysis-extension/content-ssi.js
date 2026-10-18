@@ -134,7 +134,11 @@
     // than a neighbour's number when the layout is ambiguous.
     const indKw = labels('SSI Industry', ['Branche', 'Branchenrang', 'secteur', 'sector', 'settore', 'setor', 'industry', 'branche']);
     const netKw = labels('SSI Network', ['Netzwerk', 'réseau', 'rete', 'rede', 'netwerk', 'network', 'red']);
-    const ranks = ranksFromLines(text, indKw, netKw);
+    // v0.3.7 — STRUCTURE first. The rank strip is `.ssi-ranks > .ssi-rank` in every language
+    // (verified live 2026-10-18): [Team "1 of 1"], Industry "Top N %", Network "Top N %". The
+    // class names are not translated and the order is fixed, so the language never matters.
+    const dom = ranksFromDom();
+    const ranks = (dom.industry != null && dom.network != null) ? dom : ranksFromLines(text, indKw, netKw);
     out['SSI Industry']     = ranks.industry != null ? ranks.industry
                             : pctAfterLabel(text, ['industry rank', 'industry ssi rank', 'in your industry']);
     out['SSI Network']      = ranks.network != null ? ranks.network
@@ -322,6 +326,28 @@
     };
     return { industry: lone(ind), network: lone(net), layout: 'single' };
   }
+  // Structural rank reader. Each .ssi-rank box holds a category name and a category score. The
+  // TEAM box scores "1 of 1" (no %), the other two are percentiles. We take the percentile boxes
+  // in DOM order and only answer when there are exactly two of them — Industry, then Network.
+  function ranksFromDom() {
+    try {
+      const boxes = document.querySelectorAll('.ssi-ranks .ssi-rank, .ssi-rank');
+      const pcts = [];
+      const seen = [];
+      for (const b of boxes) {
+        if (seen.indexOf(b) > -1) continue; seen.push(b);
+        const sc = b.querySelector('[class*="category-score"]');
+        const t = ((sc && (sc.innerText || sc.textContent)) || '').replace(/\s+/g, ' ').trim();
+        if (!/%/.test(t)) continue;
+        const m = t.match(/(\d{1,3})\s*%/) || t.match(/(\d{1,3})/);
+        const n = m ? parseInt(m[1], 10) : NaN;
+        if (n >= 0 && n <= 100) pcts.push(n);
+      }
+      if (pcts.length === 2) return { industry: pcts[0], network: pcts[1], layout: 'dom' };
+    } catch (e) {}
+    return { industry: null, network: null, layout: 'dom-miss' };
+  }
+
   // English-only fallback: label then number on the same run of text.
   function pctAfterLabel(text, kws) {
     for (const kw of kws) {
@@ -368,6 +394,7 @@
   // page that loaded but never painted (we can). The daily report could tell neither apart before
   // and called both "LinkedIn likely moved this metric in the DOM", which sent every investigation
   // to the wrong layer.
+  const SSI_DISCONTINUED_RE = /(do not have access to SSI|access to the Social Selling Index[^\n]{0,20}discontinued|has been discontinued|keinen Zugriff auf (?:den )?SSI|Zugriff auf den Social Selling Index[^\n]{0,40}eingestellt|wurde eingestellt|n['’]avez pas acc[eè]s (?:au|à l['’]) ?SSI|acc[eè]s au Social Selling Index[^\n]{0,40}(?:interrompu|supprim|arr[eê]t)|a [ée]t[ée] (?:interrompu|supprim[ée]))/i;
   function blockedReason(text) {
     const p = location.pathname || '';
     const t = text || '';
@@ -383,6 +410,14 @@
         /no longer have access|subscription has ended|reactivate|kein Zugriff mehr|abgelaufen|acc[èe]s a expir|abonnement a pris fin/i.test(t)) {
       return { code: 'sales_nav_expired',
                message: 'The Sales Navigator subscription on this account is not active — LinkedIn does not serve an SSI score without a seat.' };
+    }
+    // v0.3.7 — LinkedIn is RETIRING SSI account by account. vincent.puard@ collected SSI daily
+    // until 2026-10-16; on 2026-10-17 his page read "You do not have access to SSI / Your access to
+    // the Social Selling Index (SSI) has been discontinued." That is not a render failure and not a
+    // selector: no code can bring it back. Say so, so the report stops blaming the hidden tab.
+    if (SSI_DISCONTINUED_RE.test(t)) {
+      return { code: 'ssi_discontinued',
+               message: 'LinkedIn has discontinued the Social Selling Index for this account — the SSI page says access to SSI has been discontinued. Nothing can be collected; this is a LinkedIn change, not a Linalysis failure.' };
     }
     // A rendered SSI dashboard is thousands of characters. Below this LinkedIn served the empty
     // app shell: a render failure on this machine, never a changed selector.

@@ -375,8 +375,10 @@
   function scrapeAppearances(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'All Appearances',    metric(labels('All Appearances', ['all appearances', 'Alle Ansichten', 'alle Anzeigen', 'alle Erscheinungen', 'Gesamtzahl der Anzeigen', 'Anzeigen insgesamt', 'alle Aufrufe', 'toutes les apparitions', 'apparitions totales', 'todas las apariciones', 'tutte le comparse']), text, [/all[-_]?appearance/i, /allAppearance|totalAppearance/]));
-    put(out, 'Search Appearances', metric(labels('Search Appearances', ['search appearances', 'In Suchen erschienen', 'Suchanzeigen', 'Sucherscheinungen', 'Suchanfragen', 'Erscheinen in Suchergebnissen', 'Erscheinungen in der Suche', 'Anzeigen in Suchergebnissen', 'in Suchergebnissen', "apparitions dans les recherches", 'apparitions dans les résultats de recherche', 'apariciones en búsquedas', 'comparse nelle ricerche']), text, [/search[-_]?appearance/i, /searchAppearance/]));
+    const pos = cardValues('summary', 2);
+    if (pos) out['_by_position'] = true;
+    put(out, 'All Appearances',    byPosition(pos, 0) != null ? byPosition(pos, 0) : metric(labels('All Appearances', ['all appearances', 'Alle Ansichten', 'alle Anzeigen', 'alle Erscheinungen', 'Gesamtzahl der Anzeigen', 'Anzeigen insgesamt', 'alle Aufrufe', 'toutes les apparitions', 'apparitions totales', 'todas las apariciones', 'tutte le comparse']), text, [/all[-_]?appearance/i, /allAppearance|totalAppearance/]));
+    put(out, 'Search Appearances', byPosition(pos, 1) != null ? byPosition(pos, 1) : metric(labels('Search Appearances', ['search appearances', 'In Suchen erschienen', 'Suchanzeigen', 'Sucherscheinungen', 'Suchanfragen', 'Erscheinen in Suchergebnissen', 'Erscheinungen in der Suche', 'Anzeigen in Suchergebnissen', 'in Suchergebnissen', "apparitions dans les recherches", 'apparitions dans les résultats de recherche', 'apariciones en búsquedas', 'comparse nelle ricerche']), text, [/search[-_]?appearance/i, /searchAppearance/]));
 
     // "Where you appeared" breakdown — capture label/percent pairs (Search 44.3%, Posts 34.5%, …).
     try {
@@ -515,13 +517,24 @@
     // for someone with no subscription at all. Reading only the panel is the difference between a
     // measurement and a guess, and a wrong value is worse than a missing one.
     const packPanel = labels('Premium Panel', []).map(escapeRe);
-    const panelRe = '(?:Plan Details|Abo[- ]Details|Abodetails|D[ée]tails de l[\'’]abonnement'
+    const panelRe = '(?:Plan Details|Membership details|Abo[- ]Details|Abodetails|Details zu Ihrer Mitgliedschaft|Mitgliedschaftsdetails|D[ée]tails de l[\'’]abonnement|D[ée]tails de votre abonnement'
       + (packPanel.length ? '|' + packPanel.join('|') : '') + ')';
     const panel = text.match(new RegExp(panelRe + '\\s*\\n?\\s*([\\s\\S]{0,140})', 'i'));
     if (panel) {
       for (const k of known) { if (new RegExp(escapeRe(k), 'i').test(panel[1])) return k; }
       const m = panel[1].match(/^\s*([A-Za-z][A-Za-z .]{3,40})/);
       if (m) return m[1].trim();
+    }
+    // v0.3.7 — PRODUCT-NAME fallback for a panel heading we do not know yet. Product names are NOT
+    // translated ("Details zu Ihrer Mitgliedschaft / Sales Navigator Core" on David's German hub),
+    // and unlike Premium Business the hub never ADVERTISES a Sales Navigator / Recruiter tier as a
+    // gift. Still refuse a match that sits right after trial/upgrade wording in any of our locales.
+    const SN = /(Sales Navigator Advanced Plus|Sales Navigator Advanced|Sales Navigator Core|Recruiter Lite)/g;
+    let mm;
+    while ((mm = SN.exec(text))) {
+      const before = text.slice(Math.max(0, mm.index - 50), mm.index);
+      if (/(try|trial|upgrade|free|testen|kostenlos|probe|essai|essayer|gratuit|passer)/i.test(before)) continue;
+      return mm[1];
     }
     return null;
   }
@@ -532,16 +545,16 @@
   function scrapeCoFollowers(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Followers',     metric(labels('Company Followers', ['Total followers', 'Follower insgesamt', 'Abonnenten insgesamt', 'Gesamtzahl der Follower', 'Follower gesamt', "Nombre total d'abonnés", "Total d'abonnés", 'Abonnés au total']), text, [/total[-_]?follower/i, /follower[-_]?count|followerTotal/i]));
-    put(out, 'Company New Followers', metric(labels('Company New Followers', ['New followers', 'New followers in the last 30 days', 'Neue Follower', 'Neue Abonnenten', 'Neue Follower gewonnen', 'Nouveaux abonnés']), text, [/new[-_]?follower/i, /followerGain|newFollower/i]));
+    put(out, 'Company Followers',     (byPosition(cardValues('info-list', 2), 0) != null ? byPosition(cardValues('info-list', 2), 0) : metric(labels('Company Followers', ['Total followers', 'Follower insgesamt', 'Abonnenten insgesamt', 'Gesamtzahl der Follower', 'Follower gesamt', "Nombre total d'abonnés", "Total d'abonnés", 'Abonnés au total']), text, [/total[-_]?follower/i, /follower[-_]?count|followerTotal/i])));
+    put(out, 'Company New Followers', (byPosition(cardValues('info-list', 2), 1) != null ? byPosition(cardValues('info-list', 2), 1) : metric(labels('Company New Followers', ['New followers', 'New followers in the last 30 days', 'Neue Follower', 'Neue Abonnenten', 'Neue Follower gewonnen', 'Nouveaux abonnés']), text, [/new[-_]?follower/i, /followerGain|newFollower/i])));
     out['_diag'] = baseDiag('co_followers', attempt);
     return out;
   }
   function scrapeCoVisitors(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Unique Visitors', metric(labels('Company Unique Visitors', ['Unique visitors', 'Eindeutige Besucher', 'Einzelne Besucher', 'Einzelbesucher', 'Einmalige Besucher', 'Visiteurs uniques', 'Visiteurs distincts']), text, [/unique[-_]?visitor/i, /uniqueVisitor/]));
-    put(out, 'Company Custom Clicks',   metric(labels('Company Custom Clicks', ['Custom button clicks', 'Klicks auf', 'Clics sur le bouton']), text));
+    put(out, 'Company Unique Visitors', (byPosition(cardValues('info-list', 3), 1) != null ? byPosition(cardValues('info-list', 3), 1) : metric(labels('Company Unique Visitors', ['Unique visitors', 'Eindeutige Besucher', 'Einzelne Besucher', 'Einzelbesucher', 'Einmalige Besucher', 'Visiteurs uniques', 'Visiteurs distincts']), text, [/unique[-_]?visitor/i, /uniqueVisitor/])));
+    put(out, 'Company Custom Clicks',   (byPosition(cardValues('info-list', 3), 2) != null ? byPosition(cardValues('info-list', 3), 2) : metric(labels('Company Custom Clicks', ['Custom button clicks', 'Klicks auf', 'Clics sur le bouton']), text)));
     out['_diag'] = baseDiag('co_visitors', attempt);
     return out;
   }
@@ -563,10 +576,49 @@
   function scrapeCoSearch(attempt) {
     const out = {};
     const text = document.body ? document.body.innerText : '';
-    put(out, 'Company Search Appearances', metric(labels('Company Search Appearances', ['Page searches', 'Seitensuchen', 'Recherches de la Page', 'Recherches de page', 'Search appearances', 'Sucherscheinungen']), text, [/page[-_]?search/i, /pageSearch|searchAppearance/i]));
+    put(out, 'Company Search Appearances', (byPosition(cardValues('summary', 1), 0) != null ? byPosition(cardValues('summary', 1), 0) : metric(labels('Company Search Appearances', ['Page searches', 'Seitensuchen', 'Recherches de la Page', 'Recherches de page', 'Search appearances', 'Sucherscheinungen']), text, [/page[-_]?search/i, /pageSearch|searchAppearance/i])));
     out['_diag'] = baseDiag('co_search', attempt);
     return out;
   }
+
+  // ── POSITION-anchored card reader (v0.3.7) ─────────────────────────
+  // LinkedIn renders every analytics highlight strip with the SAME component, in EVERY language:
+  //   ul.member-analytics-addon-summary   > li  (personal appearances, company search appearances)
+  //   ul.member-analytics-addon-info-list > li  (company followers, company visitors)
+  // The class names are not translated, and the ORDER of the items is fixed by the component.
+  // Verified live 2026-10-18 on Olivier's English account and the Urban Factory Page:
+  //   /analytics/search-appearances/   summary   [All appearances, Search appearances]
+  //   /company/{id}/admin/analytics/followers/   info-list [Total followers, New followers 30d]
+  //   /company/{id}/admin/analytics/visitors/    info-list [Page views, Unique visitors, Custom button clicks]
+  //   /company/{id}/admin/analytics/search-appearances/ summary [Page searches]
+  // The German account lost exactly these fields because its LABELS never matched. Reading by
+  // position needs no label at all. It only answers when the strip has EXACTLY the expected number
+  // of items — if LinkedIn ever adds or drops a tile, it returns null and the label readers run.
+  function cardValues(kind, expectLen) {
+    try {
+      const lists = document.querySelectorAll('ul.member-analytics-addon-' + kind);
+      for (const ul of lists) {
+        const items = Array.prototype.filter.call(ul.children, function (li) { return li.tagName === 'LI'; });
+        if (items.length !== expectLen) continue;
+        const vals = items.map(function (li) {
+          const w = document.createTreeWalker(li, NodeFilter.SHOW_TEXT);
+          let n;
+          while ((n = w.nextNode())) {
+            const t = (n.nodeValue || '').trim();
+            if (!t) continue;
+            // The first non-empty text in a tile is its number. Anything else first = not a tile.
+            return /^\d[\d.,   ']*$/.test(t) && t.length <= 14 ? parseCount(t) : null;
+          }
+          return null;
+        });
+        return vals;
+      }
+    } catch (e) {}
+    return null;
+  }
+  // Position first, labels second. A positional value that fails the bounds check is recorded as
+  // rejected by put(), exactly like a label-read one.
+  function byPosition(vals, i) { return vals && vals[i] != null ? vals[i] : null; }
 
   // ── Shared helpers ──────────────────────────────────────────────────
   function baseDiag(page, attempt) {
