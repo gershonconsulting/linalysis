@@ -19,6 +19,14 @@ const DEFAULT_ORIGINS = [
 
 // CSV → KV column names (mirrors what the Chrome extension posts)
 const CSV_TO_COL = {
+  // 2026-10-13 network reader (extension v0.3.5): LinkedIn's own JSON endpoints, see network-api.js
+  'Connections New':             'connections_new',
+  'Invitations Sent Day':        'invitations_sent_day',
+  'Connections Added Window':    'connections_added_window',
+  'Connections Removed':         'connections_removed',
+  'Connections Window Hours':    'connections_window_hours',
+  'InMail Allowance':            'inmail_allowance',
+  'InMail Source':               'inmail_source',
   'Date':                        'captured_at',
   'Connections':                 'connections',
   'Search Appearance':           'search_appearances',
@@ -226,6 +234,7 @@ async function route(method, path, req, env, ctx) {
   if (r('POST',   '/api/admin/harvest/run-now'))   return adminHarvestRunNow(req, env);
   // Data
   if (r('GET',  '/api/data/summary'))      return dataSummary(req, env);
+  if (r('GET',  '/api/data/credits'))      return dataSeries(req, env, ['connections', 'invitations', 'invitations_pages', 'invitations_sent_24h', 'invitations_sent_7d', 'invitations_sent_day', 'connections_new', 'connections_added_window', 'connections_removed', 'connections_window_hours', 'inmail_credits', 'inmail_allowance', 'inmail_source', 'premium_plan', 'premium_renews', 'company_credits_available', 'company_credits_total']);
   if (r('GET',  '/api/data/connections'))  return dataSeries(req, env, ['connections', 'invitations', 'profile_views', 'search_appearances', 'inmail_credits', 'premium_plan', 'premium_renews']);
   // Growth metrics daily series (extension v0.2.0). Powers the LinkedIn Growth widget + weekly
   // invite-credit gauge. invitations_sent_24h summed over 7 days = weekly credit usage.
