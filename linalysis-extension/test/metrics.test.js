@@ -178,5 +178,31 @@ console.log('\n[bounds] absurd values are rejected, not stored');
   eq('  ...and recorded',            b._rejected['Connections'], 190000);
 }
 
+// v0.3.5 — real German + French page text (captured by the extension 2026-10-13).
+const APPEARANCES_DE = `
+<main>
+  <h2>Profilansichten</h2>
+  <p>Wie oft Ihr Profil vom 29. September bis 5. Oktober auf ganz LinkedIn angezeigt wurde. Mehr erfahren</p>
+  <div class="card"><p>141</p><p>Alle Ansichten</p><p>11 % vergangene 7 Tage</p></div>
+  <div class="card"><p>25</p><p>In Suchen erschienen</p><p>0 % vergangene 7 Tage</p></div>
+  <div><p>Wo Sie gezeigt wurden</p><p>Netzwerk-Empfehlungen  80,1 %</p><p>Suche  17,7 %</p><p>Beiträge  2,1 %</p></div>
+</main>`;
+const CO_SEARCH_FR = `
+<main>
+  <ul><li>Statistiques</li><li>Contenu</li><li>Visiteurs</li><li>Abonnés</li><li>Apparitions dans les recherches</li><li>Concurrents</li></ul>
+  <h2>L’essentiel des apparitions dans les recherches</h2>
+  <p>Fréquence d’apparition de votre Page dans les résultats de recherche entre le 5 octobre et le 11 octobre. En savoir plus</p>
+  <div class="card"><p>196</p><p>Recherches de la Page</p><p>10,1% les 7 derniers jours</p></div>
+  <h3>Touchez la bonne audience</h3>
+</main>`;
+console.log('\n[v0.3.5] German appearances + French company search');
+{
+  const de = load(APPEARANCES_DE).__T.scrapeAppearances(1);
+  eq('DE All Appearances = 141',   de['All Appearances'], 141);
+  eq('DE Search Appearances = 25', de['Search Appearances'], 25);
+  const fr = load(CO_SEARCH_FR).__T.scrapeCoSearch(1);
+  eq('FR Company Search Appearances = 196', fr['Company Search Appearances'], 196);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

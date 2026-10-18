@@ -27,6 +27,8 @@
 //   3. CATCH-UP. If more than ~20h have passed with no captured data, the next heartbeat runs a sync
 //      instead of waiting for tomorrow's 09:00 alarm. A closed laptop no longer costs a whole day.
 
+import { linkedinNetworkProbe, foldNetwork } from './network-api.js';
+
 const API_BASE = 'https://api.linalysis.net';
 const ALARM_NAME = 'linalysisDailySync';
 const SYNC_POLL_ALARM = 'linalysisSyncPoll';
@@ -652,14 +654,19 @@ async function collectSSI(tabId) {
 // them) wins over the one cached from browsing. Before this the only way to tell Linalysis which
 // Page to read was to happen to open that Page's admin screen in this browser; an account whose
 // user never did collected no company data at all, and nobody could set it for them.
-async function chosenCompanyRef() {
+// v0.3.5: anyManual=false also accepts the Page this account's extension reported earlier
+// (source 'extension'). Used only when the local cache is empty — verified 2026-10-13 that an
+// account whose Chrome storage was reset (amoslee89) silently stopped collecting its Page even
+// though Linalysis still knew which one it was.
+async function chosenCompanyRef(manualOnly = true) {
   try {
     const p = await getPairing();
     if (!p || !p.token) return null;
     const r = await fetch(API_BASE + '/api/user/company-id', { headers: { 'Authorization': 'Bearer ' + p.token } });
     if (!r.ok) return null;                       // older Worker, or not signed in: keep the cached ID
     const j = await r.json();
-    const ref = j && j.source === 'manual' && j.company_id ? String(j.company_id).trim() : '';
+    const okSource = j && (j.source === 'manual' || (!manualOnly && j.source === 'extension'));
+    const ref = okSource && j.company_id ? String(j.company_id).trim() : '';
     return ref && ref.length <= 100 && !/[\/?#\s]/.test(ref) ? ref : null;
   } catch (e) { return null; }
 }
@@ -702,6 +709,14 @@ async function collectMetrics(tabId, trigger) {
       await log('info', 'company:chosen', { chosen, cached: cid || null });
       cid = await resolveCompanyRef(tabId, chosen);
     }
+    if (!cid) {
+      const remembered = await chosenCompanyRef(false);
+      if (remembered) {
+        await log('info', 'company:remembered', { remembered });
+        cid = await resolveCompanyRef(tabId, remembered);
+        if (cid) await chrome.storage.local.set({ linalysis_company_id: String(cid) });
+      }
+    }
     if (cid) {
       const seg = encodeURIComponent(cid);
       pages.push(
@@ -727,6 +742,17 @@ async function collectMetrics(tabId, trigger) {
         // Not a scraper problem — say so plainly instead of blaming a moved selector.
         await log('warn', 'metrics:signed_out', { key: page.key, probe });
         await reportCollect({ page: page.key, ok: false, error: outReason, url: landed, text_len: probe ? probe.len : null, visible: probe ? probe.vis === 'visible' : null });
+        continue;
+      }
+
+      // v0.3.5: a Company Page this LinkedIn account does not administer lands on
+      // /company/no-access/ (verified 2026-10-13, abougel → ALTAVIA). That is a permissions fact,
+      // not a sign-out and not a render failure — say so, so the fix goes to the Page's admins.
+      if (/^co_/.test(page.key) && /\/company\/(no-access|unavailable)|\/company\/[^/]+\/?$/.test(String(landed).split('?')[0])) {
+        const why = 'No admin access to Company Page ' + (await cachedCompanyId() || '') +
+          ' — this LinkedIn account is not an admin of that Page. A Page admin must add it (the "Analyst" role is enough).';
+        await log('warn', 'metrics:company_no_access', { key: page.key, landed });
+        await reportCollect({ page: page.key, ok: false, error: why, url: landed, text_len: probe ? probe.len : null, visible: probe ? probe.vis === 'visible' : null });
         continue;
       }
 
@@ -788,7 +814,52 @@ async function collectMetrics(tabId, trigger) {
       await reportCollect({ page: page.key, ok: false, error: String(e.message || e), url: page.url });
     }
   }
+  // v0.3.5 — connections gained/removed, invitations sent per day and the InMail balance, read
+  // from LinkedIn's own JSON endpoints in this same tab. See network-api.js for why.
+  try { await collectNetworkApi(tabId); }
+  catch (e) { await log('error', 'network:failed', { error: String(e.message || e) }); }
   await log('info', 'metrics:done', { trigger });
+}
+
+async function collectNetworkApi(tabId) {
+  let res = null;
+  try {
+    const [r] = await chrome.scripting.executeScript({ target: { tabId }, func: linkedinNetworkProbe, args: [{ days: 8 }] });
+    res = r && r.result;
+  } catch (e) {
+    await reportCollect({ page: 'network_api', ok: false, error: 'Could not run the network reader: ' + String(e.message || e) });
+    return;
+  }
+  if (!res || !res.ok) {
+    await reportCollect({ page: 'network_api', ok: false, error: (res && res.error === 'no_session') ? 'Signed out of LinkedIn in the collecting browser.' : 'Network reader returned nothing.' });
+    return;
+  }
+  const key = 'linalysis_netlog';
+  const st = (await chrome.storage.local.get(key))[key] || null;
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return undefined; } })();
+  const folded = foldNetwork(st, res, { now: res.at, tz });
+  const p = await getPairing();
+  if (!p.token || !p.email) return;
+  if (!folded.rows.length) {
+    await reportCollect({ page: 'network_api', ok: false, error: 'Nothing readable: ' + res.errors.join('; ').slice(0, 300) });
+    return;
+  }
+  const resp = await fetch(API_BASE + '/api/ingest/linkedin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + p.token },
+    body: JSON.stringify({ rows: folded.rows }),
+  });
+  if (!resp.ok) {
+    await reportCollect({ page: 'network_api', ok: false, error: 'Linalysis rejected the network data (HTTP ' + resp.status + ').' });
+    return;
+  }
+  // Only remember the snapshot once the server has it — otherwise a failed post would make the next
+  // "removed since last capture" span two days while claiming one.
+  await chrome.storage.local.set({ [key]: folded.st });
+  await noteDataCaptured();
+  const values = Object.keys(folded.rows[folded.rows.length - 1]).filter(k => k !== 'Date');
+  await reportCollect({ page: 'network_api', ok: true, values, error: res.errors.length ? res.errors.join('; ').slice(0, 300) : undefined });
+  await log('info', 'network:ok', { rows: folded.rows.length, errors: res.errors });
 }
 
 // ─── Posting ────────────────────────────────────────────────────────────
