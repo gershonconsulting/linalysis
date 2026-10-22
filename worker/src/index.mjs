@@ -1628,35 +1628,34 @@ function fieldCount(row) {
   return Object.keys(row).filter(k => k !== 'captured_at' && row[k] != null && row[k] !== '').length;
 }
 
-// A delta cell, coloured only when the metric has a meaningful direction.
+// ── Daily audit email, compact markup (2026-10-22) ────────────────────
+// The old email repeated a long inline style on every cell and printed a 5-column table per
+// account, which made a 13-account report ~180KB. Gmail clips anything over 102KB, so the
+// bottom of the report (per-account detail and the failure legend) was hidden. Styles now live
+// once in a <style> block in the email head (Gmail keeps class selectors), metrics flow as one
+// compact line per account, and full detail stays one click away in the admin console.
+// Nothing is dropped: prior-day value = today − day Δ, and a metric missing today shows "(was X)".
+const AUDIT_DASH_URL = 'https://linalysis.net/admin#audits';
+
+// A delta, coloured only when the metric has a meaningful direction.
 function deltaCell(d, dir, dp) {
-  if (d == null) return '<span style="color:#9ca3af">—</span>';
-  if (d === 0) return '<span style="color:#6e6e73">0</span>';
-  const good = dir === 1 ? d > 0 : null;
-  const color = good === null ? '#1d1d1f' : (good ? '#057642' : '#cc1016');
-  const arrow = d > 0 ? '▲' : '▼';
-  return `<span style="color:${color};font-weight:600">${arrow} ${d > 0 ? '+' : '−'}${fmtNum(Math.abs(d), dp)}</span>`;
+  if (d == null) return '<i class="q">—</i>';
+  if (d === 0) return '<i class="m">0</i>';
+  const cls = dir === 1 ? (d > 0 ? 'g' : 'r') : 'n';
+  return `<i class="${cls}">${d > 0 ? '▲+' : '▼−'}${fmtNum(Math.abs(d), dp)}</i>`;
 }
 
-function renderProgressTable(p, reportDate, priorDate) {
-  if (!p.rows.length) {
-    return '<div style="font-size:12px;color:#9ca3af;padding:6px 0">No metrics stored for either day — nothing to compare.</div>';
+// One account's metrics: movers as "Label value dayΔ / 7-dayΔ", then everything that did not move.
+function renderProgressTable(p) {
+  if (!p.rows.length) return '<div class="q s">No metrics stored for either day — nothing to compare.</div>';
+  const moved = [], same = [];
+  for (const m of p.rows) {
+    if (m.cur != null && m.d === 0 && !m.d7) { same.push(`${esc(m.label)} ${fmtNum(m.cur, m.dp)}`); continue; }
+    const val = m.cur == null ? `— <i class="q">(was ${fmtNum(m.prev, m.dp)})</i>` : `<b>${fmtNum(m.cur, m.dp)}</b>`;
+    moved.push(`<span class="k">${esc(m.label)} ${val} ${deltaCell(m.d, m.dir, m.dp)}/${deltaCell(m.d7, m.dir, m.dp)}</span>`);
   }
-  const rows = p.rows.map(m => `<tr>
-      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6">${esc(m.label)}</td>
-      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right;color:#6e6e73">${fmtNum(m.prev, m.dp)}</td>
-      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">${fmtNum(m.cur, m.dp)}</td>
-      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right">${deltaCell(m.d, m.dir, m.dp)}</td>
-      <td style="padding:5px 10px;border-bottom:1px solid #f3f4f6;text-align:right">${deltaCell(m.d7, m.dir, m.dp)}</td>
-    </tr>`).join('');
-  return `<table style="width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 4px">
-    <thead><tr style="background:#f5f5f7;color:#6e6e73;font-size:10px;text-transform:uppercase;letter-spacing:.05em">
-      <th style="text-align:left;padding:6px 10px">Metric</th>
-      <th style="text-align:right;padding:6px 10px">${esc(priorDate)}</th>
-      <th style="text-align:right;padding:6px 10px">${esc(reportDate)}</th>
-      <th style="text-align:right;padding:6px 10px">Day Δ</th>
-      <th style="text-align:right;padding:6px 10px">7-day Δ</th>
-    </tr></thead><tbody>${rows}</tbody></table>`;
+  return (moved.length ? `<div>${moved.join(' ')}</div>` : '') +
+    (same.length ? `<div class="s m">Unchanged: ${same.join(' · ')}</div>` : '');
 }
 
 // The alarm the whole report exists for: a day went by and nothing was collected.
@@ -1670,65 +1669,37 @@ function renderBigWarning(didNotRun, accounts, reportDate) {
   const sub = all
     ? `Not a single account captured data on ${esc(reportDate)}. This is a full outage, not a gap.`
     : `These accounts have no data at all for ${esc(reportDate)}:`;
-  const list = all ? '' : `<div style="margin-top:10px;font-size:13px;line-height:1.7">${
-    didNotRun.map(a => `• <strong>${esc(a.email)}</strong>${a.days_old > 1 ? ` — last good capture ${esc(a.last_date || 'never')} (${a.days_old} days ago)` : ''}`).join('<br>')
-  }</div>`;
-  return `<div style="background:#cc1016;color:#fff;padding:22px 24px;border-radius:12px;margin-bottom:18px">
-    <div style="font-size:13px;font-weight:700;letter-spacing:.14em;opacity:.85">🚨 CRITICAL</div>
-    <div style="font-size:24px;font-weight:800;line-height:1.25;margin:6px 0 8px">${head}</div>
-    <div style="font-size:13px;opacity:.95">${sub}</div>
-    ${list}
-    <div style="margin-top:14px;font-size:12px;opacity:.9;border-top:1px solid rgba(255,255,255,.3);padding-top:10px">
-      First things to check: is Chrome running on that machine with the extension enabled, is the account still signed in to LinkedIn,
-      and did the extension check in at all (shown per account below)?
-    </div>
-  </div>`;
+  const list = all ? '' : '<div>' + didNotRun.map(a => `• <b>${esc(a.email)}</b>${a.days_old > 1 ? ` — last good capture ${esc(a.last_date || 'never')} (${a.days_old} days ago)` : ''}`).join('<br>') + '</div>';
+  return `<div class="bx crit" style="background:#cc1016;color:#fff">
+<div class="b s">🚨 CRITICAL</div><div style="font-size:20px;font-weight:800">${head}</div><div>${sub}</div>${list}
+<div class="s" style="margin-top:8px">First things to check: is Chrome running on that machine with the extension enabled, is the account still signed in to LinkedIn, and did the extension check in at all (shown per account below)?</div></div>`;
 }
 
-// Second alarm: an old extension silently collects less than the current one.
-// Third alarm, and the one that matters most for trust in the numbers: values the plausibility
-// guard refused to write. A held-back value means the scraper read something the data says cannot
-// be true — normally a selector that has drifted onto the wrong element. Naming it here is what
-// turns a silent corruption into a fifteen-minute fix.
+// Values the plausibility guard refused to write — normally a selector that drifted onto the wrong element.
 function renderSuspectWarning(accounts, reportDate) {
   const withHeld = accounts.filter(a => (a.suspects || []).length);
   if (!withHeld.length) return '';
-  const rows = withHeld.map(a => `<div style="margin-top:10px">
-      <div style="font-weight:700;font-size:13px">${esc(a.email)}</div>
-      ${a.suspects.map(x => `<div style="font-size:12.5px;line-height:1.65;padding-left:14px">
-        · <strong>${esc(x.col)}</strong> — read <strong>${esc(String(x.value))}</strong>, not stored${
-          x.prior != null ? ` (last good ${esc(String(x.prior))} on ${esc(x.prior_date || '')})` : ''
-        }<br><span style="color:#8a6d1a;padding-left:12px">${esc(x.reason || '')}</span>
-      </div>`).join('')}
-    </div>`).join('');
-  return `<div style="background:#fff8e6;border:1px solid #f0d68a;padding:18px 20px;border-radius:12px;margin-bottom:18px">
-    <div style="font-size:13px;font-weight:700;letter-spacing:.12em;color:#8a6d1a">⚠ VALUES HELD BACK</div>
-    <div style="font-size:15px;font-weight:700;margin:6px 0 4px">The scraper read numbers on ${esc(reportDate)} that cannot be right</div>
-    <div style="font-size:12.5px;color:#6e6e73">Nothing below was written to history. Each one is a metric whose value contradicts what the same
-      metric read a day or two earlier by more than it can genuinely move — almost always a selector that has landed on the wrong
-      element. Fix the selector, or accept the value deliberately if LinkedIn really did change the metric.</div>
-    ${rows}
-  </div>`;
+  const rows = withHeld.map(a => `<div><b>${esc(a.email)}</b>` + a.suspects.map(x =>
+    `<div class="i">· <b>${esc(x.col)}</b> — read <b>${esc(String(x.value))}</b>, not stored${
+      x.prior != null ? ` (last good ${esc(String(x.prior))} on ${esc(x.prior_date || '')})` : ''}<br><span class="y">${esc(x.reason || '')}</span></div>`).join('') + '</div>').join('');
+  return `<div class="bx" style="background:#fff8e6;border:1px solid #f0d68a">
+<div class="b y">⚠ VALUES HELD BACK — the scraper read numbers on ${esc(reportDate)} that cannot be right</div>
+<div class="s m">Nothing below was written to history. Each value contradicts what the same metric read a day or two earlier by more than it can genuinely move — almost always a selector on the wrong element. Fix the selector, or accept the value deliberately if LinkedIn really changed the metric.</div>${rows}</div>`;
 }
 
 function renderExtWarning(staleExt, noCheckin, latest) {
   if (!staleExt.length && !noCheckin.length) return '';
-  const parts = [];
+  let h = '';
   if (staleExt.length) {
-    parts.push(`<div style="font-size:14px;font-weight:700;margin-bottom:6px">⚠ ${staleExt.length} account${staleExt.length > 1 ? 's are' : ' is'} running an outdated Chrome extension</div>
-      <div style="font-size:12.5px;line-height:1.7">${staleExt.map(a =>
-        `• <strong>${esc(a.email)}</strong> — installed <strong>v${esc(a.ext_version)}</strong>, current is <strong>v${esc(latest.version)}</strong>${a.ext_last_seen ? ` · last check-in ${esc(a.ext_last_seen.slice(0, 16).replace('T', ' '))} UTC` : ''}`
-      ).join('<br>')}</div>
-      <div style="font-size:12px;margin-top:8px;opacity:.9">Older builds miss metrics the current one captures, so their gaps are expected rather than a scraping bug. Chrome auto-updates from <code>linalysis.net/extension/updates.xml</code> within a few hours of launch — if a version stays behind for more than a day, the extension was likely side-loaded or updates are blocked.</div>`);
+    h += `<div class="b">⚠ ${staleExt.length} account${staleExt.length > 1 ? 's are' : ' is'} running an outdated Chrome extension</div><div>` +
+      staleExt.map(a => `• <b>${esc(a.email)}</b> — v${esc(a.ext_version)}, current v${esc(latest.version)}${a.ext_last_seen ? ` · last check-in ${esc(a.ext_last_seen.slice(0, 16).replace('T', ' '))} UTC` : ''}`).join('<br>') +
+      `</div><div class="s">Older builds miss metrics the current one captures, so their gaps are expected. Chrome auto-updates from linalysis.net/extension/updates.xml within hours; a version behind for over a day means a side-loaded install (Load unpacked) or blocked updates.</div>`;
   }
   if (noCheckin.length) {
-    parts.push(`<div style="font-size:13px;font-weight:700;margin:${staleExt.length ? '14px' : '0'} 0 6px">⚠ ${noCheckin.length} account${noCheckin.length > 1 ? 's have' : ' has'} never reported an extension version</div>
-      <div style="font-size:12.5px;line-height:1.7">${noCheckin.map(a => `• <strong>${esc(a.email)}</strong>`).join('<br>')}</div>`);
+    h += `<div class="b">⚠ ${noCheckin.length} account${noCheckin.length > 1 ? 's have' : ' has'} never reported an extension version</div><div>` +
+      noCheckin.map(a => `• <b>${esc(a.email)}</b>`).join('<br>') + '</div>';
   }
-  return `<div style="background:#fff4e5;color:#7a4a00;padding:16px 18px;border-radius:12px;margin-bottom:18px;border:1px solid #f0d3a3">
-    ${parts.join('')}
-    <div style="font-size:11px;margin-top:10px;color:#9a6a20">Current published version resolved from ${esc(latest.source)}.</div>
-  </div>`;
+  return `<div class="bx" style="background:#fff4e5;color:#7a4a00;border:1px solid #f0d3a3">${h}<div class="s">Current published version resolved from ${esc(latest.source)}.</div></div>`;
 }
 
 async function runDailyDataAudit(env) {
@@ -1959,57 +1930,52 @@ function pill(status) {
   return `<span style="display:inline-block;background:${st.bg};color:${st.fg};font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px">${st.label}</span>`;
 }
 
+// Status pill for the compact email (colours come from the <style> block; pill() above stays inline).
+function cpill(status) {
+  const st = STATUS_STYLE[status] || STATUS_STYLE.error;
+  const c = { ok: 'pok', partial: 'ppa', pending: 'ppa', no_data: 'pnd' }[status] || 'pfa';
+  return `<span class="p ${c}">${st.label}</span>`;
+}
+function utcShort(s) { return esc(String(s).slice(0, 16).replace('T', ' ')) + ' UTC'; }
+
+// Styles for the daily audit email, written once instead of on every element.
+const AUDIT_EMAIL_CSS = `body{margin:0;padding:14px;background:#f7f7f8;color:#1d1d1f;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+.w{max-width:860px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px 22px}
+h1{font-size:19px;margin:0;color:#CC3333}h2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73;margin:18px 0 6px}
+a{color:#CC3333}i{font-style:normal}.b{font-weight:700}.s{font-size:11.5px}.i{padding-left:16px}
+.m{color:#6e6e73}.q{color:#9ca3af}.g{color:#057642}.r{color:#cc1016}.o{color:#b76b00}.y{color:#8a6d1a}.n{color:#1d1d1f}
+.g,.r,.n{font-weight:600}.k{display:inline-block;margin-right:10px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:4px 7px;border-bottom:1px solid #f0f0f2;text-align:left;vertical-align:top}
+th{background:#f5f5f7;color:#6e6e73;font-size:10px;text-transform:uppercase}td:first-child{word-break:break-all}
+.p{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px}
+.pok{background:#e6f4ea;color:#057642}.ppa{background:#fff4e5;color:#b76b00}.pfa{background:#fdecea;color:#cc1016}.pnd{background:#f1f1f3;color:#6e6e73}
+.bx{border-radius:10px;padding:12px 14px;margin:0 0 12px}.a{border:1px solid #e5e7eb;border-radius:10px;padding:9px 12px;margin-bottom:8px}
+.x{font:10.5px/1.4 ui-monospace,Menlo,monospace;background:#fafafa;border-left:2px solid #e5e7eb;padding:4px 8px;margin:2px 0 4px 16px;white-space:pre-wrap;color:#6e6e73;max-height:96px;overflow:hidden}`;
+
 function renderAccountBlock(a, reportDate, priorDate, latest) {
-  const pageRows = a.pages.map(p => {
-    const tone = p.state === 'ok' ? '#057642' : p.state === 'partial' ? '#b76b00' : p.state === 'not_configured' ? '#9ca3af' : '#cc1016';
-    const mark = p.state === 'ok' ? '✓' : p.state === 'not_configured' ? '–' : '✗';
-    const detail = p.state === 'ok'
-      ? esc(p.captured.join(', '))
-      : p.state === 'not_configured'
-        ? 'not set up for this account'
-        : (p.captured.length ? 'got ' + esc(p.captured.join(', ')) + ' · ' : '') + 'missing ' + esc(p.missing.join(', '));
-    const why = p.reason ? `<div style="color:#cc1016;font-size:11px;padding-left:18px">↳ ${esc(p.reason)}</div>` : '';
-    const landed = p.landed_url && p.state !== 'ok' ? `<div style="color:#6e6e73;font-size:11px;padding-left:18px">↳ page landed on ${esc(p.landed_url)}${p.text_len != null ? ' · ' + p.text_len + ' chars of text' : ''}</div>` : '';
-    const sample = p.sample && p.state !== 'ok' ? `<div style="color:#6e6e73;font-size:10.5px;padding-left:18px;margin-top:2px;font-family:ui-monospace,Menlo,monospace;background:#fafafa;border-left:2px solid #e5e7eb;padding:4px 8px;white-space:pre-wrap;max-height:120px;overflow:hidden">${esc(p.sample.slice(0, 600))}</div>` : '';
-    const badge = (a.fixed || []).includes(p.label) ? ' <span style="background:#e6f4ea;color:#057642;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px">FIXED</span>'
-      : (a.regressed || []).includes(p.label) ? ' <span style="background:#fdecea;color:#cc1016;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px">BROKE</span>' : '';
-    return `<div style="padding:3px 0"><span style="color:${tone};font-weight:700">${mark}</span> <strong style="font-size:12px">${esc(p.label)}</strong>${badge} <span style="color:#6e6e73;font-size:12px">— ${detail}</span></div>${why}${landed}${sample}`;
-  }).join('');
-
-  const notes = (a.notes || []).map(n => `<div style="font-size:12px;color:#b76b00;margin-top:4px">⚠ ${esc(n)}</div>`).join('');
-  const errLine = a.last_error
-    ? `<div style="font-size:12px;color:#cc1016;margin-top:6px;background:#fdecea;padding:8px 10px;border-radius:8px">Last reported error${a.last_error_at ? ' (' + esc(a.last_error_at.slice(0, 16).replace('T', ' ')) + ' UTC)' : ''}: ${esc(a.last_error)}</div>`
-    : '';
+  const ok = [], off = [], bad = [];
+  for (const p of a.pages || []) {
+    const badge = (a.fixed || []).includes(p.label) ? ' <span class="p pok">FIXED</span>'
+      : (a.regressed || []).includes(p.label) ? ' <span class="p pfa">BROKE</span>' : '';
+    if (p.state === 'ok') { ok.push(esc(p.label) + badge); continue; }
+    if (p.state === 'not_configured') { off.push(esc(p.label)); continue; }
+    let h = `<div><b class="${p.state === 'partial' ? 'o' : 'r'}">✗ ${esc(p.label)}</b>${badge} <span class="m">— ${p.captured.length ? 'got ' + esc(p.captured.join(', ')) + ' · ' : ''}missing ${esc(p.missing.join(', '))}</span></div>`;
+    if (p.reason) h += `<div class="r s i">↳ ${esc(p.reason)}</div>`;
+    if (p.landed_url) h += `<div class="m s i">↳ page landed on ${esc(p.landed_url)}${p.text_len != null ? ' · ' + p.text_len + ' chars of text' : ''}</div>`;
+    if (p.sample) h += `<div class="x">${esc(p.sample.slice(0, 600))}</div>`;
+    bad.push(h);
+  }
   const ext = a.ext_version
-    ? `v${esc(a.ext_version)}${a.ext_stale ? ` <span style="color:#cc1016;font-weight:700">⚠ outdated — v${esc((latest || {}).version || '')} available</span>` : ''}${a.ext_last_seen ? ' · last seen ' + esc(a.ext_last_seen.slice(0, 16).replace('T', ' ')) + ' UTC' : ''}`
-    : '<span style="color:#cc1016">no extension check-in</span>';
-
-  const ranLine = a.ran
-    ? ''
-    : `<div style="background:#fdecea;color:#cc1016;font-size:12.5px;font-weight:700;padding:9px 12px;border-radius:8px;margin:8px 0">🚨 No data was collected for this account on ${esc(reportDate)}.</div>`;
-
-  const progressBlock = a.progress && a.progress.rows.length
-    ? `<div style="margin-top:10px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73;font-weight:700">Progress · ${a.progress.up} up / ${a.progress.down} down / ${a.progress.flat} unchanged</div>
-        ${renderProgressTable(a.progress, reportDate, priorDate)}
-      </div>`
-    : '';
-
-  return `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <strong style="font-size:14px">${esc(a.email)}</strong> ${pill(a.status)}
-    </div>
-    <div style="color:#6e6e73;font-size:12px;margin:6px 0 10px">
-      Last capture: <strong>${esc(a.last_date || 'never')}</strong>${a.days_old > 1 ? ` <span style="color:#cc1016">(${a.days_old} days before the reported day)</span>` : ''}
-      · Fields on ${esc(reportDate)}: <strong>${a.fields_count}</strong> (was ${a.fields_prev})
-      · Extension: ${ext}
-    </div>
-    ${ranLine}
-    ${pageRows}
-    ${notes}
-    ${errLine}
-    ${progressBlock}
-  </div>`;
+    ? `v${esc(a.ext_version)}${a.ext_stale ? ` <b class="r">⚠ outdated — v${esc((latest || {}).version || '')} available</b>` : ''}${a.ext_last_seen ? ' · last seen ' + utcShort(a.ext_last_seen) : ''}`
+    : '<span class="r">no extension check-in</span>';
+  const p = a.progress;
+  return `<div class="a"><div><b>${esc(a.email)}</b> ${cpill(a.status)}</div>
+<div class="s m">Last capture <b>${esc(a.last_date || 'never')}</b>${a.days_old > 1 ? ` <span class="r">(${a.days_old} days before the reported day)</span>` : ''} · fields on ${esc(reportDate)}: <b>${a.fields_count || 0}</b> (was ${a.fields_prev || 0}) · extension ${ext}</div>
+${a.ran ? '' : `<div class="r b">🚨 No data was collected for this account on ${esc(reportDate)}.</div>`}${ok.length ? `<div><b class="g">✓</b> ${ok.join(', ')}</div>` : ''}${bad.join('')}${off.length ? `<div class="s q">– not set up for this account: ${off.join(', ')}</div>` : ''}${
+  (a.notes || []).map(n => `<div class="s o">⚠ ${esc(n)}</div>`).join('')}${
+  a.last_error ? `<div class="s r">Last reported error${a.last_error_at ? ' (' + utcShort(a.last_error_at) + ')' : ''}: ${esc(a.last_error)}</div>` : ''}${
+  p && p.rows.length ? `<div class="s m b" style="margin-top:4px">Progress · ${p.up} up / ${p.down} down / ${p.flat} unchanged</div>${renderProgressTable(p)}` : ''}</div>
+`;
 }
 
 function renderAuditEmail(accounts, counts, reportDate, ctx) {
@@ -2021,91 +1987,41 @@ function renderAuditEmail(accounts, counts, reportDate, ctx) {
   const sorted = accounts.slice().sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
   const problems = counts.partial + counts.failed + counts.no_data;
   const fieldsDelta = t.fields - t.fields_prev;
+  const verdict = t.up > t.down ? ['Moving forward', 'g'] : t.down > t.up ? ['Slipping', 'r'] : ['Holding steady', 'm'];
 
-  const verdict = t.up > t.down ? { text: 'Moving forward', color: '#057642' }
-    : t.down > t.up ? { text: 'Slipping', color: '#cc1016' }
-    : { text: 'Holding steady', color: '#6e6e73' };
-
-  const summaryRows = sorted.map(a => `<tr>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${esc(a.email)}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${pill(a.status)}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${esc(a.last_date || '—')}${a.days_old > 1 ? ` <span style="color:#cc1016">+${a.days_old}d</span>` : ''}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${a.fields_count}${a.fields_prev ? ` <span style="color:${a.fields_count >= a.fields_prev ? '#057642' : '#cc1016'};font-size:11px">(${a.fields_count - a.fields_prev >= 0 ? '+' : '−'}${Math.abs(a.fields_count - a.fields_prev)})</span>` : ''}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${a.progress ? `<span style="color:#057642">▲${a.progress.up}</span> / <span style="color:#cc1016">▼${a.progress.down}</span>` : '—'}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6">${a.ext_version ? (a.ext_stale ? `<span style="color:#cc1016;font-weight:600">v${esc(a.ext_version)} ⚠</span>` : `v${esc(a.ext_version)}`) : '<span style="color:#cc1016">none</span>'}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #f3f4f6;color:#cc1016">${esc((a.pages || []).filter(p => p.core && p.state !== 'ok').map(p => p.label).join(', ')) || '—'}</td>
-    </tr>`).join('');
+  const summaryRows = sorted.map(a => {
+    const fd = a.fields_count - a.fields_prev;
+    const failedPages = (a.pages || []).filter(p => p.core && p.state !== 'ok').map(p => p.label).join(', ');
+    return `<tr><td>${esc(a.email)}</td><td>${cpill(a.status)}</td><td>${esc(a.last_date || '—')}${a.days_old > 1 ? ` <i class="r">+${a.days_old}d</i>` : ''}</td><td>${a.fields_count}${a.fields_prev ? ` <i class="${fd >= 0 ? 'g' : 'r'} s">(${fd >= 0 ? '+' : '−'}${Math.abs(fd)})</i>` : ''}</td><td>${a.progress ? `<i class="g">▲${a.progress.up}</i> / <i class="r">▼${a.progress.down}</i>` : '—'}</td><td>${a.ext_version ? (a.ext_stale ? `<i class="r">v${esc(a.ext_version)} ⚠</i>` : `v${esc(a.ext_version)}`) : '<i class="r">none</i>'}</td><td class="r">${esc(failedPages) || '—'}</td></tr>`;
+  }).join('\n');
 
   const banner = (ctx.didNotRun && ctx.didNotRun.length) ? ''
     : problems === 0
-      ? `<div style="background:#e6f4ea;color:#057642;padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600">✓ All ${accounts.length} accounts collected cleanly on ${esc(reportDate)}.</div>`
-      : `<div style="background:#fdecea;color:#cc1016;padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600">⚠ ${problems} of ${accounts.length} accounts did not collect completely on ${esc(reportDate)}.</div>`;
+      ? `<div class="bx b" style="background:#e6f4ea;color:#057642">✓ All ${accounts.length} accounts collected cleanly on ${esc(reportDate)}.</div>`
+      : `<div class="bx b" style="background:#fdecea;color:#cc1016">⚠ ${problems} of ${accounts.length} accounts did not collect completely on ${esc(reportDate)}.</div>`;
 
-  const tile = (v, label, color) => `<div style="flex:1;min-width:104px;background:#f5f5f7;border-radius:10px;padding:12px 14px"><div style="font-size:22px;font-weight:700;color:${color}">${v}</div><div style="font-size:11px;color:#6e6e73;text-transform:uppercase;letter-spacing:.05em">${label}</div></div>`;
-
-  return `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1d1d1f;padding:24px;background:#f5f5f7;margin:0">
-  <div style="max-width:860px;margin:0 auto;background:#fff;border-radius:14px;padding:28px 32px">
-    <h1 style="font-size:20px;margin:0 0 2px;color:#FE1B04">Linalysis — what happened yesterday</h1>
-    <p style="color:#6e6e73;font-size:13px;margin:0 0 18px">Reporting on <strong>${esc(reportDate)}</strong> (compared with ${esc(priorDate)}) · generated ${new Date().toUTCString()} · build ${esc(ctx.build || 'dev')}</p>
-
-    ${renderBigWarning(ctx.didNotRun || [], accounts, reportDate)}
-    ${renderSuspectWarning(accounts, reportDate)}
-    ${renderExtWarning(ctx.staleExt || [], ctx.noCheckin || [], latest)}
-    ${banner}
-
-    <h2 style="font-size:14px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73">Did we make progress?</h2>
-    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin-bottom:14px">
-      <div style="font-size:17px;font-weight:700;color:${verdict.color};margin-bottom:10px">${verdict.text} — ${t.up} metric${t.up === 1 ? '' : 's'} up, ${t.down} down, ${t.flat} unchanged</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        ${tile('▲ ' + t.up, 'Metrics up', '#057642')}
-        ${tile('▼ ' + t.down, 'Metrics down', '#cc1016')}
-        ${tile('= ' + t.flat, 'Unchanged', '#6e6e73')}
-        ${tile((fieldsDelta >= 0 ? '+' : '−') + Math.abs(fieldsDelta), 'Fields vs prior day', fieldsDelta >= 0 ? '#057642' : '#cc1016')}
-        ${tile(t.fixed, 'Pages fixed', '#057642')}
-        ${tile(t.regressed, 'Pages broken', t.regressed ? '#cc1016' : '#6e6e73')}
-      </div>
-      <div style="font-size:11.5px;color:#6e6e73;margin-top:10px">
-        &ldquo;Metrics up/down&rdquo; counts only metrics where a rise is genuinely good (SSI, connections, views, appearances, company reach).
-        Neutral ones — pending invitations, InMail credits, SSI rank percentiles — are shown per account but never voted on.
-        &ldquo;Fields&rdquo; and &ldquo;pages&rdquo; measure the health of collection itself: ${t.fields} field${t.fields === 1 ? '' : 's'} captured across all accounts versus ${t.fields_prev} the day before.
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin:18px 0 22px;flex-wrap:wrap">
-      ${tile(counts.ok, 'Collected', '#057642')}
-      ${tile(counts.partial, 'Partial', '#b76b00')}
-      ${tile(counts.failed, 'Failed', '#cc1016')}
-      ${tile(counts.no_data, 'No data', '#6e6e73')}
-    </div>
-
-    <h2 style="font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73">Summary</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:26px">
-      <thead><tr style="background:#f5f5f7;color:#6e6e73;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em">
-        <th style="text-align:left;padding:8px 10px">Account</th>
-        <th style="text-align:left;padding:8px 10px">Status</th>
-        <th style="text-align:left;padding:8px 10px">Last capture</th>
-        <th style="text-align:left;padding:8px 10px">Fields</th>
-        <th style="text-align:left;padding:8px 10px">Progress</th>
-        <th style="text-align:left;padding:8px 10px">Ext</th>
-        <th style="text-align:left;padding:8px 10px">Pages that failed</th>
-      </tr></thead>
-      <tbody>${summaryRows}</tbody>
-    </table>
-
-    <h2 style="font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:#6e6e73">Per-account detail</h2>
-    ${sorted.map(a => renderAccountBlock(a, reportDate, priorDate, latest)).join('')}
-
-    <div style="background:#f5f5f7;border-radius:10px;padding:14px 16px;font-size:12px;color:#6e6e73;margin-top:8px">
-      <strong style="color:#1d1d1f">What the failures usually mean</strong><br>
-      · <strong>Nothing collected at all</strong> — Chrome was closed, the extension was disabled, or the machine was off at collection time.<br>
-      · <strong>SSI page returned nothing</strong> — Sales Navigator does not render in a hidden browser tab. The extension must open it as the visible tab of a background window.<br>
-      · <strong>A single field missing</strong> — LinkedIn moved a DOM element; update that metric's selector in content-metrics.js.<br>
-      · <strong>Old extension version</strong> — older builds capture fewer fields; the gap is expected until Chrome pulls the update.<br>
-      · <strong>No data at all</strong> — the account has never paired the extension.
-    </div>
-    <p style="margin-top:20px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:14px">Linalysis · full record in KV at audit:daily:* · <a href="https://linalysis.net/admin" style="color:#FE1B04">open the admin console</a></p>
-  </div>
-</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>${AUDIT_EMAIL_CSS}</style></head><body><div class="w">
+<h1>Linalysis — what happened yesterday</h1>
+<p class="s m" style="margin:2px 0 14px">Reporting on <b>${esc(reportDate)}</b> (compared with ${esc(priorDate)}) · generated ${new Date().toUTCString()} · build ${esc(ctx.build || 'dev')} · <a href="${AUDIT_DASH_URL}">full detail in the admin console</a></p>
+${renderBigWarning(ctx.didNotRun || [], accounts, reportDate)}${renderSuspectWarning(accounts, reportDate)}${renderExtWarning(ctx.staleExt || [], ctx.noCheckin || [], latest)}${banner}
+<h2>Did we make progress?</h2>
+<div class="b ${verdict[1]}" style="font-size:15px">${verdict[0]} — ${t.up} metric${t.up === 1 ? '' : 's'} up, ${t.down} down, ${t.flat} unchanged</div>
+<div>Collection: <b class="g">${counts.ok} collected</b> · <b class="o">${counts.partial} partial</b> · <b class="r">${counts.failed} failed</b> · <b class="m">${counts.no_data} no data</b> · fields vs prior day <b class="${fieldsDelta >= 0 ? 'g' : 'r'}">${fieldsDelta >= 0 ? '+' : '−'}${Math.abs(fieldsDelta)}</b> (${t.fields} vs ${t.fields_prev}) · pages fixed <b class="g">${t.fixed}</b> · pages broken <b class="${t.regressed ? 'r' : 'm'}">${t.regressed}</b></div>
+<div class="s m">“Up/down” counts only metrics where a rise is genuinely good (SSI, connections, views, appearances, company reach). Neutral ones — pending invitations, InMail credits, SSI rank percentiles — are shown per account but never voted on. Fields and pages measure the health of collection itself.</div>
+<h2>Summary</h2>
+<div style="overflow-x:auto"><table><tr><th>Account</th><th>Status</th><th>Last capture</th><th>Fields</th><th>Progress</th><th>Ext</th><th>Pages that failed</th></tr>
+${summaryRows}</table></div>
+<h2>Per-account detail</h2>
+<div class="s m" style="margin-bottom:6px">Metrics read: value today, then day Δ / 7-day Δ (vs ${esc(priorDate)} and ${esc(ctx.weekDate || '7 days earlier')}). ✓ pages captured every field.</div>
+${sorted.map(a => renderAccountBlock(a, reportDate, priorDate, latest)).join('')}
+<div class="bx s m" style="background:#f5f5f7"><b class="n">What the failures usually mean</b><br>
+· <b>Nothing collected at all</b> — Chrome was closed, the extension was disabled, or the machine was off at collection time.<br>
+· <b>SSI page returned nothing</b> — Sales Navigator does not render in a hidden tab; the extension must open it as the visible tab of a background window.<br>
+· <b>A single field missing</b> — LinkedIn moved a DOM element; update that metric's selector in content-metrics.js.<br>
+· <b>Old extension version</b> — older builds capture fewer fields; the gap is expected until the update lands.<br>
+· <b>No data at all</b> — the account has never paired the extension.</div>
+<p class="s q" style="border-top:1px solid #e5e7eb;padding-top:10px">Linalysis · full record in KV at audit:daily:* · <a href="${AUDIT_DASH_URL}">open the admin console</a></p>
+</div></body></html>`;
 }
 
 async function adminAuditLatest(req, env) {
