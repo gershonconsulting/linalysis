@@ -1,0 +1,4 @@
+# Deploy with verify_jwt = false: pg_cron/pg_net calls it with the x-cron-secret header,
+# which the function checks itself (401 without it).
+[functions.li-health-weekly]
+verify_jwt = false
