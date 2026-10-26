@@ -55,6 +55,10 @@ Secrets       : 1Password. Never commit them.
 
 3. RECENTLY DONE  [DONE]
 ----------------------------------------------------------------
+- 2026-10-26: POST linalysis.net/api/matrix-stats (functions/api/matrix-stats.js)
+  for the weekly Client Platform Matrix email. Read-only, auth = SHA-256 hash of
+  shared secret; reads LINALYSIS_KV (bound as KV in wrangler.toml); note = days of
+  stats rows ("40 days") / "no data" / "no account".
 - Per-computer 'Collecting session ON/OFF' viewer mode added
   (2026-09-09), verified live at My Account -> This computer.
 - Monthly report block: one-page PDF, estate level and per user.
