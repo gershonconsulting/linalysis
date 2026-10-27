@@ -7,3 +7,10 @@ compatibility_date = "2026-01-01"
 
 [ai]
 binding = "AI"
+
+# 2026-10-26: read-only access to the API worker's store (LINALYSIS_KV) for
+# functions/api/matrix-stats.js (Client Platform Matrix). Pages Functions only read it;
+# the linalysis-api worker remains the only writer.
+[[kv_namespaces]]
+binding = "KV"
+id = "d01158f715d14a5780e178d25e376161"
