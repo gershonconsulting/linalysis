@@ -1452,7 +1452,7 @@ const COLLECTION_SOURCES = [
 ];
 
 const REPORT_FROM_DEFAULT = 'Linalysis Collection <linalysis@gershon.ai>';
-const REPORT_TO_DEFAULT   = 'report@gershonconsulting.com,alerts@linalysis.com';
+const REPORT_TO_DEFAULT   = 'report@gershonconsulting.com,report@linalysis.com';
 
 function reportRecipients(env) {
   return String(env.ALERTS_TO || REPORT_TO_DEFAULT)
