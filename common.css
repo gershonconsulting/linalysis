@@ -17,7 +17,7 @@
   --warn-light: #fff4e5;
   --error: #cc1016;
   --error-light: #fdecea;
-  --info: #0a66c2;
+  --info: #FE1B04;
   --info-light: #e8f0fe;
 }
 html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
