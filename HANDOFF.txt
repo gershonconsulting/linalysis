@@ -55,6 +55,10 @@ Secrets       : 1Password. Never commit them.
 
 3. RECENTLY DONE  [DONE]
 ----------------------------------------------------------------
+- 2026-11-17: public /version.txt at linalysis.net/version.txt (plain text, site version only, v0.3.8)
+  + 'v0.3.8' under the login form. Static file kept in sync by test/version.test.js (node
+  test/version.test.js). Bump version.txt and login.html together on each site release; the
+  Chrome extension has its own version (manifest.json, 0.3.7). Done = live once verified.
 - 2026-10-26: POST linalysis.net/api/matrix-stats (functions/api/matrix-stats.js)
   for the weekly Client Platform Matrix email. Read-only, auth = SHA-256 hash of
   shared secret; reads LINALYSIS_KV (bound as KV in wrangler.toml); note = days of
