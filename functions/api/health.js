@@ -16,7 +16,16 @@ const worst = (a, b) => {
   return rank[a] >= rank[b] ? a : b;
 };
 
-export async function onRequestGet() {
+export async function onRequestGet(context) {
+  // App version = public /version.txt (single source of truth); API build string reported separately.
+  let version = null;
+  try {
+    const vr = context && context.env && context.env.ASSETS
+      ? await context.env.ASSETS.fetch(new URL('/version.txt', context.request.url))
+      : await fetch(new URL('/version.txt', context.request.url));
+    if (vr.ok) version = (await vr.text()).trim() || null;
+  } catch (e) { /* leave null */ }
+
   const checks = [{ key: 'site', status: 'green', detail: 'pages deployment serving' }];
   let apiVersion = null;
 
@@ -50,7 +59,8 @@ export async function onRequestGet() {
 
   return new Response(JSON.stringify({
     platform: 'linalysis',
-    version: apiVersion,
+    version,
+    build: apiVersion,
     status,
     checked_at: new Date().toISOString(),
     checks,
