@@ -55,6 +55,9 @@ Secrets       : 1Password. Never commit them.
 
 3. RECENTLY DONE  [DONE]
 ----------------------------------------------------------------
+- 2026-11-19: site v0.3.9 - sidebar footer on every app page shows '(c) 2026 Linalysis · v0.3.9',
+  read at runtime from /version.txt (same value as /api/health). version.txt + login.html bumped;
+  test/version.test.js also checks nav.js.
 - 2026-11-17: public /version.txt at linalysis.net/version.txt (plain text, site version only, v0.3.8)
   + 'v0.3.8' under the login form. Static file kept in sync by test/version.test.js (node
   test/version.test.js). Bump version.txt and login.html together on each site release; the
