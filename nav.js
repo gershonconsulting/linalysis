@@ -215,8 +215,15 @@ const LINALYSIS_LATEST_EXT_VERSION = '0.3.7'; // fallback only if updates.xml is
       var style = i.key === 'logout' ? ' style="color:var(--text-muted)"' : '';
       return '<a class="nav-item' + (i.key === active ? ' active' : '') + '" href="' + i.href + '"' + style + '>' + i.label + '</a>';
     }).join('');
-    var footer = '<div class="nav-spacer"></div><div style="padding:0 4px 8px">' + secondary + '</div><div class="sidebar-footer"><div>&copy; 2026 Linalysis</div></div>';
+    var footer = '<div class="nav-spacer"></div><div style="padding:0 4px 8px">' + secondary + '</div><div class="sidebar-footer"><div>&copy; 2026 Linalysis <span class="nav-site-version"></span></div></div>';
     el.innerHTML = brand + '<div class="nav-group">' + primary + '</div>' + footer;
+    // 2026-11-19 (v0.3.9): visible version line, same value as /version.txt and /api/health.
+    try {
+      fetch('/version.txt', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+        var v = String(t || '').trim(), s = el.querySelector('.nav-site-version');
+        if (s && /^\d+\.\d+\.\d+$/.test(v)) s.textContent = '· v' + v;
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   function addBuildBadge() {
